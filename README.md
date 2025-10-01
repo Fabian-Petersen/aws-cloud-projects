@@ -2,5 +2,5 @@
 
 ## Projects are listed under /projects
 
-- [UWC Booking App](uwc_booking_app/)
-- [My Portfolio App](fabian_portfolio_app/README.md)
+- [UWC Booking App](/projects/uwc_booking_app/README.md)
+- [My Portfolio App](/projects/fabian_portfolio_app/README.md)
