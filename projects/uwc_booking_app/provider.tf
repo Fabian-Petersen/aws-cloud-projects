@@ -21,10 +21,9 @@ provider "aws" {
 
   # Manually create this role in the console to get role_arn
   # Add this role for DNS Validation of host domain
-  assume_role {
-    role_arn = "arn:aws:iam::${var.profile_2_account_id}:role/delegation_trust_policy"
-    session_name = "terrafrom-session"
-  }
+  # assume_role {
+  #   role_arn = "arn:aws:iam::${var.profile_1_account_id}:role/delegation_trust_policy"
+  # }
 }
 
 provider "aws" {
@@ -34,6 +33,6 @@ provider "aws" {
 
   # Manually create this role in the console to get role_arn
   assume_role {
-    role_arn = "arn:aws:iam::${var.profile_2_account_id}:role/delegation_trust_policy"
+    role_arn = "arn:aws:iam::${var.profile_1_account_id}:role/delegation_trust_policy"
   }
 }
