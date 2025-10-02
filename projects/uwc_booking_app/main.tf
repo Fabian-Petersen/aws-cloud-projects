@@ -45,28 +45,43 @@ module "acm" {
 # $  // =================================== cloudfront =================================== //
 
 module "cloudfront" {
-  source = "../../modules/cloudfront"
+  source                  = "../../modules/cloudfront"
   project_name            = "uwc_booking_app"
   region                  = "af-south-1"
-  acm_certificate_arn     =  module.acm.acm_certificate_arn
+  acm_certificate_arn     = module.acm.acm_certificate_arn
   subdomain_name          = "uwc.app.fabian-portfolio.net"
   redirect_subdomain_name = "www.uwc.app.fabian-portfolio.net"
   # host_bucket_id          = module.s3_website_bucket.host_bucket_id
-  env                     = "dev"             
+  env = "dev"
+}
+
+module "awsConfig" {
+  source          = "../../modules/awsConfig"
+  subdomain_name  = "uwc.app.fabian-portfolio.net"
+
+  providers = {
+    aws = aws.free_tier_account_global
+  }
 }
 
 # $  // ===================== s3 buckets for website hosting ============================== //
 
 module "s3_website_bucket" {
-  source                  = "../../modules/s3_website_bucket"
-  root_hosted_zone        = "fabian-portfolio.net"
-  subdomain_name          = "uwc.app.fabian-portfolio.net"
-  redirect_subdomain_name = "www.uwc.app.fabian-portfolio.net"
+  source                      = "../../modules/s3_website_bucket"
+  root_hosted_zone            = "fabian-portfolio.net"
+  subdomain_name              = "uwc.app.fabian-portfolio.net"
+  redirect_subdomain_name     = "www.uwc.app.fabian-portfolio.net"
   cloudfront_distribution_arn = module.cloudfront.cloudfront_distribution_arn
 }
 
 # $  // =================================== api gateway =================================== //
-
+# module "apigateway" {
+#   source                      = "../../modules/apigateway"
+#   # root_hosted_zone            = "fabian-portfolio.net"
+#   # subdomain_name              = "uwc.app.fabian-portfolio.net"
+#   # redirect_subdomain_name     = "www.uwc.app.fabian-portfolio.net"
+#   # cloudfront_distribution_arn = module.cloudfront.cloudfront_distribution_arn
+# }
 
 # $  // =================================== dynamoDB =================================== //
 

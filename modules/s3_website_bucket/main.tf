@@ -3,10 +3,13 @@
 
 # $ Redirect Bucket
 resource "aws_s3_bucket" "redirect_bucket" {
-  bucket = var.host_domain_name
+  bucket = var.redirect_subdomain_name
 
+lifecycle {
+  prevent_destroy = true
+}
   tags = {
-    Domain      = var.redirect_domain_name
+    Domain      = var.redirect_subdomain_name
     Environment = var.env
   }
 }
@@ -15,17 +18,21 @@ resource "aws_s3_bucket_website_configuration" "redirect_bucket" {
   bucket = aws_s3_bucket.redirect_bucket.id
 
   redirect_all_requests_to {
-    host_name = var.host_domain_name
+    host_name = var.subdomain_name
     protocol  = "https"
   }
 }
 
 # $ Website Host Bucket
 resource "aws_s3_bucket" "host_bucket" {
-  bucket = var.host_domain_name
+  bucket = var.subdomain_name
+
+  lifecycle {
+  prevent_destroy = true
+}
 
   tags = {
-    Domain      = var.host_domain_name
+    Domain      = var.subdomain_name
     Environment = var.env
   }
 }
@@ -44,7 +51,7 @@ resource "aws_s3_bucket_cors_configuration" "host_bucket_cors" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["PUT", "POST", "GET", "DELETE", "HEAD"]
-    allowed_origins = [var.host_domain_name]
+    allowed_origins = [var.subdomain_name]
     expose_headers  = []
     max_age_seconds = 3000
   }
@@ -52,19 +59,28 @@ resource "aws_s3_bucket_cors_configuration" "host_bucket_cors" {
 
 resource "aws_s3_bucket_policy" "host_bucket_policy" {
   bucket = aws_s3_bucket.host_bucket.id
-  policy = data.aws_iam_policy_document.host_bucket_policy.json
+  policy = data.aws_iam_policy_document.allow_cloudfront_read.json
 }
 
-data "aws_iam_policy_document" "host_bucket_policy" {
+# $ Bucket policy that allows CloudFront (service principal) only for this distribution
+data "aws_iam_policy_document" "allow_cloudfront_read" {
   statement {
-    actions = ["s3:GetObject"]
-    resources = [
-      "${aws_s3_bucket.host_bucket.arn}/*"
-    ]
+    sid    = "AllowCloudFrontServicePrincipalReadOnly"
+    effect = "Allow"
 
     principals {
-      type        = "AWS"
-      identifiers = ["*"]
+      type = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+
+    actions = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.host_bucket.arn}/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceArn"
+      values   = [var.cloudfront_distribution_arn]
     }
   }
 }
+

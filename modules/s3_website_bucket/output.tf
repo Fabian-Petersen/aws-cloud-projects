@@ -16,3 +16,7 @@ output "redirect_bucket_name" {
 output "host_bucket_url" {
   value = aws_s3_bucket.host_bucket.bucket_domain_name
 }
+
+output "host_bucket_domain_name" {
+  value = aws_s3_bucket.host_bucket.bucket_domain_name
+}

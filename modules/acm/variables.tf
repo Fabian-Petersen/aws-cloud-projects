@@ -21,3 +21,8 @@ variable "profile_2_account_id" {
   description = "free tier account id"
   type        = string
 }
+
+variable "zone_id" {
+  description = "zone_id of the subdomain"
+  type = string
+}

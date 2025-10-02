@@ -1,3 +1,4 @@
+
 # $ Global variables
 variable "project_name" {
   default     = "uwc-booking-app"
