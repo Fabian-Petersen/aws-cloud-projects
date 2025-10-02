@@ -1,32 +1,11 @@
 # $ This module creates the S3 buckets for the project.
 # % terraform import module.s3.aws_s3_bucket_policy.host_bucket_policy www.fabian-portfolio.net // command to import the S3 bucket policy
 
-# $ Redirect Bucket
-resource "aws_s3_bucket" "redirect_bucket" {
-  bucket = var.redirect_subdomain_name
-
-lifecycle {
-  prevent_destroy = true
-}
-  tags = {
-    Domain      = var.redirect_subdomain_name
-    Environment = var.env
-  }
-}
-
-resource "aws_s3_bucket_website_configuration" "redirect_bucket" {
-  bucket = aws_s3_bucket.redirect_bucket.id
-
-  redirect_all_requests_to {
-    host_name = var.subdomain_name
-    protocol  = "https"
-  }
-}
-
-# $ Website Host Bucket
+#$ [STEP 1] : Create the website host bucket
 resource "aws_s3_bucket" "host_bucket" {
   bucket = var.subdomain_name
 
+#% [INFO] : Once create don't remove unless website removed
   lifecycle {
   prevent_destroy = true
 }
@@ -37,6 +16,21 @@ resource "aws_s3_bucket" "host_bucket" {
   }
 }
 
+#$ [Step 2] : Create the redirect bucket 
+resource "aws_s3_bucket" "redirect_bucket" {
+  bucket = var.redirect_subdomain_name
+
+#% [INFO] : Once create don't remove unless website removed
+lifecycle {
+  prevent_destroy = true
+}
+  tags = {
+    Domain      = var.redirect_subdomain_name
+    Environment = var.env
+  }
+}
+
+#$ [Step 3] : Configure the host bucket  
 resource "aws_s3_bucket_website_configuration" "host_bucket_config" {
   bucket = aws_s3_bucket.host_bucket.id
 
@@ -45,6 +39,17 @@ resource "aws_s3_bucket_website_configuration" "host_bucket_config" {
   }
 }
 
+#$ [Step 4] : Configure the redirect bucket  
+resource "aws_s3_bucket_website_configuration" "redirect_bucket" {
+  bucket = aws_s3_bucket.redirect_bucket.id
+
+  redirect_all_requests_to {
+    host_name = var.subdomain_name
+    protocol  = "https"
+  }
+}
+
+#$ [Step 5] : Configure the CORS settings for the host bucket  
 resource "aws_s3_bucket_cors_configuration" "host_bucket_cors" {
   bucket = aws_s3_bucket.host_bucket.id
 
@@ -57,15 +62,10 @@ resource "aws_s3_bucket_cors_configuration" "host_bucket_cors" {
   }
 }
 
-resource "aws_s3_bucket_policy" "host_bucket_policy" {
-  bucket = aws_s3_bucket.host_bucket.id
-  policy = data.aws_iam_policy_document.allow_cloudfront_read.json
-}
-
-# $ Bucket policy that allows CloudFront (service principal) only for this distribution
-data "aws_iam_policy_document" "allow_cloudfront_read" {
+#$ [Step 6] : Create the origin access policy to allow cloudfront to access content in host bucket  
+data "aws_iam_policy_document" "origin_bucket_policy" {
   statement {
-    sid    = "AllowCloudFrontServicePrincipalReadOnly"
+    sid    = "AllowCloudFrontServicePrincipalReadWrite"
     effect = "Allow"
 
     principals {
@@ -84,3 +84,8 @@ data "aws_iam_policy_document" "allow_cloudfront_read" {
   }
 }
 
+#$ [Step 7] : Apply the policy to the host bucket  
+resource "aws_s3_bucket_policy" "host_bucket_policy" {
+  bucket = aws_s3_bucket.host_bucket.bucket
+  policy = data.aws_iam_policy_document.origin_bucket_policy.json
+}
