@@ -26,13 +26,13 @@ resource "aws_route53_zone" "subdomain_zone" {
 # $ Create Route53 record for the subdomain in main account
 resource "aws_route53_record" "subdomain" {
   provider = aws.main_account
-  zone_id = data.aws_route53_zone.hosted_zone.id
-  name    = var.host_domain_name
-  type    = "A"
+  zone_id  = data.aws_route53_zone.hosted_zone.id
+  name     = var.host_domain_name
+  type     = "A"
 
   alias {
-    name                   = var.host_domain_name  # S3 website endpoint
-    zone_id                = var.host_domain_name  # S3 website hosted zone ID
+    name                   = var.host_domain_name # S3 website endpoint
+    zone_id                = var.host_domain_name # S3 website hosted zone ID
     evaluate_target_health = false
   }
 }

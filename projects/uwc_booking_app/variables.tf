@@ -13,8 +13,8 @@ variable "region" {
 }
 
 variable "env" {
-  default     = "env"
-  description = "development environment"
+  default     = "dev"
+  description = "development environment: dev, staging or prod"
   type        = string
 }
 
@@ -77,3 +77,55 @@ variable "redirect_subdomain_name" {
   description = "redirect to for the website"
   type        = string
 }
+
+#$ ======================== api routes ========================
+variable "api_name" {
+  default     = "project_apigateway"
+  description = "Name of the api for the project"
+  type        = string
+}
+
+variable "api_routes" {
+  type = map(object({
+    methods = map(string) # method => lambda_function_name
+  }))
+  default = {
+    bookings = {
+      methods = {
+        GET  = "getBookings_lambda"
+        POST = "postBooking_lambda"
+      }
+    }
+    users = {
+      methods = {
+        GET = "getUsers_lambda"
+      }
+    }
+  }
+}
+
+#$ ======================== lambda functions ====================
+variable "lambda_functions" {
+  type = map(object({
+    file_name = string
+    handler   = string
+    runtime   = string
+  }))
+  default = {
+    getBookings_lambda = {
+      file_name = "getBooking_lambda.py"
+      handler   = "getBooking_lambda.handler"
+      runtime   = "python3.9"
+    }
+    postBooking_lambda = {
+      file_name = "postBooking_lambda.py"
+      handler   = "postBooking_lambda.handler"
+      runtime   = "python3.9"
+    }
+    getUsers_lambda = {
+      file_name = "getUsers_lambda.py"
+      handler   = "getUsers_lambda.handler"
+      runtime   = "python3.9"
+    }
+  }
+} 

@@ -61,21 +61,21 @@ resource "aws_iam_role_policy_attachment" "config_role_attach" {
 
 #$ [Step 2] : Configuration Recorder - AWS Config needs a recorder to capture resources
 resource "aws_config_configuration_recorder" "enable_recorder" {
-  name     = "default"
-  role_arn = aws_iam_role.cloudfront_rule.arn
-   depends_on = [aws_config_delivery_channel.snapshot_logs]
+  name       = "default"
+  role_arn   = aws_iam_role.cloudfront_rule.arn
+  depends_on = [aws_config_delivery_channel.snapshot_logs]
 }
 
 #% [Optional] : Storing of the logs optional if continuous monitoring necessary where the state can change
 resource "aws_s3_bucket" "bucket_awsconfig" {
-    bucket = "awsconfig-${var.subdomain_name}"
+  bucket = "awsconfig-${var.subdomain_name}"
 
-    lifecycle {
-      prevent_destroy = true
-    }
+  lifecycle {
+    prevent_destroy = true
+  }
 
-    tags = {
-        Name = "aws-config-logs"
+  tags = {
+    Name = "aws-config-logs"
   }
 }
 

@@ -1,3 +1,3 @@
 variable "subdomain_name" {
-    
+
 }

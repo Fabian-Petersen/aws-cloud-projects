@@ -4,8 +4,8 @@
 resource "aws_route53_zone" "subdomain" {
   name = var.subdomain_name
 
-lifecycle {
-  prevent_destroy = true
-}
+  lifecycle {
+    prevent_destroy = true
+  }
 
 }

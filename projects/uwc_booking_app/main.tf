@@ -56,8 +56,8 @@ module "cloudfront" {
 }
 
 module "awsConfig" {
-  source          = "../../modules/awsConfig"
-  subdomain_name  = "uwc.app.fabian-portfolio.net"
+  source         = "../../modules/awsConfig"
+  subdomain_name = "uwc.app.fabian-portfolio.net"
 
   providers = {
     aws = aws.free_tier_account_global
@@ -75,13 +75,22 @@ module "s3_website_bucket" {
 }
 
 # $  // =================================== api gateway =================================== //
-# module "apigateway" {
-#   source                      = "../../modules/apigateway"
-#   # root_hosted_zone            = "fabian-portfolio.net"
-#   # subdomain_name              = "uwc.app.fabian-portfolio.net"
-#   # redirect_subdomain_name     = "www.uwc.app.fabian-portfolio.net"
-#   # cloudfront_distribution_arn = module.cloudfront.cloudfront_distribution_arn
-# }
+
+module "apigateway" {
+  source     = "../../modules/apigateway"
+  api_routes = var.api_routes
+  lambda_arns = module.lambda.lambda_invoke_arns
+  lambda_function_names = module.lambda.lambda_function_names
+  }
+
+# $  // =================================== lambda functions =================================== //
+
+module "lambda" {
+  source           = "../../modules/lambda"
+  lambda_functions = var.lambda_functions
+}
+
+
 
 # $  // =================================== dynamoDB =================================== //
 

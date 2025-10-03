@@ -5,10 +5,10 @@
 resource "aws_s3_bucket" "host_bucket" {
   bucket = var.subdomain_name
 
-#% [INFO] : Once create don't remove unless website removed
+  #% [INFO] : Once create don't remove unless website removed
   lifecycle {
-  prevent_destroy = true
-}
+    prevent_destroy = true
+  }
 
   tags = {
     Domain      = var.subdomain_name
@@ -20,10 +20,10 @@ resource "aws_s3_bucket" "host_bucket" {
 resource "aws_s3_bucket" "redirect_bucket" {
   bucket = var.redirect_subdomain_name
 
-#% [INFO] : Once create don't remove unless website removed
-lifecycle {
-  prevent_destroy = true
-}
+  #% [INFO] : Once create don't remove unless website removed
+  lifecycle {
+    prevent_destroy = true
+  }
   tags = {
     Domain      = var.redirect_subdomain_name
     Environment = var.env
@@ -69,11 +69,11 @@ data "aws_iam_policy_document" "origin_bucket_policy" {
     effect = "Allow"
 
     principals {
-      type = "Service"
+      type        = "Service"
       identifiers = ["cloudfront.amazonaws.com"]
     }
 
-    actions = ["s3:GetObject"]
+    actions   = ["s3:GetObject"]
     resources = ["${aws_s3_bucket.host_bucket.arn}/*"]
 
     condition {

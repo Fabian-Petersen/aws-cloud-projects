@@ -5,7 +5,7 @@ variable "key_name" {
 
 variable "security_group_ids" {
   description = "List of security group IDs"
-  type = list(string)
+  type        = list(string)
 }
 
 variable "ami_id" {
@@ -21,7 +21,7 @@ variable "instance_type" {
 
 variable "user_data" {
   description = "script file that runs on ec2 instance on bootup"
-  type = string
+  type        = string
 }
 
 # variable "subnet_id" {

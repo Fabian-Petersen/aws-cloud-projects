@@ -44,7 +44,7 @@ resource "aws_route53_record" "subdomain_cert_validation" {
 
 # $ [Step 3] : Wait for validation to complete
 resource "aws_acm_certificate_validation" "subdomain_cert_validation" {
-  certificate_arn   = aws_acm_certificate.subdomain_acm_certificate.arn
+  certificate_arn         = aws_acm_certificate.subdomain_acm_certificate.arn
   validation_record_fqdns = [for record in aws_route53_record.subdomain_cert_validation : record.fqdn]
 }
 

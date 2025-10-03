@@ -24,5 +24,5 @@ variable "profile_2_account_id" {
 
 variable "zone_id" {
   description = "zone_id of the subdomain"
-  type = string
+  type        = string
 }
