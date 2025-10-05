@@ -1,7 +1,12 @@
-variable "hosted_zone" {
+variable "primary_hosted_zone" {
   description = "parent domain in the root account"
   type        = string
   #   default     = "fabian-portfolio.net"
+}
+
+variable "secondary_hosted_zone" {
+  description = "hosted zone in secondary account from primary account"
+  type        = string
 }
 
 variable "subdomain_name" {

@@ -1,9 +1,9 @@
 # $ Name of the bucket the same as domain hence the domain used as naming variables
-variable "root_hosted_zone" {
-  # default     = "fabian-portfolio.net"
-  description = "hosted zone in the main account in the main account"
-  type        = string
-}
+# variable "primary_hosted_zone" {
+#   # default     = "fabian-portfolio.net"
+#   description = "hosted zone in the main account in the main account"
+#   type        = string
+# }
 
 # variable "project_hosted_zone" {
 #   # default     = "app.fabian-portfolio.net"

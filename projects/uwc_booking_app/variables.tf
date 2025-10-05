@@ -54,13 +54,14 @@ variable "key_name" {
   type        = string
 }
 
-variable "root_hosted_zone" {
+#$ ======================== route53 routes ========================
+variable "primary_hosted_zone" {
   default     = "fabian-portfolio.net"
   description = "hosted zone in the main account in the main account"
   type        = string
 }
 
-variable "project_hosted_zone" {
+variable "secondary_hosted_zone" {
   default     = "app.fabian-portfolio.net"
   description = "hosted zone in free account with root zone in main account"
   type        = string
@@ -107,25 +108,37 @@ variable "api_routes" {
 #$ ======================== lambda functions ====================
 variable "lambda_functions" {
   type = map(object({
-    file_name = string
-    handler   = string
-    runtime   = string
+    file_name           = string
+    handler             = string
+    runtime             = string
+    dynamodb_table_name = string
   }))
   default = {
     getBookings_lambda = {
-      file_name = "getBooking_lambda.py"
-      handler   = "getBooking_lambda.handler"
-      runtime   = "python3.9"
+      file_name           = "getBooking_lambda.py"
+      handler             = "getBooking_lambda.handler"
+      runtime             = "python3.9"
+      dynamodb_table_name = "bookings_table"
+
     }
     postBooking_lambda = {
-      file_name = "postBooking_lambda.py"
-      handler   = "postBooking_lambda.handler"
-      runtime   = "python3.9"
+      file_name           = "postBooking_lambda.py"
+      handler             = "postBooking_lambda.handler"
+      runtime             = "python3.9"
+      dynamodb_table_name = "bookings_table"
     }
     getUsers_lambda = {
-      file_name = "getUsers_lambda.py"
-      handler   = "getUsers_lambda.handler"
-      runtime   = "python3.9"
+      file_name           = "getUsers_lambda.py"
+      handler             = "getUsers_lambda.handler"
+      runtime             = "python3.9"
+      dynamodb_table_name = "users_table"
     }
   }
-} 
+}
+
+#$ ======================== DynamoDB Tables ====================
+variable "dynamoDB_table_names" {
+  default = ["bookings", "users"]
+  type    = list(string)
+}
+

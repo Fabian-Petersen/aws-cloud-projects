@@ -25,10 +25,15 @@ crash.log
 **/ENV/
 **/env/
 
-# Packaging / build
+# Ignore distribution / packaging
 *.egg-info/
+*.egg
+*.whl
 dist/
 build/
+
+# Ignore pip cache
+pip-log.txt
 
 # Testing / coverage
 .tox/

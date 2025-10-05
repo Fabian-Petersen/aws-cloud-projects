@@ -22,3 +22,13 @@ variable "lambda_functions" {
     }
   }
 }
+
+variable "region" {
+
+}
+
+variable "profile_2_account_id" {
+  # default     = "157489943321"
+  description = "free tier account id"
+  type        = string
+}

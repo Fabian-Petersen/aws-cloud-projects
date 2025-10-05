@@ -8,18 +8,22 @@ terraform {
   }
 }
 
-# $  // ================================= route 53 ================================ //
+# $ // ================================= route 53 ================================ //
 
 module "route53_cross_account_subdomain" {
-  source         = "../../modules/route53_cross_account_subdomain"
-  subdomain_name = "uwc.app.fabian-portfolio.net"
+  source                  = "../../modules/route53_cross_account_subdomain"
+  primary_hosted_zone     = var.primary_hosted_zone
+  secondary_hosted_zone   = var.secondary_hosted_zone
+  subdomain_name          = var.subdomain_name
+  redirect_subdomain_name = var.redirect_subdomain_name
 }
 
 # $ Access the parent zone to create the subdomain and to add the name servers
 module "route53_hosted_zone" {
   source                = "../../modules/route53_hosted_zone"
-  hosted_zone           = "fabian-portfolio.net"
-  subdomain_name        = "app.fabian-portfolio.net"
+  primary_hosted_zone   = var.primary_hosted_zone
+  secondary_hosted_zone = var.secondary_hosted_zone
+  subdomain_name        = var.subdomain_name
   subdomain_nameservers = module.route53_cross_account_subdomain.subdomain_nameservers
 
   providers = {
@@ -27,73 +31,78 @@ module "route53_hosted_zone" {
   }
 }
 
-# $  // ====================================== acm ======================================= //
+# $ // ====================================== acm ======================================= //
 
 module "acm" {
   source = "../../modules/acm"
 
+  hosted_zone             = var.primary_hosted_zone
+  subdomain_name          = var.subdomain_name
+  redirect_subdomain_name = var.redirect_subdomain_name
+  zone_id                 = module.route53_cross_account_subdomain.subdomain_zone_id
+
   providers = {
     aws = aws.free_tier_account_global
   }
-
-  hosted_zone             = "fabian-portfolio.net"
-  subdomain_name          = "uwc.app.fabian-portfolio.net"
-  redirect_subdomain_name = "www.uwc.app.fabian-portfolio.net"
-  zone_id                 = module.route53_cross_account_subdomain.subdomain_zone_id
 }
-
-# $  // =================================== cloudfront =================================== //
+# $ // =================================== cloudfront =================================== //
 
 module "cloudfront" {
   source                  = "../../modules/cloudfront"
-  project_name            = "uwc_booking_app"
-  region                  = "af-south-1"
+  subdomain_name          = var.subdomain_name
+  redirect_subdomain_name = var.redirect_subdomain_name
+  project_name            = var.project_name
+  region                  = var.region
   acm_certificate_arn     = module.acm.acm_certificate_arn
-  subdomain_name          = "uwc.app.fabian-portfolio.net"
-  redirect_subdomain_name = "www.uwc.app.fabian-portfolio.net"
-  # host_bucket_id          = module.s3_website_bucket.host_bucket_id
-  env = "dev"
+  env                     = var.env
 }
+
+#$  // =================================== awsConfig =================================== //
 
 module "awsConfig" {
   source         = "../../modules/awsConfig"
-  subdomain_name = "uwc.app.fabian-portfolio.net"
+  subdomain_name = var.subdomain_name
 
   providers = {
     aws = aws.free_tier_account_global
   }
 }
 
-# $  // ===================== s3 buckets for website hosting ============================== //
+#$ // ===================== s3 buckets for website hosting ============================== //
 
 module "s3_website_bucket" {
   source                      = "../../modules/s3_website_bucket"
-  root_hosted_zone            = "fabian-portfolio.net"
-  subdomain_name              = "uwc.app.fabian-portfolio.net"
-  redirect_subdomain_name     = "www.uwc.app.fabian-portfolio.net"
+  subdomain_name              = var.subdomain_name
+  redirect_subdomain_name     = var.redirect_subdomain_name
   cloudfront_distribution_arn = module.cloudfront.cloudfront_distribution_arn
 }
 
-# $  // =================================== api gateway =================================== //
+#$  // =================================== api gateway =================================== //
 
 module "apigateway" {
-  source     = "../../modules/apigateway"
-  api_routes = var.api_routes
-  lambda_arns = module.lambda.lambda_invoke_arns
+  source                = "../../modules/apigateway"
+  api_routes            = var.api_routes
+  lambda_arns           = module.lambda.lambda_invoke_arns
   lambda_function_names = module.lambda.lambda_function_names
-  }
+}
 
-# $  // =================================== lambda functions =================================== //
+#$ // =================================== lambda functions =================================== //
 
 module "lambda" {
-  source           = "../../modules/lambda"
-  lambda_functions = var.lambda_functions
+  source               = "../../modules/lambda/modules/dynamoDB"
+  lambda_functions     = var.lambda_functions
+  region               = var.region
+  profile_2_account_id = var.profile_2_account_id
 }
 
 
 
-# $  // =================================== dynamoDB =================================== //
+#$  // =================================== dynamoDB =================================== //
+module "dynamodb_tables" {
+  source               = "../../modules/dynamoDB"
+  dynamoDB_table_names = var.dynamoDB_table_names
+}
 
-# $  // =================================== lambda functions =================================== //
+#$ // =================================== cognito =================================== //
 
 

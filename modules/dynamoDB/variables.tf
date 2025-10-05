@@ -1,3 +1,3 @@
-# variable "vpc_id" {}
-# variable "region" {}
-# variable "route_table_ids" {}
+variable "dynamoDB_table_names" {
+  type = list(string)
+}
