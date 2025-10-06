@@ -48,14 +48,14 @@ def handler(event, context):
         # Check if body is a list and extract the first item if there's only one entry
         if not isinstance(body, dict):
             return {
-                'booking_statusCode': 400,
+                'statusCode': 400,
                 'body': json.dumps({'error': 'Expected a single JSON object'}),
                 'headers': CORS_HEADERS
             }
 
     except (json.JSONDecodeError, KeyError) as e:
         return {
-            'booking_statusCode': 400,
+            'statusCode': 400,
             'body': f"Invalid JSON format or missing fields: {str(e)}",
             'headers': CORS_HEADERS
         }
@@ -65,7 +65,7 @@ def handler(event, context):
     missing_fields = [field for field in required_fields if item.get(field) is None]
     if missing_fields:
         return {
-            'booking_statusCode': 400,
+            'statusCode': 400,
             'body': json.dumps({'error': f'Missing required fields: {", ".join(missing_fields)}'}),
             'headers': CORS_HEADERS
         }
@@ -76,7 +76,7 @@ def handler(event, context):
 
         # Return success response
         return {
-            'booking_statusCode': 200,
+            'statusCode': 200,
             'body': json.dumps({'message': 'Item added successfully', 'item': item}),
             'headers': CORS_HEADERS
         }
@@ -84,7 +84,7 @@ def handler(event, context):
     except ClientError as e:
         # Handle DynamoDB exceptions
         return {
-            'booking_statusCode': 500,
+            'statusCode': 500,
             'body': json.dumps({'error': f"Error adding item: {e.response['Error']['Message']}"}),
             'headers': CORS_HEADERS
         }
