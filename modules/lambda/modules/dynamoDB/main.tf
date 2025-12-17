@@ -33,15 +33,8 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = [
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:UpdateItem",
-          "dynamodb:DeleteItem",
-          "dynamodb:Query",
-          "dynamodb:Scan"
-        ]
+        Effect   = "Allow"
+        Action   = each.value.action
         Resource = "arn:aws:dynamodb:${var.region}:${var.profile_2_account_id}:table/${each.value.dynamodb_table_name}"
       }
     ]

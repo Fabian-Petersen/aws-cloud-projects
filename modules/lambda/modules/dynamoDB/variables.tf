@@ -3,6 +3,7 @@ variable "lambda_functions" {
     file_name           = string
     handler             = string
     runtime             = string
+    action              = list(string)
     dynamodb_table_name = string
   }))
 }

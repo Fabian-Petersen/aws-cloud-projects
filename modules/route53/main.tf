@@ -10,7 +10,7 @@ data "aws_route53_zone" "primary_hosted_zone" {
 resource "aws_route53_record" "subdomain_delegation" {
   provider = aws.main_account
   zone_id  = aws_route53_zone.primary_hosted_zone.zone_id
-  name     = "uwc.fabian-portfolio.net"
+  name     = var.subdomain_name
   type     = "NS"
   ttl      = 300
   records  = var.subdomain_nameservers # This will be the NS records from the child account

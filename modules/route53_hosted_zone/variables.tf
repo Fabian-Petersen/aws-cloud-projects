@@ -20,3 +20,8 @@ variable "subdomain_nameservers" {
   description = "Name servers for the 'uwc.fabian-portfolio.net' subdomain."
   type        = list(string)
 }
+
+variable "hosted_zone" {
+  description = "hosted zone used as variable in route53"
+  type        = string
+}

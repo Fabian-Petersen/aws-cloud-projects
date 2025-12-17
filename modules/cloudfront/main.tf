@@ -150,13 +150,13 @@ resource "aws_cloudfront_distribution" "distribution" {
 }
 
 #$ [Step 4] : Create Route53 records for the CloudFront distribution aliases
-data "aws_route53_zone" "subdomain_name" {
-  name = var.subdomain_name
+data "aws_route53_zone" "hosted_zone" {
+  name = var.secondary_hosted_zone
 }
 
 resource "aws_route53_record" "cloudfront" {
   for_each = aws_cloudfront_distribution.distribution.aliases
-  zone_id  = data.aws_route53_zone.subdomain_name.zone_id
+  zone_id  = data.aws_route53_zone.hosted_zone.zone_id
   name     = each.value
   type     = "A"
 

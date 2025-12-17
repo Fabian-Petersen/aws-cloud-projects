@@ -23,3 +23,7 @@ variable "region" {
 variable "env" {
   type = string
 }
+
+variable "secondary_hosted_zone" {
+
+}
