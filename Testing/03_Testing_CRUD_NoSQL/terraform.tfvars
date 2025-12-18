@@ -49,7 +49,7 @@ lambda_functions = {
     file_name           = "postFile_lambda.py"
     handler             = "postFile_lambda.lambda_handler"
     runtime             = "python3.14"
-    action              = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query", "dynamodb:Scan"]
+    action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-images-table"
   }
   deleteFile_lambda = {
@@ -63,7 +63,7 @@ lambda_functions = {
     file_name           = "updateFile_lambda.py"
     handler             = "updateFile_lambda.lambda_handler"
     runtime             = "python3.14"
-    action              = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query", "dynamodb:Scan"]
+    action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-images-table"
   }
   #   getUsers_lambda = {
@@ -75,7 +75,7 @@ lambda_functions = {
 }
 
 #$ dynamoDB variables
-dynamoDB_table_names = ["crud-nosql-app-images-table"]
+dynamoDB_table_names = ["crud-nosql-app-images"]
 
 #$ cognito
 prevent_user_existence = "ENABLED" # use in production environment

@@ -7,11 +7,11 @@
 # origin api-gateway: sigrcfirp1.execute-api.af-south-1.amazonaws.com
 
 # locals {
-# s3_origin_id = "s3-origin-${var.host_domain_name_id}"
+# s3_origin_id = "s3-origin-${var.subdomain_name}"
 
 # ordered_cache_items = [
 #   {
-#     path_pattern    = "/bookings"
+#     path_pattern    = "/images/*"
 #     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
 
 #   },
@@ -37,6 +37,13 @@ locals {
   s3_origin_id = "s3-origin"
   my_domain    = var.subdomain_name
   bucket_url   = "${var.subdomain_name}.s3.${var.region}.amazonaws.com"
+  ordered_cache_items = [
+    {
+      path_pattern    = "/api/images/*"
+      allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+
+    },
+  ]
 }
 
 #$ [Step 1] : Get the SSL Certificate from Certifcate Manager
@@ -48,8 +55,8 @@ data "aws_acm_certificate" "my_domain" {
 
 #$ [Step 2] : Create CloudFront Origin Access Control for s3 bucket access
 resource "aws_cloudfront_origin_access_control" "oac" {
-  name                              = "${var.subdomain_name}-origin access"
-  description                       = "Origin Access Contol Policy for S3 origin"
+  name                              = "${var.subdomain_name}-oac"
+  description                       = "Origin Access Control for S3 origin"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always" # recommended: always sign requests
   signing_protocol                  = "sigv4"
@@ -86,8 +93,8 @@ resource "aws_cloudfront_distribution" "distribution" {
 
   default_cache_behavior {
     target_origin_id       = local.s3_origin_id
-    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods         = ["GET", "HEAD"]
+    allowed_methods        = ["HEAD", "GET", "OPTIONS"]
+    cached_methods         = ["HEAD", "GET"]
     viewer_protocol_policy = "redirect-to-https"
     compress               = true
     min_ttl                = 0
@@ -110,8 +117,8 @@ resource "aws_cloudfront_distribution" "distribution" {
   ordered_cache_behavior {
     target_origin_id = local.s3_origin_id
     path_pattern     = "/*"
-    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
-    cached_methods   = ["GET", "HEAD", "OPTIONS"]
+    allowed_methods  = ["HEAD", "GET", "OPTIONS"]
+    cached_methods   = ["HEAD", "GET"]
 
     forwarded_values {
       query_string = false
@@ -127,6 +134,77 @@ resource "aws_cloudfront_distribution" "distribution" {
     max_ttl                = 0
     compress               = true
     viewer_protocol_policy = "redirect-to-https"
+  }
+
+  # $ API Gateway Origin for the API backend
+  origin {
+    connection_attempts      = 3
+    connection_timeout       = 10
+    domain_name              = "${var.api_id}.execute-api.af-south-1.amazonaws.com"
+    origin_id                = "${var.api_id}.execute-api.af-south-1.amazonaws.com"
+    origin_access_control_id = null
+    origin_path              = "/dev"
+
+    custom_origin_config {
+      http_port                = 80
+      https_port               = 443
+      origin_keepalive_timeout = 5
+      origin_protocol_policy   = "https-only"
+      origin_read_timeout      = 30
+      origin_ssl_protocols = [
+        "TLSv1.2",
+      ]
+    }
+  }
+
+  ordered_cache_behavior {
+    path_pattern           = "/api/*"
+    target_origin_id       = "${var.api_id}.execute-api.af-south-1.amazonaws.com"
+    allowed_methods        = ["HEAD", "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    cached_methods         = ["HEAD", "GET"]
+    viewer_protocol_policy = "redirect-to-https"
+    compress               = true
+
+    forwarded_values {
+      query_string = true
+
+      cookies {
+        forward = "all"
+      }
+    }
+
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
+  }
+
+
+  dynamic "ordered_cache_behavior" {
+    for_each = local.ordered_cache_items
+    content {
+      target_origin_id       = "${var.api_id}.execute-api.af-south-1.amazonaws.com"
+      path_pattern           = ordered_cache_behavior.value.path_pattern
+      allowed_methods        = ordered_cache_behavior.value.allowed_methods
+      cached_methods         = ["GET", "HEAD"]
+      compress               = true
+      default_ttl            = 0
+      max_ttl                = 0
+      min_ttl                = 0
+      smooth_streaming       = false
+      trusted_key_groups     = []
+      trusted_signers        = []
+      viewer_protocol_policy = "redirect-to-https"
+
+      forwarded_values {
+        query_string = true
+
+        cookies {
+          forward = "all"
+        }
+
+        headers = ["*"]
+      }
+    }
   }
 
   restrictions {
@@ -161,7 +239,7 @@ resource "aws_route53_record" "cloudfront" {
   type     = "A"
 
   lifecycle {
-    prevent_destroy = true
+    create_before_destroy = true
   }
 
   alias {

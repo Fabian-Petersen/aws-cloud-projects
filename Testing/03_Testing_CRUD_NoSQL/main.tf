@@ -61,6 +61,9 @@ module "cloudfront" {
   acm_certificate_arn     = module.acm.acm_certificate_arn
   env                     = var.env
   secondary_hosted_zone   = var.secondary_hosted_zone
+  api_id                  = module.apigateway.api_id
+
+  depends_on = [module.acm]
 }
 
 #$  // =================================== awsConfig =================================== //
@@ -86,10 +89,13 @@ module "cloudfront" {
 #$  // =================================== api gateway =================================== //
 
 module "apigateway" {
-  source                = "../../modules/apigateway"
-  api_routes            = var.api_routes
-  lambda_arns           = module.lambda.lambda_invoke_arns
-  lambda_function_names = module.lambda.lambda_function_names
+  source           = "../../modules/apigateway"
+  api_routes       = var.api_routes
+  lambda_arns      = module.lambda.lambda_invoke_arns
+  lambda_functions = var.lambda_functions
+  api_name         = var.api_name
+  env              = var.env
+  project_name     = var.project_name
 }
 
 #$ // =================================== lambda functions =================================== //
@@ -105,6 +111,7 @@ module "lambda" {
 module "dynamodb_tables" {
   source               = "../../modules/dynamoDB"
   dynamoDB_table_names = var.dynamoDB_table_names
+  env                  = var.env
 }
 
 #$ // =================================== cognito =================================== //

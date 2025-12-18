@@ -79,10 +79,10 @@ resource "aws_api_gateway_stage" "deployment_stage" {
 
 #$ [Step 6] : Set API Permissions to invoke lambda functions / services
 resource "aws_lambda_permission" "allow_api_gateway" {
-  for_each      = var.lambda_function_names
+  for_each      = var.lambda_functions
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = each.value
+  function_name = each.key
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.project_apigateway.execution_arn}/*/*"
 }

@@ -25,5 +25,8 @@ variable "env" {
 }
 
 variable "secondary_hosted_zone" {
+}
 
+variable "api_id" {
+  type = string
 }
