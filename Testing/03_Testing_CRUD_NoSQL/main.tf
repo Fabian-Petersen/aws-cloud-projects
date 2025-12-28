@@ -62,6 +62,10 @@ module "cloudfront" {
   env                     = var.env
   secondary_hosted_zone   = var.secondary_hosted_zone
   api_id                  = module.apigateway.api_id
+  cloudfront_policies     = var.cloudfront_policies
+  ordered_cache_items     = var.ordered_cache_items
+  price_class             = var.price_class
+  s3_origin_id            = var.s3_origin_id
 
   depends_on = [module.acm]
 }
@@ -107,6 +111,9 @@ module "lambda" {
   profile_2_account_id = var.profile_2_account_id
 }
 
+# output "lambda_arns" {
+#   value = module.lambda.lambda_invoke_arns
+# }
 #$  // =================================== dynamoDB =================================== //
 module "dynamodb_tables" {
   source               = "../../modules/dynamoDB"
@@ -115,15 +122,15 @@ module "dynamodb_tables" {
 }
 
 #$ // =================================== cognito =================================== //
-# module "cognito" {
-#   source                 = "../../modules/cognito"
-#   env                    = var.env
-#   project_name           = var.project_name
-#   subdomain_name         = var.subdomain_name
-#   region                 = var.region
-#   acm_certificate_arn    = module.acm.acm_certificate_arn
-#   test_user_email        = var.test_user_email
-#   test_user_name         = var.test_user_name
-#   test_user_username     = var.test_user_username
-#   prevent_user_existence = var.prevent_user_existence
-# }
+module "cognito" {
+  source                 = "../../modules/cognito"
+  env                    = var.env
+  project_name           = var.project_name
+  subdomain_name         = var.subdomain_name
+  region                 = var.region
+  acm_certificate_arn    = module.acm.acm_certificate_arn
+  test_user_email        = var.test_user_email
+  test_user_name         = var.test_user_name
+  test_user_username     = var.test_user_username
+  prevent_user_existence = var.prevent_user_existence
+}

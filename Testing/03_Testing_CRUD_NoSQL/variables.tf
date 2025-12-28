@@ -79,6 +79,26 @@ variable "hosted_zone" {
   type        = string
 }
 
+#$ ======================== cloudfront ========================
+variable "cloudfront_policies" {
+  description = "Managed CloudFront policy IDs"
+  type        = map(string)
+}
+
+variable "ordered_cache_items" {
+  description = "List of ordered cache behaviors for CloudFront"
+  type = list(object({
+    path_pattern    = string
+    allowed_methods = list(string)
+  }))
+}
+
+variable "price_class" {}
+variable "s3_origin_id" {}
+
+
+
+
 #$ ======================== api routes ========================
 variable "api_name" {
   # default     = "project_apigateway"

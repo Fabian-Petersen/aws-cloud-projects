@@ -18,64 +18,102 @@ subdomain_name          = "crud-nosql.app.fabian-portfolio.net" # SD for the web
 redirect_subdomain_name = "www.crud-nosql.app.fabian-portfolio.net"
 hosted_zone             = "app.fabian-portfolio.net" # hosted zone used as variable in route53
 
+#$ cloudfront
+cloudfront_policies = {
+  caching_disabled  = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # Managed-CachingDisabled - Recommended for API Gateway
+  caching_optimized = "658327ea-f89d-4fab-a63d-7e88639e58f6" # Managed-CachingOptimized - Recommended for S3
+  cors_s3_origin    = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf" # All Viewer (forwards everything)
+  cors_all_viewer   = "216adef6-5c7f-47e4-b989-5492eafa07d3" # Managed-CORS-S3Origin
+}
+
+price_class  = "PriceClass_200"
+s3_origin_id = "s3-origin"
+
+ordered_cache_items = [
+  {
+    path_pattern    = "/maintenance-request"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
+  {
+    path_pattern    = "/maintenance-request/*"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    }, {
+    path_pattern    = "/asset"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    }, {
+    path_pattern    = "/asset/*"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
+]
+
 #$ api gateway variables
 api_name = "crud-nosql-app-apigateway"
 api_routes = {
-  images = {
+  maintenance-request = {
     methods = {
-      GET    = "getFile_lambda"
-      POST   = "postFile_lambda"
-      DELETE = "deleteFile_lambda"
-      PUT    = "updateFile_lambda"
+      GET  = "getMaintenanceRequest"
+      POST = "postMaintenanceRequest"
     }
   }
-  #   users = {
-  #     methods = {
-  #       GET = "getUsers_lambda"
-  #     }
-  #   }
+  asset = {
+    methods = {
+      GET    = "getAsset"
+      POST   = "postAsset"
+      DELETE = "deleteAsset"
+      PUT    = "updateAsset"
+    }
+  }
 }
 
 #$ lambda variables
 lambda_functions = {
-  getFile_lambda = {
-    file_name           = "getFile_lambda.py"
-    handler             = "getFile_lambda.lambda_handler"
+  getMaintenanceRequest = {
+    file_name           = "getMaintenanceRequest.py"
+    handler             = "getMaintenanceRequest.lambda_handler"
     runtime             = "python3.14"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-images-table"
+    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
   }
-  postFile_lambda = {
-    file_name           = "postFile_lambda.py"
-    handler             = "postFile_lambda.lambda_handler"
+  postMaintenanceRequest = {
+    file_name           = "postMaintenanceRequest.py"
+    handler             = "postMaintenanceRequest.lambda_handler"
     runtime             = "python3.14"
     action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-images-table"
+    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
   }
-  deleteFile_lambda = {
-    file_name           = "deleteFile_lambda.py"
-    handler             = "deleteFile_lambda.lambda_handler"
+  getAsset = {
+    file_name           = "getAsset.py"
+    handler             = "getAsset.lambda_handler"
+    runtime             = "python3.14"
+    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-assets-table"
+  }
+  postAsset = {
+    file_name           = "postAsset.py"
+    handler             = "postAsset.lambda_handler"
+    runtime             = "python3.14"
+    action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-assets-table"
+  }
+  deleteAsset = {
+    file_name           = "deleteAsset.py"
+    handler             = "deleteAsset.lambda_handler"
     runtime             = "python3.14"
     action              = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-images-table"
+    dynamodb_table_name = "crud-nosql-app-assets-table"
   }
-  updateFile_lambda = {
-    file_name           = "updateFile_lambda.py"
-    handler             = "updateFile_lambda.lambda_handler"
+  updateAsset = {
+    file_name           = "updateAsset.py"
+    handler             = "updateAsset.lambda_handler"
     runtime             = "python3.14"
-    action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-images-table"
+    action              = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-assets-table"
   }
-  #   getUsers_lambda = {
-  #     file_name           = "get_lambda.py"
-  #     handler             = "getUsers_lambda.handler"
-  #     runtime             = "python3.9"
-  #     dynamodb_table_name = "users_table"
-  #   }
+
 }
 
 #$ dynamoDB variables
-dynamoDB_table_names = ["crud-nosql-app-images"]
+dynamoDB_table_names = ["crud-nosql-app-images", "crud-nosql-app-maintenance-request", "crud-nosql-app-assets"]
 
 #$ cognito
 prevent_user_existence = "ENABLED" # use in production environment

@@ -1,0 +1,3 @@
+{
+  "body": "{\n  \"description\": \"Testing the Get Request Lambda\",\n  \"store\": \"Maitland\",\n  \"type\": \"Corrective\",\n  \"priority\": \"Critical\",\n  \"equipment\": \"Mixer\",\n  \"impact\": \"Production\"\n}"
+}
