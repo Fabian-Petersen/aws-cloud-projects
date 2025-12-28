@@ -20,6 +20,10 @@ output "lambda_invoke_arns" {
   }
 }
 
+# output "lambda_invoke_arns" {
+#   value = { for name, lambda in aws_lambda_function.this : name => lambda.arn }
+# }
+
 output "lambda_function_names" {
   description = "A map of all the lambda functions in the module"
   value = {

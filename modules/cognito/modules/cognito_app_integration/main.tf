@@ -33,6 +33,14 @@ resource "aws_cognito_user_pool" "pool" {
   tags = {
     Environment = var.env
   }
+
+  lifecycle {
+    ignore_changes = [
+      schema,
+      username_attributes,
+      alias_attributes
+    ]
+  }
 }
 
 #$ [Step 2] : Create an App Client (no hosted UI)

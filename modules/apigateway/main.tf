@@ -39,10 +39,11 @@ resource "aws_api_gateway_method" "methods" {
 }
 
 #$ [Step 4] : Integrate with the backend e.g. lambda functions, HTTP endpoints or AWS Services
-## [Lambda] : [GET : BOOKINGS]
 resource "aws_api_gateway_integration" "integrations" {
-  #! check this function again  
-  for_each = { for idx, val in local.method_map : idx => val }
+  for_each = {
+    for m in local.method_map :
+    "${m.resource_name}_${m.http_method}" => m
+  }
 
   rest_api_id             = aws_api_gateway_rest_api.project_apigateway.id
   resource_id             = aws_api_gateway_resource.resources[each.value.resource_name].id
@@ -69,6 +70,8 @@ resource "aws_api_gateway_deployment" "deploy_api" {
   lifecycle {
     create_before_destroy = true
   }
+
+  depends_on = [aws_api_gateway_integration.integrations]
 }
 
 resource "aws_api_gateway_stage" "deployment_stage" {

@@ -4,46 +4,11 @@
 # % terraform import module.cloudfront.aws_cloudfront_distribution.distribution E20QZ4G1Y7PO33
 # bucket url "http://uwc.app.fabian-portfolio.net.s3.af-south-1.amazonaws.com"
 # origin regional endpoint without OAC fabian-portfolio.net: www.fabian-portfolio.net.s3-website.af-south-1.amazonaws.com
-# origin api-gateway: sigrcfirp1.execute-api.af-south-1.amazonaws.com
-
-# locals {
-# s3_origin_id = "s3-origin-${var.subdomain_name}"
-
-# ordered_cache_items = [
-#   {
-#     path_pattern    = "/images/*"
-#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-
-#   },
-# {
-#   path_pattern    = "/booking"
-#   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-
-# },
-# {
-#   path_pattern    = "/"
-#   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-
-# },
-# {
-#   path_pattern    = "/fabian_cv_latest.pdf"
-#   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-# }
-# ]
-# }
 
 #% [INFO] : Local variables that can be used inside module
 locals {
-  s3_origin_id = "s3-origin"
-  my_domain    = var.subdomain_name
-  bucket_url   = "${var.subdomain_name}.s3.${var.region}.amazonaws.com"
-  ordered_cache_items = [
-    {
-      path_pattern    = "/api/images/*"
-      allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-
-    },
-  ]
+  my_domain  = var.subdomain_name
+  bucket_url = "${var.subdomain_name}.s3.${var.region}.amazonaws.com"
 }
 
 #$ [Step 1] : Get the SSL Certificate from Certifcate Manager
@@ -64,7 +29,7 @@ resource "aws_cloudfront_origin_access_control" "oac" {
 
 #$ [Step 3] : Create the Cloudfront distribution
 resource "aws_cloudfront_distribution" "distribution" {
-  price_class         = "PriceClass_200"
+  price_class         = var.price_class // Price"PriceClass_200"
   enabled             = true
   is_ipv6_enabled     = true
   comment             = "CloudFront distribution for ${var.subdomain_name}"
@@ -75,24 +40,17 @@ resource "aws_cloudfront_distribution" "distribution" {
   origin {
     domain_name              = local.bucket_url
     origin_access_control_id = aws_cloudfront_origin_access_control.oac.id
-    origin_id                = local.s3_origin_id
+    origin_id                = var.s3_origin_id
 
     #% [Note] : custom_origin_config is for non s3 buckets e.g. EC2, ALB, etc 
     s3_origin_config {
       origin_access_identity = "" # leave empty when using OAC
     }
-    # custom_origin_config {
-    #   http_port                = 80
-    #   https_port               = 443
-    #   origin_keepalive_timeout = 5
-    #   origin_read_timeout      = 30
-    #   origin_protocol_policy   = "http-only"
-    #   origin_ssl_protocols     = ["SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2", ]
-    # }
   }
 
+  #% [INFO] : Access the root of the website "/" This will create Default(*) behavior
   default_cache_behavior {
-    target_origin_id       = local.s3_origin_id
+    target_origin_id       = var.s3_origin_id
     allowed_methods        = ["HEAD", "GET", "OPTIONS"]
     cached_methods         = ["HEAD", "GET"]
     viewer_protocol_policy = "redirect-to-https"
@@ -101,41 +59,16 @@ resource "aws_cloudfront_distribution" "distribution" {
     default_ttl            = 0
     max_ttl                = 0
 
-    forwarded_values {
-      query_string = false
+    #% Managed-CachingDisabled: Caching Disabled,all requests forwarded to origin
+    cache_policy_id = var.cloudfront_policies.caching_optimized
 
-      cookies {
-        forward = "none"
-      }
-    }
+    #% Set to 'Managed-CORS-S3Origin'
+    origin_request_policy_id = var.cloudfront_policies.cors_s3_origin
   }
 
-  #% [INFO] : Access the root of the website "/"
   #% [INFO] : Manage the routes e.g. through the API /bookings, /contacts etc.
   #% [INFO] : Each cache bahvior have it's own config settings
   #% [INFO] : The  precedence is order listed from 0 and is similar to Behaviors in the console
-  ordered_cache_behavior {
-    target_origin_id = local.s3_origin_id
-    path_pattern     = "/*"
-    allowed_methods  = ["HEAD", "GET", "OPTIONS"]
-    cached_methods   = ["HEAD", "GET"]
-
-    forwarded_values {
-      query_string = false
-      headers      = ["Origin"]
-
-      cookies {
-        forward = "none"
-      }
-    }
-
-    min_ttl                = 0
-    default_ttl            = 0
-    max_ttl                = 0
-    compress               = true
-    viewer_protocol_policy = "redirect-to-https"
-  }
-
   # $ API Gateway Origin for the API backend
   origin {
     connection_attempts      = 3
@@ -157,30 +90,8 @@ resource "aws_cloudfront_distribution" "distribution" {
     }
   }
 
-  ordered_cache_behavior {
-    path_pattern           = "/api/*"
-    target_origin_id       = "${var.api_id}.execute-api.af-south-1.amazonaws.com"
-    allowed_methods        = ["HEAD", "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-    cached_methods         = ["HEAD", "GET"]
-    viewer_protocol_policy = "redirect-to-https"
-    compress               = true
-
-    forwarded_values {
-      query_string = true
-
-      cookies {
-        forward = "all"
-      }
-    }
-
-    min_ttl     = 0
-    default_ttl = 0
-    max_ttl     = 0
-  }
-
-
   dynamic "ordered_cache_behavior" {
-    for_each = local.ordered_cache_items
+    for_each = var.ordered_cache_items
     content {
       target_origin_id       = "${var.api_id}.execute-api.af-south-1.amazonaws.com"
       path_pattern           = ordered_cache_behavior.value.path_pattern
@@ -195,15 +106,27 @@ resource "aws_cloudfront_distribution" "distribution" {
       trusted_signers        = []
       viewer_protocol_policy = "redirect-to-https"
 
-      forwarded_values {
-        query_string = true
+      #% Managed policies
+      cache_policy_id          = var.cloudfront_policies.caching_disabled # Recommended for API Gateway
+      origin_request_policy_id = var.cloudfront_policies.cors_s3_origin
 
-        cookies {
-          forward = "all"
-        }
+      # forwarded_values {
+      #   query_string = false
+      #   headers      = ["*"]
 
-        headers = ["*"]
-      }
+      #   cookies {
+      #     forward = "none"
+      #   }
+      # }
+
+      # forwarded_values {
+      #   query_string = true
+      #   headers      = ["Authorization"]
+
+      #   cookies {
+      #     forward = "all"
+      #   }
+      # }
     }
   }
 
@@ -250,186 +173,3 @@ resource "aws_route53_record" "cloudfront" {
 }
 
 #! ======================================= END ==============================================
-# resource "aws_cloudfront_distribution" "distribution" {
-#   price_class     = "PriceClass_200"
-#   enabled         = true
-#   is_ipv6_enabled = true
-#   comment         = "CloudFront distribution for ${var.subdomain_name}"
-#   aliases         = [var.subdomain_name, var.redirect_subdomain_name]
-
-# $ S3 Bucket Origin for the website
-# origin {
-#   domain_name         = "${var.subdomain_name}.s3.${var.region}.amazonaws.com"
-#   origin_id           = "s3-origin"
-#   origin_access_control_id = aws_cloudfront_origin_access_control.oac.id
-#   connection_attempts = 3
-#   connection_timeout  = 10
-
-#   custom_origin_config {
-#     http_port                = 80
-#     https_port               = 443
-#     origin_keepalive_timeout = 5
-#     origin_read_timeout      = 30
-#     origin_protocol_policy   = "http-only"
-#     origin_ssl_protocols     = ["SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2", ]
-#   }
-# }
-
-# $ API Gateway Origin for the API backend
-# origin {
-#   connection_attempts      = 3
-#   connection_timeout       = 10
-#   domain_name              = "${var.api_id}.execute-api.af-south-1.amazonaws.com"
-#   origin_id                = "${var.api_id}.execute-api.af-south-1.amazonaws.com"
-#   origin_access_control_id = null
-#   origin_path              = "/dev"
-
-#   custom_origin_config {
-#     http_port                = 80
-#     https_port               = 443
-#     origin_keepalive_timeout = 5
-#     origin_protocol_policy   = "https-only"
-#     origin_read_timeout      = 30
-#     origin_ssl_protocols = [
-#       "TLSv1.2",
-#     ]
-#   }
-# }
-
-# default_cache_behavior {
-#   allowed_methods          = ["GET", "HEAD"]
-#   cached_methods           = ["GET", "HEAD"]
-#   target_origin_id         = "s3-origin"
-#   viewer_protocol_policy   = "redirect-to-https"
-#   compress                 = true
-#   default_ttl              = 0
-#   max_ttl                  = 0
-#   min_ttl                  = 0
-#   smooth_streaming         = false
-# }
-
-# ordered_cache_behavior {
-#   target_origin_id         = "sigrcfirp1.execute-api.af-south-1.amazonaws.com"
-#   path_pattern             = local.ordered_cache_items[0].path_pattern
-#   allowed_methods          = local.ordered_cache_items[0].allowed_methods
-#   cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-#   cached_methods           = ["GET", "HEAD"]
-#   compress                 = true
-#   default_ttl              = 0
-#   max_ttl                  = 0
-#   min_ttl                  = 0
-#   origin_request_policy_id = "59781a5b-3903-41f3-afcb-af62929ccde1"
-#   smooth_streaming         = false
-#   trusted_key_groups       = []
-#   trusted_signers          = []
-#   viewer_protocol_policy   = "redirect-to-https"
-
-#   grpc_config {
-#     enabled = false
-#   }
-# }
-
-# ordered_cache_behavior {
-#   target_origin_id         = "sigrcfirp1.execute-api.af-south-1.amazonaws.com"
-#   path_pattern             = local.ordered_cache_items[1].path_pattern
-#   allowed_methods          = local.ordered_cache_items[1].allowed_methods
-#   cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-#   cached_methods           = ["GET", "HEAD"]
-#   compress                 = true
-#   default_ttl              = 0
-#   max_ttl                  = 0
-#   min_ttl                  = 0
-#   origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"
-#   smooth_streaming         = false
-#   trusted_key_groups       = []
-#   trusted_signers          = []
-#   viewer_protocol_policy   = "redirect-to-https"
-
-#   grpc_config {
-#     enabled = false
-#   }
-# }
-
-# ordered_cache_behavior {
-#   target_origin_id         = "sigrcfirp1.execute-api.af-south-1.amazonaws.com"
-#   allowed_methods          = local.ordered_cache_items[2].allowed_methods
-#   path_pattern             = local.ordered_cache_items[2].path_pattern
-#   cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-#   cached_methods           = ["GET", "HEAD"]
-#   compress                 = true
-#   default_ttl              = 0
-#   max_ttl                  = 0
-#   min_ttl                  = 0
-#   origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"
-#   smooth_streaming         = false
-#   trusted_key_groups       = []
-#   trusted_signers          = []
-#   viewer_protocol_policy   = "redirect-to-https"
-
-#   grpc_config {
-#     enabled = false
-#   }
-# }
-
-# ordered_cache_behavior {
-#   allowed_methods          = local.ordered_cache_items[3].allowed_methods
-#   cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-#   cached_methods           = ["GET", "HEAD"]
-#   compress                 = true
-#   default_ttl              = 0
-#   max_ttl                  = 0
-#   min_ttl                  = 0
-#   origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"
-#   path_pattern             = local.ordered_cache_items[3].path_pattern
-#   smooth_streaming         = false
-#   target_origin_id         = "sigrcfirp1.execute-api.af-south-1.amazonaws.com"
-#   trusted_key_groups       = []
-#   trusted_signers          = []
-#   viewer_protocol_policy   = "redirect-to-https"
-
-#   grpc_config {
-#     enabled = false
-#   }
-# }
-
-# ordered_cache_behavior {
-#   allowed_methods          = ["GET", "HEAD"]
-#   cache_policy_id          = "658327ea-f89d-4fab-a63d-7e88639e58f6"
-#   cached_methods           = ["GET", "HEAD"]
-#   compress                 = true
-#   default_ttl              = 0
-#   max_ttl                  = 0
-#   min_ttl                  = 0
-#   origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"
-#   path_pattern             = "/project/*"
-#   smooth_streaming         = false
-#   target_origin_id         = "sigrcfirp1.execute-api.af-south-1.amazonaws.com"
-#   trusted_key_groups       = []
-#   trusted_signers          = []
-#   viewer_protocol_policy   = "redirect-to-https"
-
-#   grpc_config {
-#     enabled = false
-#   }
-# }
-
-#   restrictions {
-#     geo_restriction {
-#       locations        = []
-#       restriction_type = "none"
-#     }
-#   }
-
-#   viewer_certificate {
-#     acm_certificate_arn            = var.acm_certificate_arn
-#     cloudfront_default_certificate = false
-#     minimum_protocol_version       = "TLSv1.2_2021"
-#     ssl_support_method             = "sni-only"
-#   }
-
-#   tags = {
-#     Environment = var.env
-#     Project     = var.project_name
-#   }
-# }
-
