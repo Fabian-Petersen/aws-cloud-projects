@@ -1,3 +1,11 @@
 {
-  "body": "{\n  \"description\": \"Testing the Get Request Lambda\",\n  \"store\": \"Maitland\",\n  \"type\": \"Corrective\",\n  \"priority\": \"Critical\",\n  \"equipment\": \"Mixer\",\n  \"impact\": \"Production\"\n}"
+  "id": "uuid",
+  "createdAt": "2026-01-05T19:12:00Z",
+  "store": "Store A",
+  "type": "Electrical",
+  "priority": "High",
+  "equipment": "Freezer",
+  "impact": "Operations halted",
+  "additional_notes": "Breaker keeps tripping",
+  "images": ["maintenance/uuid/image1.jpg", "maintenance/uuid/image2.png"]
 }

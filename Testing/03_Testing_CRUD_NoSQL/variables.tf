@@ -99,18 +99,35 @@ variable "s3_origin_id" {}
 
 
 
-#$ ======================== api routes ========================
+#$ ======================== api gateway ========================
 variable "api_name" {
   # default     = "project_apigateway"
   description = "Name of the api for the project"
   type        = string
 }
 
-variable "api_routes" {
+# variable "api_routes" {
+#   type = map(object({
+#     methods = map(string) # method => lambda_function_name
+#     path    = optional(string)
+#   }))
+# }
+
+
+variable "api_parent_routes" {
   type = map(object({
-    methods = map(string) # method => lambda_function_name
+    methods = map(string)
   }))
 }
+
+variable "api_child_routes" {
+  type = map(object({
+    parent_key = string
+    path_part  = string
+    methods    = map(string)
+  }))
+}
+
 
 #$ ======================== lambda functions ====================
 variable "lambda_functions" {
@@ -123,6 +140,13 @@ variable "lambda_functions" {
     dynamodb_table_name = string
   }))
 }
+
+#$ s3 event lambda
+variable "file_name" { type = string }
+variable "table_name" { type = string }
+variable "bucket_name" { type = string }
+variable "handler" { type = string }
+variable "lambda_name" { type = string }
 
 #$ ======================== DynamoDB Tables ====================
 variable "dynamoDB_table_names" {

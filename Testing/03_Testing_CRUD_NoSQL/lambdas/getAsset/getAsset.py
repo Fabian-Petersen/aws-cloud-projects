@@ -10,9 +10,9 @@ table = dynamodb.Table("crud-nosql-app-assets-table")
 
 HEADERS = {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",  # or "*"
+    "Access-Control-Allow-Origin": "http://localhost:5173",  # or "*"
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,Authorization",
+    "Access-Control-Allow-Headers": "Content-Type",
 }
 
 # Change the date format in the database to readible for humans

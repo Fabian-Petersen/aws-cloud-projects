@@ -93,16 +93,18 @@ module "cloudfront" {
 #$  // =================================== api gateway =================================== //
 
 module "apigateway" {
-  source           = "../../modules/apigateway"
-  api_routes       = var.api_routes
-  lambda_arns      = module.lambda.lambda_invoke_arns
-  lambda_functions = var.lambda_functions
-  api_name         = var.api_name
-  env              = var.env
-  project_name     = var.project_name
+  source            = "../../modules/apigateway"
+  api_parent_routes = var.api_parent_routes
+  api_child_routes  = var.api_child_routes
+  lambda_arns       = module.lambda.lambda_invoke_arns
+  lambda_functions  = var.lambda_functions
+  api_name          = var.api_name
+  env               = var.env
+  project_name      = var.project_name
+  # authorizer_id      = var.env == "dev" ? null : aws_apigatewayv2_authorizer.cognito.id
 }
 
-#$ // =================================== lambda functions =================================== //
+#$ // =========================== API Method lambda functions ========================== //
 
 module "lambda" {
   source               = "../../modules/lambda/modules/dynamoDB"
@@ -111,9 +113,21 @@ module "lambda" {
   profile_2_account_id = var.profile_2_account_id
 }
 
+#$ // =========================== lambda triggered by s3 ============================== //
+
+module "s3_event_lambda" {
+  source      = "../../modules/lambda/modules/s3"
+  file_name   = var.file_name
+  bucket_name = var.bucket_name
+  table_name  = var.table_name
+  lambda_name = var.lambda_name
+  handler     = var.handler
+}
+
 # output "lambda_arns" {
 #   value = module.lambda.lambda_invoke_arns
 # }
+
 #$  // =================================== dynamoDB =================================== //
 module "dynamodb_tables" {
   source               = "../../modules/dynamoDB"
@@ -134,3 +148,5 @@ module "cognito" {
   test_user_username     = var.test_user_username
   prevent_user_existence = var.prevent_user_existence
 }
+
+#$ // ========================= File Upload to S3 & DynamoDB ======================== //
