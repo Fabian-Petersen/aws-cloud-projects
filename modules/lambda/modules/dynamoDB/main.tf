@@ -62,3 +62,4 @@ resource "aws_lambda_function" "lambda_function" {
   #% [INFO] The hash updates when code changes and terraform will update the code in the cloud
   timeout = 15
 }
+

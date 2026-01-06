@@ -18,11 +18,20 @@ variable "api_name" {
   type        = string
 }
 
-variable "api_routes" {
+variable "api_parent_routes" { # method => lambda_function_name
   type = map(object({
-    methods = map(string) # method => lambda_function_name
+    methods = map(string)
   }))
 }
+
+variable "api_child_routes" {
+  type = map(object({
+    parent_key = string
+    path_part  = string
+    methods    = map(string)
+  }))
+}
+
 
 #$ ============== Add the lambda functions to integrate with the api ===================
 variable "lambda_functions" {

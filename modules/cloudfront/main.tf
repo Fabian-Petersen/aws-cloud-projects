@@ -109,24 +109,6 @@ resource "aws_cloudfront_distribution" "distribution" {
       #% Managed policies
       cache_policy_id          = var.cloudfront_policies.caching_disabled # Recommended for API Gateway
       origin_request_policy_id = var.cloudfront_policies.cors_s3_origin
-
-      # forwarded_values {
-      #   query_string = false
-      #   headers      = ["*"]
-
-      #   cookies {
-      #     forward = "none"
-      #   }
-      # }
-
-      # forwarded_values {
-      #   query_string = true
-      #   headers      = ["Authorization"]
-
-      #   cookies {
-      #     forward = "all"
-      #   }
-      # }
     }
   }
 
