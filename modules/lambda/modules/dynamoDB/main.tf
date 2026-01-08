@@ -41,6 +41,13 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
   })
 }
 
+#$ [Step 2.1] : Add additional policies a lambda needs over and above dynamoDB
+resource "aws_iam_role_policy_attachment" "extra_policies" {
+  for_each   = var.extra_policies
+  role       = aws_iam_role.lambda_exec_role[each.key].name
+  policy_arn = each.value
+}
+
 #$ [Step 3] : Attach a policy to the IAM role to allow cloudwatch logging
 resource "aws_iam_role_policy_attachment" "lambda_logging" {
   for_each   = var.lambda_functions

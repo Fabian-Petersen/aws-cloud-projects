@@ -51,7 +51,7 @@ resource "aws_iam_policy" "lambda_policy" {
         Action = [
           "s3:PutObject"
         ]
-        Resource = "${data.aws_s3_bucket.bucket.arn}/*"
+        Resource = "${data.aws_s3_bucket.bucket.arn}/maintenance/*"
       },
       # Logs
       {
@@ -95,7 +95,7 @@ resource "aws_s3_bucket_notification" "s3_notification" {
   lambda_function {
     lambda_function_arn = aws_lambda_function.s3_event_lambda.arn
     events              = ["s3:ObjectCreated:Put"]
-    filter_prefix       = "maintenance-requests/" // files that will trigger the lambda "/maintenance-requests/20251211_5153446"  
+    filter_prefix       = "maintenance/" // files that are placed in this directory will trigger the lambda "/maintenance/{image_id}/20251211_5153446"  
   }
 
   depends_on = [aws_lambda_permission.allow_s3]

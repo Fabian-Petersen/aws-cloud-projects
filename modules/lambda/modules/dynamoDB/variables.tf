@@ -17,3 +17,8 @@ variable "profile_2_account_id" {
   description = "free tier account id"
   type        = string
 }
+
+variable "extra_policies" {
+  description = "Optional map of extra IAM policy ARNs per Lambda"
+  type        = map(string)
+}
