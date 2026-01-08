@@ -2,9 +2,18 @@ import json
 import boto3
 import uuid
 from datetime import datetime, timezone
+from botocore.config import Config
 
 dynamodb = boto3.resource("dynamodb")
-s3 = boto3.client("s3")
+s3 = boto3.client(
+    "s3",
+    region_name="af-south-1",
+    config=Config(
+        s3={"addressing_style": "virtual"},
+        signature_version="s3v4",
+        region_name="af-south-1"
+    )
+)
 
 TABLE_NAME = "crud-nosql-app-maintenance-request-table"
 BUCKET_NAME = "crud-nosql-app-images"
@@ -44,6 +53,7 @@ def lambda_handler(event, context):
             if not filename:
                 continue
 
+        # Generate presigned urls
             key = f"maintenance/{item_id}/{filename}"
             url = s3.generate_presigned_url(
                 "put_object",
@@ -54,7 +64,12 @@ def lambda_handler(event, context):
                 },
                 ExpiresIn=3600  # 1 hour
             )
-            presigned_urls.append({"filename": filename, "url": url, "key": key})
+
+            # The config above force the url to be af-south-1 region and the code below check if the url is region specific.
+            if "s3.af-south-1.amazonaws.com" not in url:
+                raise Exception("Presigned URL generated with incorrect S3 endpoint")
+
+            presigned_urls.append({"filename": filename, "url": url, "key": key, "content_type": content_type})
 
         # Save metadata to DynamoDB
         item = {
@@ -71,7 +86,7 @@ def lambda_handler(event, context):
 
         table.put_item(Item=item)
 
-        return _response(201, {"form": item, "presigned_urls": presigned_urls})
+        return _response(200, {"form": item, "presigned_urls": presigned_urls})
 
     except Exception as exc:
         print("Error:", exc)

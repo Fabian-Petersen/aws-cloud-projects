@@ -111,6 +111,7 @@ module "lambda" {
   lambda_functions     = var.lambda_functions
   region               = var.region
   profile_2_account_id = var.profile_2_account_id
+  extra_policies       = var.extra_policies
 }
 
 #$ // =========================== lambda triggered by s3 ============================== //

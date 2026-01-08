@@ -91,6 +91,11 @@ api_child_routes = {
   }
 }
 
+extra_policies = {
+  postMaintenanceRequest = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy" // existing policy created for s3EventLambda to allow putObject on s3 bucket 
+}
+
+
 #$ lambda variables
 lambda_functions = {
   getMaintenanceRequest = {
@@ -187,7 +192,6 @@ lambda_functions = {
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-assets-table"
   }
-
 }
 
 #$ dynamoDB variables
