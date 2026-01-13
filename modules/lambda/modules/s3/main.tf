@@ -1,3 +1,5 @@
+# $ This lambda is invoked when an image is uploaded to the s3 bucket for /assets or /maintenance and store the metadata in dynamoDB for /assets and /maintenance
+
 #$ [Step 1] : Zip the existing Lambda functions from /lambdas/<function_directory>
 data "archive_file" "lambda_zip" {
   type = "zip"
@@ -11,8 +13,9 @@ data "aws_s3_bucket" "bucket" {
   bucket = var.bucket_name
 }
 
-data "aws_dynamodb_table" "table" {
-  name = var.table_name
+data "aws_dynamodb_table" "tables" {
+  for_each = toset(var.table_names)
+  name     = each.value
 }
 
 resource "aws_iam_role" "lambda_role" {
@@ -43,15 +46,20 @@ resource "aws_iam_policy" "lambda_policy" {
           "dynamodb:PutItem",
           "dynamodb:UpdateItem"
         ]
-        Resource = data.aws_dynamodb_table.table.arn
+        Resource = [
+          for t in values(data.aws_dynamodb_table.tables) : t.arn
+        ]
       },
       # S3
       {
         Effect = "Allow"
         Action = [
-          "s3:PutObject"
+          "s3:PutObject",
+          "s3:GetObject"
         ]
-        Resource = "${data.aws_s3_bucket.bucket.arn}/maintenance/*"
+        Resource = [
+          "${data.aws_s3_bucket.bucket.arn}/maintenance/*",
+        "${data.aws_s3_bucket.bucket.arn}/assets/*"]
       },
       # Logs
       {
@@ -96,6 +104,13 @@ resource "aws_s3_bucket_notification" "s3_notification" {
     lambda_function_arn = aws_lambda_function.s3_event_lambda.arn
     events              = ["s3:ObjectCreated:Put"]
     filter_prefix       = "maintenance/" // files that are placed in this directory will trigger the lambda "/maintenance/{image_id}/20251211_5153446"  
+  }
+
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.s3_event_lambda.arn
+    events              = ["s3:ObjectCreated:Put"]
+    filter_prefix       = "assets/"
   }
 
   depends_on = [aws_lambda_permission.allow_s3]

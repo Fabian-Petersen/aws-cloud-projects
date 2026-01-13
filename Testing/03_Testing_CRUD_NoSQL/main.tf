@@ -120,7 +120,7 @@ module "s3_event_lambda" {
   source      = "../../modules/lambda/modules/s3"
   file_name   = var.file_name
   bucket_name = var.bucket_name
-  table_name  = var.table_name
+  table_names = var.table_names
   lambda_name = var.lambda_name
   handler     = var.handler
 }

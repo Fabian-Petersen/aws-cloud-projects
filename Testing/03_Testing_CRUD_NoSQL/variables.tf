@@ -140,6 +140,7 @@ variable "lambda_functions" {
     dynamodb_table_name = string
   }))
 }
+
 variable "extra_policies" {
   description = "Optional map of extra IAM policy ARNs per Lambda"
   type        = map(string)
@@ -147,7 +148,9 @@ variable "extra_policies" {
 
 #$ s3 event lambda
 variable "file_name" { type = string }
-variable "table_name" { type = string }
+variable "table_names" {
+  type = list(string)
+}
 variable "bucket_name" { type = string }
 variable "handler" { type = string }
 variable "lambda_name" { type = string }
