@@ -1,7 +1,7 @@
 # $ Create a Lambda
 resource "aws_lambda_function" "pdf_generator" {
   function_name = "${var.project_name}-pdf-generator"
-  role          = aws_iam_role.lambda_role.arn
+  role          = aws_iam_role.pdf_lambda_role.arn
   runtime       = var.runtime
   handler       = var.lambda_handler
   filename      = var.lambda_zip_path
@@ -21,7 +21,7 @@ resource "aws_lambda_function" "pdf_generator" {
 }
 
 # $ IAM – Lambda Permissions
-resource "aws_iam_role" "lambda_role" {
+resource "aws_iam_role" "pdf_lambda_role" {
   name = "${var.project_name}-pdf-lambda"
 
   assume_role_policy = jsonencode({
@@ -38,8 +38,8 @@ resource "aws_iam_role" "lambda_role" {
   }
 }
 
-resource "aws_iam_role_policy" "lambda_policy" {
-  role = aws_iam_role.lambda_role.id
+resource "aws_iam_role_policy" "pdf_lambda_policy" {
+  role = aws_iam_role.pdf_lambda_role.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -73,7 +73,7 @@ resource "aws_iam_role_policy" "lambda_policy" {
 }
 
 #$ [Step 3] : Attach a policy to the IAM role to allow cloudwatch logging
-resource "aws_iam_role_policy_attachment" "lambda_logging" {
-  role       = aws_iam_role.lambda_role.name
+resource "aws_iam_role_policy_attachment" "pdf_lambda_logging" {
+  role       = aws_iam_role.pdf_lambda_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
