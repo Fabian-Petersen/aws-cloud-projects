@@ -151,3 +151,15 @@ module "cognito" {
 }
 
 #$ // ========================= File Upload to S3 & DynamoDB ======================== //
+
+
+#$ // ========================= File Upload to S3 & DynamoDB ======================== //
+module "pdf_generator" {
+  source              = "../../modules/pdf_generator"
+  project_name        = "maintenance-app"
+  environment         = "prod"
+  dynamodb_table_name = var.dynamodb_table_name
+  lambda_zip_path     = var.lambda_zip_path
+  s3_bucket           = var.bucket_name
+  runtime             = var.runtime
+}

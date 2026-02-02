@@ -1,8 +1,12 @@
 import json
 import boto3
 
+TABLE_NAME = "crud-nosql-app-assets-table"
+BUCKET_NAME = "crud-nosql-app-images"
+
 dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table("crud-nosql-app-assets-table")
+s3 = boto3.client("s3")
+table = dynamodb.Table(TABLE_NAME)
 
 HEADERS = {
     "Content-Type": "application/json",
@@ -13,19 +17,29 @@ HEADERS = {
 
 def lambda_handler(event, context):
     try:
-        # UUID comes from path parameters
-        asset_uuid = event.get("pathParameters", {}).get("id")
-        if not asset_uuid:
+        item_id = event.get("pathParameters", {}).get("id")
+        if not item_id:
             return _response(400, {"message": "id (UUID) is required"})
 
-        # Delete the item using its primary key
-        table.delete_item(
-            Key={
-                "id": asset_uuid  # replace 'id' with your actual primary key name
-            }
-        )
+        #$ 1. Get item first (to confirm existence)
+        item_response = table.get_item(Key={"id": item_id})
+        if "Item" not in item_response:
+            return _response(404, {"message": "Item not found"})
 
-        return _response(200, {"message": "Asset deleted successfully"})
+        #$ 2. Delete all images in S3 folder assets/{item_id}/
+        prefix = f"assets/{item_id}/"
+        objects = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
+
+        if "Contents" in objects:
+            delete_payload = {
+                "Objects": [{"Key": obj["Key"]} for obj in objects["Contents"]]
+            }
+            s3.delete_objects(Bucket=BUCKET_NAME, Delete=delete_payload)
+
+        #$ 3. Delete DynamoDB item
+        table.delete_item(Key={"id": item_id})
+
+        return _response(200, {"message": "Asset and images deleted successfully"})
 
     except Exception as exc:
         print("Error:", exc)

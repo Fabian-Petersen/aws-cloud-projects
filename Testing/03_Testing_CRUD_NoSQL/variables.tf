@@ -181,4 +181,25 @@ variable "test_user_email" {
   type        = string
 }
 
+# $ pdf generator variables
+variable "dynamodb_table_name" {
+  type = string
+}
 
+variable "lambda_zip_path" {
+  type        = string
+  description = "Path to lambda zip file"
+}
+
+variable "lambda_handler" {
+  type    = string
+  default = "handler.lambda_handler"
+}
+
+variable "runtime" {
+  type = string
+}
+
+variable "s3_bucket" {
+  type = string
+}

@@ -57,10 +57,9 @@ api_parent_routes = {
   }
   asset = {
     methods = {
-      GET    = "getAsset"
-      POST   = "postCreateAsset"
-      DELETE = "deleteAsset"
-      PUT    = "updateAsset"
+      GET  = "getAsset"
+      POST = "postCreateAsset"
+      PUT  = "updateAsset"
     }
   }
 }
@@ -83,10 +82,10 @@ api_child_routes = {
     parent_key = "asset"
     path_part  = "{id}"
     methods = {
-      GET = "getAssetById"
+      GET    = "getAssetById"
+      DELETE = "deleteAsset"
       # POST   = "postMaintenanceRequestById"
       # PUT    = "updateMaintenanceRequestById"
-      # DELETE = "deleteMaintenanceRequestById"
     }
   }
 }
@@ -96,6 +95,7 @@ extra_policies = {
   getMaintenanceRequest        = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   deleteMaintenanceRequestById = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   postCreateAsset              = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  deleteAsset                  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   // existing policy created for s3EventLambda to allow putObject on s3 bucket 
 }
 
@@ -154,7 +154,7 @@ lambda_functions = {
     file_name           = "deleteAsset.py"
     handler             = "deleteAsset.lambda_handler"
     runtime             = "python3.14"
-    action              = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan"]
+    action              = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:GetItem"]
     dynamodb_table_name = "crud-nosql-app-assets-table"
   }
   updateAsset = {
@@ -188,3 +188,11 @@ table_names = ["crud-nosql-app-maintenance-request-table", "crud-nosql-app-asset
 bucket_name = "crud-nosql-app-images"
 handler     = "s3EventLambda.lambda_handler"
 lambda_name = "s3EventLambda"
+
+
+# $ pdf lambda
+lambda_zip_path     = "dist/pdf-generator.zip"
+dynamodb_table_name = "maintenance-requests"
+s3_bucket           = "crud-nosql.app.fabian-portfolio.net"
+runtime             = "python3.12"
+lambda_handler      = "handler.lambda_handler"
