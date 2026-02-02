@@ -196,3 +196,9 @@ dynamodb_table_name = "maintenance-requests"
 s3_bucket           = "crud-nosql.app.fabian-portfolio.net"
 runtime             = "python3.12"
 lambda_handler      = "handler.lambda_handler"
+
+# $ ECR Repository
+repository_name      = "crud-nosql-pdf-generator"
+max_image_count      = 5
+image_tag_mutability = "MUTABLE"
+scan_on_push         = true

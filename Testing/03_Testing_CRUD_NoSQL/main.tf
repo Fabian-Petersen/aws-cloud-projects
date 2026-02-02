@@ -153,7 +153,7 @@ module "cognito" {
 #$ // ========================= File Upload to S3 & DynamoDB ======================== //
 
 
-#$ // ========================= File Upload to S3 & DynamoDB ======================== //
+#$ // ========================= pdf Lambda ======================== //
 module "pdf_generator" {
   source              = "../../modules/pdf_generator"
   project_name        = "maintenance-app"
@@ -162,4 +162,14 @@ module "pdf_generator" {
   lambda_zip_path     = var.lambda_zip_path
   s3_bucket           = var.bucket_name
   runtime             = var.runtime
+}
+
+#$ // ========================= ecr Lambda ======================== //
+module "ecr_pdf" {
+  source = "../../modules/ecr"
+
+  repository_name = var.repository_name
+  max_image_count = var.max_image_count
+  scan_on_push    = var.scan_on_push
+
 }
