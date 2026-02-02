@@ -18,6 +18,7 @@ crash.log
 **/__pycache__/
 *.py[cod]
 *$py.class
+**/lambdas/lambda_layers/
 
 # Ignore virtual environments (anywhere in project)
 **/.venv/

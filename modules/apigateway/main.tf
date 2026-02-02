@@ -67,6 +67,11 @@ resource "aws_api_gateway_integration" "integrations" {
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
   uri                     = var.lambda_arns[each.value.lambda_name]
+
+  depends_on = [
+    aws_api_gateway_method.methods
+  ]
+
 }
 
 
