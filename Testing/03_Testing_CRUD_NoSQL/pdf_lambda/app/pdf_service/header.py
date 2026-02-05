@@ -6,7 +6,7 @@ def build_header(styles, usable_width, assets_dir):
     story = []
 
     logo_path = os.path.join(assets_dir, "atlantic_meat_logo.webp")
-    logo = Image(logo_path, 100, 50) if os.path.exists(logo_path) else ""
+    logo = Image(logo_path, 100, 40) if os.path.exists(logo_path) else ""
 
     title = Paragraph("Maintenance Job Card", styles["Title"])
 
@@ -20,8 +20,8 @@ def build_header(styles, usable_width, assets_dir):
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fcb53b")),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("ALIGN", (1, 0), (1, 0), "CENTER"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 10),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 95),
         ("TOPPADDING", (0, 0), (-1, -1), 10),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
     ]))
