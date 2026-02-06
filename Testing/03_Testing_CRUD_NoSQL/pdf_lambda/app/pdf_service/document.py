@@ -1,21 +1,24 @@
+# $ This module builds the template for the pdf document and returns the path to the document and the doc method
+
 import os
 from reportlab.lib.pagesizes import A4
-from reportlab.platypus import (
-    SimpleDocTemplate,
-)
+from reportlab.platypus import SimpleDocTemplate
 
-def _build_doc(self, filename):
-    path = os.path.join(self.output_dir, filename)
-    
-    self.doc = SimpleDocTemplate(
+
+def build_doc(output_dir: str, filename: str):
+    path = os.path.join(output_dir, filename)
+
+    doc = SimpleDocTemplate(
         path,
         pagesize=A4,
         rightMargin=40,
         leftMargin=40,
         topMargin=40,
-        bottomMargin=40
+        bottomMargin=40,
     )
-    return path
 
-def _usable_width(self):
-    return A4[0] - self.doc.leftMargin - self.doc.rightMargin
+    return doc, path
+
+
+def usable_width(doc):
+    return A4[0] - doc.leftMargin - doc.rightMargin

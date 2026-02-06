@@ -1,5 +1,6 @@
 import os
-from reportlab.lib import colors
+# from reportlab.lib import colors
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import Paragraph, Spacer, Table, TableStyle, Image
 
 def build_signature(styles, assets_dir):
@@ -13,28 +14,34 @@ def build_signature(styles, assets_dir):
         if os.path.exists(signature_path)
         else Spacer(1, 10)
     )
+    
+    label_styles = ParagraphStyle(
+        name="",
+        parent=styles["Normal"],
+        fontSize=8,
+)
 
     signature_label = Paragraph(
         "<b>Customer Signature</b>",
-        styles["Normal"]
-    )
+        label_styles
+        )
 
     signature_table = Table(
         [
             [signature_img],
-            [""],     # spacing row
-            [""],     # line row
+            # [""],     # spacing row
+            # [""],     # line row
             [signature_label],
         ],
         colWidths=[160],
-        rowHeights=[55, 6, 1, 18],
+        rowHeights=[55, 18],
         hAlign="LEFT"
     )
 
     signature_table.setStyle(TableStyle([
         ("ALIGN", (0, 0), (-1, -1), "LEFT"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LINEBELOW", (0, 2), (0, 2), 1, colors.lightgrey),
+        # ("LINEBELOW", (0, 2), (0, 2), 1, colors.lightgrey),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 0),
         ("TOPPADDING", (0, 0), (-1, -1), 2),
