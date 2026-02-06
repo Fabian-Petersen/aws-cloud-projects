@@ -26,7 +26,7 @@ if __name__ == "__main__":
         "description": "Water damage to the mincer. Requires urgent replacement of internal wiring.",
         "actioned_by":"Jane Doe",
         "date_actioned":"2026-02-05",
-        "root_cause":"Environmental Factors",
+        "root_cause":"Operational Error",
         "status":"Completed",
         "parts_used": [
             {"name": "Wiring Kit", "qty": 1, "cost": 3000.00, "notes": "OEM replacement"},
