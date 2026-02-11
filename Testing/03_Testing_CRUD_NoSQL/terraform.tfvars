@@ -37,7 +37,16 @@ ordered_cache_items = [
   {
     path_pattern    = "/maintenance-request/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    }, {
+  },
+  {
+    path_pattern    = "/maintenance-action"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
+  {
+    path_pattern    = "/maintenance-action/*"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
+  {
     path_pattern    = "/asset"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     }, {
@@ -53,6 +62,12 @@ api_parent_routes = {
     methods = {
       GET  = "getMaintenanceRequest"
       POST = "postMaintenanceRequest"
+    }
+  }
+  maintenance-action = {
+    methods = {
+      GET  = "getMaintenanceAction"
+      POST = "postMaintenanceAction"
     }
   }
   asset = {
@@ -77,6 +92,17 @@ api_child_routes = {
       DELETE = "deleteMaintenanceRequestById"
     }
   }
+  maintenance-action-id = {
+    # path       = "/maintenance-request/{id}"
+    parent_key = "maintenance-action"
+    path_part  = "{id}"
+    methods = {
+      GET = "getMaintenanceActionById"
+      # POST   = "postMaintenanceActionById"
+      # PUT    = "updateMaintenanceActionById"
+      DELETE = "deleteMaintenanceActionById"
+    }
+  }
   asset-id = {
     # path       = "/maintenance-request/{id}"
     parent_key = "asset"
@@ -92,89 +118,122 @@ api_child_routes = {
 
 extra_policies = {
   postMaintenanceRequest       = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  postMaintenanceAction        = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   getMaintenanceRequest        = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  getMaintenanceAction         = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   deleteMaintenanceRequestById = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  deleteMaintenanceActionById  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   postCreateAsset              = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   deleteAsset                  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   // existing policy created for s3EventLambda to allow putObject on s3 bucket 
 }
-
 
 #$ lambda variables
 lambda_functions = {
   getMaintenanceRequest = {
     file_name           = "getMaintenanceRequest.py"
     handler             = "getMaintenanceRequest.lambda_handler"
-    runtime             = "python3.14"
+    runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
   }
-
   postMaintenanceRequest = {
     file_name           = "postMaintenanceRequest.py"
     handler             = "postMaintenanceRequest.lambda_handler"
-    runtime             = "python3.14"
+    runtime             = "python3.12"
     action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
   }
-
   getMaintenanceRequestById = {
     file_name           = "getMaintenanceRequestById.py"
     handler             = "getMaintenanceRequestById.lambda_handler"
-    runtime             = "python3.14"
+    runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
   }
 
+  # $ Lambda's handling Delete Methods
   deleteMaintenanceRequestById = {
     file_name           = "deleteMaintenanceRequestById.py"
     handler             = "deleteMaintenanceRequestById.lambda_handler"
-    runtime             = "python3.14"
+    runtime             = "python3.12"
     action              = ["dynamodb:DeleteItem", "dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
   }
 
+  # $ // ================================= Maintenance Actions ======================= //
+  getMaintenanceAction = {
+    file_name           = "getMaintenanceAction.py"
+    handler             = "getMaintenanceRequest.lambda_handler"
+    runtime             = "python3.12"
+    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-maintenance-action-table"
+  }
+
+  getMaintenanceActionById = {
+    file_name           = "getMaintenanceActionById.py"
+    handler             = "getMaintenanceActionById.lambda_handler"
+    runtime             = "python3.12"
+    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-maintenance-action-table"
+  }
+
+  postMaintenanceAction = {
+    file_name           = "postMaintenanceAction.py"
+    handler             = "postMaintenanceAction.lambda_handler"
+    runtime             = "python3.12"
+    action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-maintenance-action-table"
+  }
+
+  deleteMaintenanceActionById = {
+    file_name           = "deleteMaintenanceActionById.py"
+    handler             = "deleteMaintenanceActionById.lambda_handler"
+    runtime             = "python3.12"
+    action              = ["dynamodb:DeleteItem", "dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-maintenance-action-table"
+  }
   # $ // ================================= Assets ==================================== // 
 
   getAsset = {
     file_name           = "getAsset.py"
     handler             = "getAsset.lambda_handler"
-    runtime             = "python3.14"
+    runtime             = "python3.12"
+    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-assets-table"
+  }
+  getAssetById = {
+    file_name           = "getAssetById.py"
+    handler             = "getAssetById.lambda_handler"
+    runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-assets-table"
   }
   postCreateAsset = {
     file_name           = "postCreateAsset.py"
     handler             = "postCreateAsset.lambda_handler"
-    runtime             = "python3.14"
+    runtime             = "python3.12"
     action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-assets-table"
   }
   deleteAsset = {
     file_name           = "deleteAsset.py"
     handler             = "deleteAsset.lambda_handler"
-    runtime             = "python3.14"
+    runtime             = "python3.12"
     action              = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:GetItem"]
     dynamodb_table_name = "crud-nosql-app-assets-table"
   }
   updateAsset = {
     file_name           = "updateAsset.py"
     handler             = "updateAsset.lambda_handler"
-    runtime             = "python3.14"
+    runtime             = "python3.12"
     action              = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-assets-table"
-  }
-  getAssetById = {
-    file_name           = "getAssetById.py"
-    handler             = "getAssetById.lambda_handler"
-    runtime             = "python3.14"
-    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-assets-table"
   }
 }
 
 #$ dynamoDB variables
-dynamoDB_table_names = ["crud-nosql-app-images", "crud-nosql-app-maintenance-request", "crud-nosql-app-assets"]
+dynamoDB_table_names = ["crud-nosql-app-images", "crud-nosql-app-maintenance-request", "crud-nosql-app-assets", "crud-nosql-app-maintenance-action"]
 
 #$ cognito
 prevent_user_existence = "ENABLED" # use in production environment
@@ -184,7 +243,7 @@ test_user_name         = "fabian"
 
 # $ s3EventLambda - lambda triggers on s3 file upload
 file_name   = "s3EventLambda.py"
-table_names = ["crud-nosql-app-maintenance-request-table", "crud-nosql-app-assets-table"]
+table_names = ["crud-nosql-app-maintenance-request-table", "crud-nosql-app-maintenance-action-table", "crud-nosql-app-assets-table"]
 bucket_name = "crud-nosql-app-images"
 handler     = "s3EventLambda.lambda_handler"
 lambda_name = "s3EventLambda"
