@@ -53,7 +53,6 @@ resource "aws_api_gateway_method" "methods" {
   authorization = "NONE"
 }
 
-
 #$ [Step 6]: Integrations
 resource "aws_api_gateway_integration" "integrations" {
   for_each = {
