@@ -1,7 +1,6 @@
-#  ============ minimal function ============
-
 import json
 import boto3
+from decimal import Decimal
 from boto3.dynamodb.conditions import Key
 from datetime import datetime
 
@@ -19,16 +18,24 @@ HEADERS = {
 def to_human_date(iso_string: str) -> str:
     dt = datetime.fromisoformat(iso_string)
     return dt.strftime("%d %b %Y, %H:%M")
+
+def decimal_serializer(obj):
+    if isinstance(obj, Decimal):
+        if obj % 1 == 0:
+            return int(obj)
+        return float(obj)
+    raise TypeError
+
     
 def lambda_handler(event, context):
     try:
-        response = table.scan()  # TEMP: returns all items
+        response = table.scan()
         items = response.get("Items", [])
         for item in items:
             if "createdAt" in item:
               item["createdAt"] = to_human_date(item["createdAt"])
 
-        return _response(200, response.get("Items", []))
+        return _response(200, {"assets": items})
 
     except Exception as exc:
         print("Error:", exc)
@@ -39,5 +46,5 @@ def _response(status_code, body):
     return {
         "statusCode": status_code,
         "headers": HEADERS,
-        "body": json.dumps(body),
+        "body": json.dumps(body, default=decimal_serializer),
     }
