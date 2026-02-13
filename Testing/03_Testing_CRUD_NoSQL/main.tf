@@ -123,6 +123,8 @@ module "s3_event_lambda" {
   table_names = var.table_names
   lambda_name = var.lambda_name
   handler     = var.handler
+
+  depends_on = [module.dynamodb_tables]
 }
 
 # output "lambda_arns" {
@@ -154,22 +156,22 @@ module "cognito" {
 
 
 #$ // ========================= pdf Lambda ======================== //
-module "pdf_generator" {
-  source              = "../../modules/pdf_generator"
-  project_name        = "maintenance-app"
-  environment         = "prod"
-  dynamodb_table_name = var.dynamodb_table_name
-  lambda_zip_path     = var.lambda_zip_path
-  s3_bucket           = var.bucket_name
-  runtime             = var.runtime
-}
+# module "pdf_generator" {
+#   source              = "../../modules/pdf_generator"
+#   project_name        = "maintenance-app"
+#   environment         = "prod"
+#   dynamodb_table_name = var.dynamodb_table_name
+#   lambda_zip_path     = var.lambda_zip_path
+#   s3_bucket           = var.bucket_name
+#   runtime             = var.runtime
+# }
 
 #$ // ========================= ecr Lambda ======================== //
-module "ecr_pdf" {
-  source = "../../modules/ecr"
+# module "ecr_pdf" {
+#   source = "../../modules/ecr"
 
-  repository_name = var.repository_name
-  max_image_count = var.max_image_count
-  scan_on_push    = var.scan_on_push
+#   repository_name = var.repository_name
+#   max_image_count = var.max_image_count
+#   scan_on_push    = var.scan_on_push
 
-}
+# }

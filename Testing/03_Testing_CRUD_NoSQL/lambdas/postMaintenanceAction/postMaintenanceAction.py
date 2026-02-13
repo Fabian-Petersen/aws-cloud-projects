@@ -15,10 +15,12 @@ s3 = boto3.client(
     )
 )
 
-TABLE_NAME = "crud-nosql-app-maintenance-request-table"
+TABLE_NAME = "crud-nosql-app-maintenance-action-table"
+TABLE_NAME_REQUESTS = "crud-nosql-app-maintenance-request-table"
 BUCKET_NAME = "crud-nosql-app-images"
 
 table = dynamodb.Table(TABLE_NAME)
+table_requests = dynamodb.Table(TABLE_NAME_REQUESTS)
 
 HEADERS = {
     "Content-Type": "application/json",
@@ -35,7 +37,7 @@ def lambda_handler(event, context):
         data = json.loads(event["body"])
 
         # Validate required fields
-        required_fields = ["store", "type", "priority", "equipment", "impact", "additional_notes"]
+        required_fields = ["start_time", "end_time", "total_km", "works_order_number", "work_completed", "status", "root_cause", "findings","signature", "selectedRowId"]
         for field in required_fields:
             if field not in data:
                 return _response(400, {"message": f"Missing field: {field}"})
@@ -43,7 +45,6 @@ def lambda_handler(event, context):
         # Create backend meta data
         item_id = str(uuid.uuid4())
         created_at = datetime.now(timezone.utc).isoformat()
-        status=str("pending")
 
         presigned_urls = []
 
@@ -55,7 +56,7 @@ def lambda_handler(event, context):
                 continue
 
         # Generate presigned urls
-            key = f"maintenance/{item_id}/{filename}"
+            key = f"maintenance_action/{item_id}/{filename}"
             url = s3.generate_presigned_url(
                 "put_object",
                 Params={
@@ -76,15 +77,33 @@ def lambda_handler(event, context):
         item = {
             "id": item_id,
             "createdAt": created_at,
-            "status":status,
-            "location": data["location"],
-            "type": data["type"],
-            "priority": data["priority"],
-            "equipment": data["equipment"],
-            "impact": data["impact"],
-            "additional_notes": data["additional_notes"],
-            "images": []  # Will be updated by S3-triggered Lambda later
+            "requestId": data["selectedRowId"],
+            "start_time": data["start_time"],
+            "end_time": data["end_time"],
+            "total_km": data["total_km"],
+            "works_order_number": data["works_order_number"],
+            "status": data["status"],
+            "root_cause": data["root_cause"],
+            "findings": data["findings"],
+            "images": data["images"],
+            "signature": data["signature"]  # Will be updated by S3-triggered Lambda later
         }
+
+        # $ Upddate the status of the request created status
+        
+        table_requests.update_item(
+            Key={
+                "id": data["selectedRowId"]   # PK = id
+            },
+            UpdateExpression="SET #s = :status",
+            ExpressionAttributeNames={
+                "#s": "status"
+            },
+            ExpressionAttributeValues={
+                ":status": data["status"]
+            },
+            ConditionExpression="attribute_exists(id)"
+        )
 
         table.put_item(Item=item)
 
