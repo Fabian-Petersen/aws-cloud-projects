@@ -136,16 +136,7 @@ module "dynamodb_tables" {
   source               = "../../modules/dynamoDB"
   dynamoDB_table_names = var.dynamoDB_table_names
   env                  = var.env
-  gsi_hash_key         = var.gsi_hash_key
-  gsi_name             = var.gsi_name
-  
-  table_gsi_map = {
-  crud-nosql-app-assets = {
-  name       = var.gsi_name
-  hash_key   = var.gsi_hash_key
-  projection = "ALL"
-    }
-  }
+  table_gsi_map        = var.table_gsi_map
 }
 
 #$ // =================================== cognito =================================== //
