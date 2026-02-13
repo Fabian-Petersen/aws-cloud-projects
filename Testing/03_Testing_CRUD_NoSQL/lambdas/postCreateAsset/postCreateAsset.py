@@ -34,6 +34,18 @@ def lambda_handler(event, context):
 
         data = json.loads(event["body"])
 
+        # Check if the asset already exist with the same assetID and serialNumber
+        existing_item = table.scan(
+            FilterExpression="assetID = :assetID AND serialNumber = :serialNumber",
+            ExpressionAttributeValues={
+                ":assetID": data.get("assetID"),
+                ":serialNumber": data.get("serialNumber")
+            }
+        ).get("Items", [])
+        
+        if existing_item:
+            return _response(400, {"message": "Asset with this assetID or Serial Number already exists"})
+
         # Validate required fields
         required_fields = ["business_unit","category","equipment", "location", "assetID", "serialNumber", "condition", "additional_notes"]
         for field in required_fields:
@@ -53,6 +65,7 @@ def lambda_handler(event, context):
             if not filename:
                 continue
 
+        
         # Generate presigned urls
             key = f"assets/{item_id}/{filename}"
             url = s3.generate_presigned_url(
@@ -86,7 +99,10 @@ def lambda_handler(event, context):
             "images": []  # Will be updated by S3-triggered Lambda later
         }
 
-        table.put_item(Item=item)
+        table.put_item(
+            Item=item, 
+            ConditionExpression="attribute_not_exists(assetID)" # Ensure that no item with the same assetID already exists
+            )
 
         return _response(200, {"form": item, "presigned_urls": presigned_urls})
 

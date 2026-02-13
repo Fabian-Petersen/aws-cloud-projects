@@ -160,6 +160,25 @@ variable "dynamoDB_table_names" {
   type = list(string)
 }
 
+# Optional GSI map: key = table_name, value = GSI config.
+# Used in the DynamoDB module to create GSIs if needed where column in unique and query patterns require it.
+variable "table_gsi_map" {
+  type = map(object({
+    name      = string
+    hash_key  = string
+    projection = string
+  }))
+  default = {}
+}
+
+variable "gsi_hash_key" {
+  type = string
+}
+
+variable "gsi_name" {
+  type = string
+}
+
 #$ ======================== Cognito ====================
 variable "prevent_user_existence" {
   type        = string

@@ -234,6 +234,8 @@ lambda_functions = {
 
 #$ dynamoDB variables
 dynamoDB_table_names = ["crud-nosql-app-images", "crud-nosql-app-maintenance-request", "crud-nosql-app-assets", "crud-nosql-app-maintenance-action"]
+gsi_hash_key         = "assetID" # Hash key for the GSI on the assets table
+gsi_name             = "AssetIDIndex"
 
 #$ cognito
 prevent_user_existence = "ENABLED" # use in production environment
