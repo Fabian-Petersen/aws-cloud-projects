@@ -3,28 +3,40 @@ variable "project_name" {
   description = "Project name prefix"
 }
 
-variable "environment" {
+variable "env" {
   type = string
 }
 
-variable "dynamodb_table_name" {
-  type = string
+variable "dynamodb_table_names" {
+  type = list(string)
 }
 
-variable "lambda_zip_path" {
+variable "image_uri" {}
+# variable "lambda_zip_path" {
+#   type        = string
+#   description = "Path to lambda zip file"
+# }
+
+variable "packageType" {
   type        = string
-  description = "Path to lambda zip file"
+  description = "Package to upload lambda (zip / image)"
 }
 
-variable "lambda_handler" {
-  type    = string
-  default = "handler.lambda_handler"
-}
+variable "function_name" {}
 
-variable "runtime" {
+# variable "lambda_handler" {
+#   type    = string
+#   default = "handler.lambda_handler"
+# }
+
+# variable "runtime" {
+#   type = string
+# }
+
+variable "s3_bucket_arn" {
   type = string
 }
 
-variable "s3_bucket" {
+variable "dynamodb_stream_arn" {
   type = string
 }

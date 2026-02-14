@@ -7,6 +7,11 @@ resource "aws_ecr_repository" "ecr_repository" {
   image_scanning_configuration {
     scan_on_push = var.scan_on_push
   }
+
+  tags = {
+    Environment = var.env
+    Name        = var.project_name
+  }
 }
 
 resource "aws_ecr_lifecycle_policy" "ecr_policy" {
@@ -27,4 +32,6 @@ resource "aws_ecr_lifecycle_policy" "ecr_policy" {
       }
     }]
   })
+
+  depends_on = [aws_ecr_repository.ecr_repository]
 }
