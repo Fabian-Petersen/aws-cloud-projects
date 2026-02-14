@@ -10,35 +10,36 @@ def build_services(jobcard, styles):
     def zar(amount):
         return f"R {amount:,.2f}"
 
+    # Remove parts as per Leon
     # ---------------- Parts ----------------
-    story.append(Paragraph("<b>Parts Used</b>", styles["Heading3"]))
+    # story.append(Paragraph("<b>Parts Used</b>", styles["Heading3"]))
 
-    parts_data = [["Part Name", "Quantity", "Price (R)"]]
+    # parts_data = [["Part Name", "Quantity", "Price (R)"]]
     parts_total = 0.0
 
-    for part in jobcard.get("parts_used", []):
-        qty = int(part.get("qty", 1))
-        cost = float(part.get("cost", 0))
-        line_total = qty * cost
-        parts_total += line_total
+    # for part in jobcard.get("parts_used", []):
+    #     qty = int(part.get("qty", 1))
+    #     cost = float(part.get("cost", 0))
+    #     line_total = qty * cost
+    #     parts_total += line_total
 
-        parts_data.append([
-            part.get("name", ""),
-            str(qty),
-            zar(line_total)
-        ])
+    #     parts_data.append([
+    #         part.get("name", ""),
+    #         str(qty),
+    #         zar(line_total)
+    #     ])
 
-    parts_table = Table(parts_data, colWidths=[350, 50, 106])
-    parts_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-        ("GRID", (0, 0), (-1, -1), 1, colors.black),
-        ("FONT", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("ALIGN", (1, 1), (1, -1), "CENTER"),
-        ("ALIGN", (2, 1), (2, -1), "RIGHT"),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-    ]))
+    # parts_table = Table(parts_data, colWidths=[350, 50, 106])
+    # parts_table.setStyle(TableStyle([
+    #     ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+    #     ("GRID", (0, 0), (-1, -1), 1, colors.black),
+    #     ("FONT", (0, 0), (-1, 0), "Helvetica-Bold"),
+    #     ("ALIGN", (1, 1), (1, -1), "CENTER"),
+    #     ("ALIGN", (2, 1), (2, -1), "RIGHT"),
+    #     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    # ]))
 
-    story.extend([parts_table, Spacer(1, 10)])
+    # story.extend([parts_table, Spacer(1, 10)])
 
     right_small = ParagraphStyle(
         name="RightSmall",
@@ -47,9 +48,9 @@ def build_services(jobcard, styles):
         alignment=TA_RIGHT
     )
 
-    story.append(
-        Paragraph(f"Subtotal : <b>{zar(parts_total)}</b>", right_small)
-    )
+    # story.append(
+    #     Paragraph(f"Subtotal : <b>{zar(parts_total)}</b>", right_small)
+    # )
 
     # ---------------- Services ----------------
     KM_RATE = 4.50

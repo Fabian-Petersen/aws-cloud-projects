@@ -97,8 +97,6 @@ variable "price_class" {}
 variable "s3_origin_id" {}
 
 
-
-
 #$ ======================== api gateway ========================
 variable "api_name" {
   # default     = "project_apigateway"
@@ -128,7 +126,6 @@ variable "api_child_routes" {
   }))
 }
 
-
 #$ ======================== lambda functions ====================
 variable "lambda_functions" {
   description = "lambda functions required for backend"
@@ -140,43 +137,55 @@ variable "lambda_functions" {
     dynamodb_table_name = string
   }))
 }
-
 variable "extra_policies" {
   description = "Optional map of extra IAM policy ARNs per Lambda"
   type        = map(string)
 }
+
+variable "packageType" {
+  type        = string
+  description = "Package to upload lambda (zip / image)"
+}
+
 
 #$ s3 event lambda
 variable "file_name" { type = string }
 variable "table_names" {
   type = list(string)
 }
+
 variable "bucket_name" { type = string }
 variable "handler" { type = string }
 variable "lambda_name" { type = string }
 
 #$ ======================== DynamoDB Tables ====================
-variable "dynamoDB_table_names" {
-  type = list(string)
-}
-
-# Optional GSI map: key = table_name, value = GSI config.
-# Used in the DynamoDB module to create GSIs if needed where column in unique and query patterns require it.
-variable "table_gsi_map" {
-  type = map(object({
-    name       = string
-    hash_key   = string
-    projection = string
-  }))
-  default = {}
-}
-
-# variable "gsi_hash_key" {
-#   type = string
+# variable "dynamoDB_table_names" {
+#   type = list(string)
 # }
 
-# variable "gsi_name" {
-#   type = string
+# $ Changed the table variable to a map to scale if specific features are required per table
+# $ Map variable makes the code easier for specific features.
+variable "dynamodb_tables" {
+  type = map(object({
+    enable_gsi    = bool
+    enable_stream = bool
+
+    gsi = optional(object({
+      name       = string
+      hash_key   = string
+      projection = string
+    }))
+  }))
+}
+# Optional GSI map: key = table_name, value = GSI config.
+# Used in the DynamoDB module to create GSIs if needed where column in unique and query patterns require it.
+# variable "table_gsi_map" {
+#   type = map(object({
+#     name       = string
+#     hash_key   = string
+#     projection = string
+#   }))
+#   default = {}
 # }
 
 #$ ======================== Cognito ====================
@@ -205,10 +214,14 @@ variable "dynamodb_table_name" {
   type = string
 }
 
-variable "lambda_zip_path" {
-  type        = string
-  description = "Path to lambda zip file"
-}
+variable "function_name" {}
+
+variable "image_uri" {}
+
+# variable "lambda_zip_path" {
+#   type        = string
+#   description = "Path to lambda zip file"
+# }
 
 variable "lambda_handler" {
   type    = string

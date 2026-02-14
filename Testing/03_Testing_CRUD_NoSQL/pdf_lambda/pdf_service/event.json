@@ -1,0 +1,20 @@
+{
+  "Records": [
+    {
+      "eventName": "INSERT | MODIFY | REMOVE",
+      "eventSource": "aws:dynamodb",
+      "dynamodb": {
+        "Keys": {
+          "pk": { "S": "123" }
+        },
+        "NewImage": {
+          "name": { "S": "Laptop" },
+          "price": { "N": "12000" }
+        },
+        "OldImage": {
+          "price": { "N": "10000" }
+        }
+      }
+    }
+  ]
+}

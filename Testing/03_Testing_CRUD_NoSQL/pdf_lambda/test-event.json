@@ -1,0 +1,31 @@
+{
+  "Records": [
+    {
+      "eventID": "1",
+      "eventName": "MODIFY",
+      "eventSource": "aws:dynamodb",
+      "awsRegion": "af-south-1",
+      "dynamodb": {
+        "Keys": {
+          "id": { "S": "example-id" }
+        },
+        "NewImage": {
+          "id": { "S": "example-id" },
+          "status": { "S": "Complete" },
+          "jobcard_no": { "S": "JC123" },
+          "asset_description": { "S": "Generator" },
+          "assetID": { "S": "A123" },
+          "requested_by": { "S": "Fabian" },
+          "created_at": { "S": "2026-02-14T10:00:00Z" },
+          "location": { "S": "Cape Town" },
+          "description": { "S": "Routine maintenance" }
+        },
+        "OldImage": {
+          "id": { "S": "example-id" },
+          "status": { "S": "Pending" }
+        },
+        "StreamViewType": "NEW_AND_OLD_IMAGES"
+      }
+    }
+  ]
+}

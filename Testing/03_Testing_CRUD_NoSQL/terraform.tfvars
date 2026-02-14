@@ -233,16 +233,38 @@ lambda_functions = {
 }
 
 #$ dynamoDB variables
-dynamoDB_table_names = ["crud-nosql-app-images", "crud-nosql-app-maintenance-request", "crud-nosql-app-assets", "crud-nosql-app-maintenance-action"]
-table_gsi_map = {
+# dynamoDB_table_names = ["crud-nosql-app-images", "crud-nosql-app-maintenance-request", "crud-nosql-app-assets", "crud-nosql-app-maintenance-action"]
+# table_gsi_map = {
+#   crud-nosql-app-assets = {
+#     name       = "AssetIDIndex"
+#     hash_key   = "assetID"
+#     projection = "ALL"
+#   }
+# }
+
+dynamodb_tables = {
+  crud-nosql-app-maintenance-request = {
+    enable_gsi    = false
+    enable_stream = true
+  }
+  crud-nosql-app-images = {
+    enable_gsi    = false
+    enable_stream = false
+  }
   crud-nosql-app-assets = {
-    name       = "AssetIDIndex"
-    hash_key   = "assetID"
-    projection = "ALL"
+    enable_gsi    = true
+    enable_stream = false
+    gsi = {
+      name       = "AssetIDIndex"
+      hash_key   = "assetID"
+      projection = "ALL"
+    }
+  }
+  crud-nosql-app-maintenance-action = {
+    enable_gsi    = false
+    enable_stream = false
   }
 }
-
-
 
 #$ cognito
 prevent_user_existence = "ENABLED" # use in production environment
@@ -259,11 +281,14 @@ lambda_name = "s3EventLambda"
 
 
 # $ pdf lambda
-lambda_zip_path     = "dist/pdf-generator.zip"
+# lambda_zip_path     = "dist/pdf-generator.zip"
+function_name       = "jobcard-pdf-generator"
 dynamodb_table_name = "maintenance-requests"
+packageType         = "Image"
 s3_bucket           = "crud-nosql.app.fabian-portfolio.net"
 runtime             = "python3.12"
 lambda_handler      = "handler.lambda_handler"
+image_uri           = "157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v1.3"
 
 # $ ECR Repository
 repository_name      = "crud-nosql-pdf-generator"

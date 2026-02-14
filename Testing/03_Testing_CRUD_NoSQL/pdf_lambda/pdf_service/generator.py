@@ -1,5 +1,8 @@
+# $ This code generate a pdf in bytes and put in s3 bucket
+
 import os
 from datetime import datetime
+from io import BytesIO
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
@@ -15,10 +18,9 @@ from pdf_service.paragraph_styles import meta_style
 from pdf_service.signature import build_signature
 
 class PDFGenerator:
-    def __init__(self, output_dir=None):
+    def __init__(self):
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
         self.assets_dir = os.path.join(self.base_dir, "assets")
-        self.output_dir = output_dir or self.base_dir
 
     def _footer(self, canvas, doc):
         canvas.setFont("Helvetica", 8)
@@ -29,13 +31,18 @@ class PDFGenerator:
             f"Generated on {datetime.now():%d-%m-%Y %H:%M}"
         )
 
-    def create_pdf(self, jobcard: dict, filename: str):
-        self.doc, path = build_doc(self.output_dir, filename)
+    def create_pdf(self, jobcard: dict) -> bytes:
+        if not isinstance(jobcard, dict):
+            raise ValueError("jobcard must be a dict")
+        
+        buffer = BytesIO()
+
+        doc = build_doc(buffer)
         styles = getSampleStyleSheet()
         meta_styles = meta_style(styles)
 
         story = []
-        width = usable_width(self.doc)
+        width = usable_width(doc)
 
         story += build_header(styles, width, self.assets_dir)
         story += build_job_info(jobcard, width, meta_styles)
@@ -45,10 +52,10 @@ class PDFGenerator:
         story += build_work_completed(jobcard, styles)
         story += build_signature(styles, self.assets_dir)
 
-        self.doc.build(
+        doc.build(
             story,
             onFirstPage=self._footer,
             onLaterPages=self._footer
         )
-
-        return path
+        buffer.seek(0)
+        return buffer.getvalue()

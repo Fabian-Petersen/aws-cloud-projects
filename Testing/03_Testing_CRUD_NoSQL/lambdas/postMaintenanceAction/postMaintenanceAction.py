@@ -92,6 +92,19 @@ def lambda_handler(event, context):
         # $ Upddate the status of the request created status
         
         table_requests.update_item(
+            Key={"id": data["selectedRowId"]},
+            UpdateExpression="SET #s = :status, action_id = :action_id",
+            ExpressionAttributeNames={"#s": "status"},
+            ExpressionAttributeValues={
+                ":status": data["status"],
+                ":action_id": item_id
+            },
+            ConditionExpression="attribute_exists(id)"
+        )
+
+
+
+        table_requests.update_item(
             Key={
                 "id": data["selectedRowId"]   # PK = id
             },

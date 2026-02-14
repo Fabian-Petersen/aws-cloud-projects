@@ -127,16 +127,13 @@ module "s3_event_lambda" {
   depends_on = [module.dynamodb_tables]
 }
 
-# output "lambda_arns" {
-#   value = module.lambda.lambda_invoke_arns
-# }
-
 #$  // =================================== dynamoDB =================================== //
 module "dynamodb_tables" {
-  source               = "../../modules/dynamoDB"
-  dynamoDB_table_names = var.dynamoDB_table_names
-  env                  = var.env
-  table_gsi_map        = var.table_gsi_map
+  source = "../../modules/dynamoDB"
+  # dynamoDB_table_names = var.dynamoDB_table_names # % List variable - "constrained to only name"
+  env = var.env
+  # table_gsi_map        = var.table_gsi_map
+  dynamodb_tables = var.dynamodb_tables # % Map variable - added features can be passed in map
 }
 
 #$ // =================================== cognito =================================== //
@@ -153,26 +150,30 @@ module "cognito" {
   prevent_user_existence = var.prevent_user_existence
 }
 
-#$ // ========================= File Upload to S3 & DynamoDB ======================== //
-
-
 #$ // ========================= pdf Lambda ======================== //
-# module "pdf_generator" {
-#   source              = "../../modules/pdf_generator"
-#   project_name        = "maintenance-app"
-#   environment         = "prod"
-#   dynamodb_table_name = var.dynamodb_table_name
-#   lambda_zip_path     = var.lambda_zip_path
-#   s3_bucket           = var.bucket_name
-#   runtime             = var.runtime
-# }
+# This lambda is triggered by dynamodb streams to build the pdf jobcard once the status of the job changed. The created jobcard is stored in s3 /jobcards/*
+data "aws_s3_bucket" "pdf_bucket" {
+  bucket = "crud-nosql-app-images"
+}
+module "pdf_generator" {
+  source               = "../../modules/pdf_generator"
+  function_name        = var.function_name
+  project_name         = var.project_name
+  env                  = var.env
+  packageType          = var.packageType
+  image_uri            = var.image_uri
+  dynamodb_table_names = ["crud-nosql-app-maintenance-request-table", "crud-nosql-app-maintenance-action-table"]
+  s3_bucket_arn        = data.aws_s3_bucket.pdf_bucket.arn
+  # runtime              = var.runtime
+  dynamodb_stream_arn = module.dynamodb_tables.dynamodb_stream_arns["crud-nosql-app-maintenance-request"]
+}
 
 #$ // ========================= ecr Lambda ======================== //
-# module "ecr_pdf" {
-#   source = "../../modules/ecr"
-
-#   repository_name = var.repository_name
-#   max_image_count = var.max_image_count
-#   scan_on_push    = var.scan_on_push
-
-# }
+module "ecr_pdf" {
+  source          = "../../modules/ecr"
+  env             = var.env
+  repository_name = var.repository_name
+  max_image_count = var.max_image_count
+  scan_on_push    = var.scan_on_push
+  project_name    = var.project_name
+}
