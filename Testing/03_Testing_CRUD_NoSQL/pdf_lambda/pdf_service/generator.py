@@ -59,13 +59,3 @@ class PDFGenerator:
         )
         buffer.seek(0)
         return buffer.getvalue()
-    
-
-#     [ERROR] KeyError: 'date'
-# Traceback (most recent call last):
-#   File "/var/task/lambda_handler.py", line 67, in lambda_handler
-#     pdf_bytes = pdf.create_pdf(jobcard_data)
-#   File "/var/task/pdf_service/generator.py", line 48, in create_pdf
-#     story += build_job_info(jobcard, width, meta_styles)
-#   File "/var/task/pdf_service/job_info.py", line 7, in build_job_info
-#     [Paragraph(f"<b>Date Requested:</b> {jobcard['date']}", meta_style)],

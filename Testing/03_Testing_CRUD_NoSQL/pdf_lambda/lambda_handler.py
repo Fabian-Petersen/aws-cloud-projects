@@ -85,61 +85,42 @@ def lambda_handler(event, context):
 
 # $ Local execution only
 # if __name__ == "__main__":
-    # The data comes from the maintenance-actions-table & maintenance-requests-table
+#     # The data comes from the maintenance-actions-table & maintenance-requests-table
     
 #     jobcard_data = {
-#     "job_card_no": new_item["jobcard_no"],
-#     "asset_description": new_item["asset_description"],
-#     "asset_id": new_item["assetID"],
-#     "requested_by": new_item["requested_by"],
-#     "date": new_item["created_at"],
-#     "location": new_item["location"],
-#     "description": new_item["description"],
-#     "actioned_by": action_item["actioned_by"],
-#     "date_actioned": action_item["date_actioned"],
-#     "root_cause": action_item[ "root_cause"],
-#     "status": action_item[ "status"],
-#     "kilometers": action_item["kilometers"],
-#     "hours_on_site": [ "hours_on_site"],
-#     "works_completed": action_item["works_completed"],
-#     "findings": action_item["findings"],
-#     "signature": action_item["signature"]
-# }
+#         "job_card_no": "1524336", # generate the jobcard_no in requests_lambda. save jopbcard in requests_table
+#         "asset_description":"Band Saw", 
+#         "asset_id":"RT-0028", # requests-table
+#         "requested_by": "John Doe", # requests-table
+#         "date": "2026-01-10", # requests-table
+#         "location": "Maitland", # requests-table
+#         "description": "Water damage to the mincer. Requires urgent replacement of internal wiring.", # requests-table
+#         "actioned_by":"Jane Doe", # action-table
+#         "date_actioned":"2026-02-05", # action-table
+#         "root_cause":"Operational Error", # action-table
+#         "status":"Completed", # requests-table
+#         "jobcardNumber":"job-VTR-202602-0001",
+#         "parts_used": [
+#             {"name": "Wiring Kit", "qty": 1, "cost": 3000.00, "notes": "OEM replacement"},
+#             {"name": "Fuse 15A", "cost": 45.95 , "qty": 2},
+#         ],   # Service data
+#         "kilometers": 12.5,        # actions-table (total: distance travelled)
+#         "hours_on_site": 3.0,      # actions-table
+#         "work_completed":"Dried out the electrical box and replaced the wiring kit and fuse", # actions-table
+#         "findings": "Water penetrated the electrical wiring when machine was cleaned. Extra care should be taken when cleaning the machine to prevent water damage.", # actions-table
+#     }
 
-    # jobcard_data = {
-    #     "job_card_no": "1524336", # generate the jobcard_no in requests_lambda. save jopbcard in requests_table
-    #     "asset_description":"Band Saw", 
-    #     "asset_id":"RT-0028", # requests-table
-    #     "requested_by": "John Doe", # requests-table
-    #     "date": "2026-01-10", # requests-table
-    #     "location": "Maitland", # requests-table
-    #     "description": "Water damage to the mincer. Requires urgent replacement of internal wiring.", # requests-table
-    #     "actioned_by":"Jane Doe", # action-table
-    #     "date_actioned":"2026-02-05", # action-table
-    #     "root_cause":"Operational Error", # action-table
-    #     "status":"Completed", # requests-table
-    #     "parts_used": [
-    #         {"name": "Wiring Kit", "qty": 1, "cost": 3000.00, "notes": "OEM replacement"},
-    #         {"name": "Fuse 15A", "cost": 45.95 , "qty": 2},
-    #     ],   # Service data
-    #     "kilometers": 12.5,        # actions-table (total: distance travelled)
-    #     "hours_on_site": 3.0,      # actions-table
-    #     "works_completed":"Dried out the electrical box and replaced the wiring kit and fuse", # actions-table
-    #     "findings": "Water penetrated the electrical wiring when machine was cleaned. Extra care should be taken when cleaning the machine to prevent water damage.", # actions-table
-    # }
+#         path = pdf.create_pdf(jobcard_data, filename="jobcard.pdf")
+    
+#         except Exception as exc:
+#             print("Lambda error:", exc)
+#             return _response(500, {"message": "Internal server error"})
+ 
+#         def _response(status_code: int, body: dict)     
+#             return {
+#                 "statusCode": status_code,
+#                 "headers": HEADERS,
+#                 "body": json.dumps(body),
+#             }
 
-    # path = pdf.create_pdf(jobcard_data, filename="jobcard.pdf")
-
-        # except Exception as exc:
-        #     print("Lambda error:", exc)
-        #     return _response(500, {"message": "Internal server error"})
-
-    # def _response(status_code: int, body: dict):
-        
-    #     return {
-    #         "statusCode": status_code,
-    #         "headers": HEADERS,
-    #         "body": json.dumps(body),
-    #     }
-
-    # pdf = PDFGenerator()
+# pdf = PDFGenerator()

@@ -102,20 +102,6 @@ def lambda_handler(event, context):
             ConditionExpression="attribute_exists(id)"
         )
 
-        # table_requests.update_item(
-        #     Key={
-        #         "id": data["selectedRowId"]   # PK = id
-        #     },
-        #     UpdateExpression="SET #s = :status",
-        #     ExpressionAttributeNames={
-        #         "#s": "status"
-        #     },
-        #     ExpressionAttributeValues={
-        #         ":status": data["status"]
-        #     },
-        #     ConditionExpression="attribute_exists(id)"
-        # )
-
         table.put_item(Item=item)
 
         return _response(200, {"data": item, "presigned_urls": presigned_urls})

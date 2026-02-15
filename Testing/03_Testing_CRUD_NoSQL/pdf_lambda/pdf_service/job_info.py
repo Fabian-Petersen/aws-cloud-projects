@@ -32,10 +32,12 @@ def build_job_info(jobcard, usable_width, meta_style):
         [Paragraph(f"<b>Date Actioned:</b> {actionCreated}", meta_style)],
         [Paragraph(f"<b>Root Cause:</b> {jobcard['root_cause']}", meta_style)],
         [Paragraph(f"<b>Status:</b> {jobcard['status']}", meta_style)],
+        [Paragraph(f"<b>Status:</b> {jobcard['jobcardNumber']}", meta_style)],
     ], colWidths=[usable_width * 0.48])
 
     
     right_table.setStyle(TableStyle([
+        ('BOTTOMPADDING', (0,3), (0,3), 10),  # Add 10 pts below row 3 for Spacer effect
         ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 70),
