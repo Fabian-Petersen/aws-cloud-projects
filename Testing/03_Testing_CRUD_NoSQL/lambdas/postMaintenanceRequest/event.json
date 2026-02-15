@@ -1,11 +1,3 @@
 {
-  "id": "uuid",
-  "createdAt": "2026-01-05T19:12:00Z",
-  "store": "Store A",
-  "type": "Electrical",
-  "priority": "High",
-  "equipment": "Freezer",
-  "impact": "Operations halted",
-  "additional_notes": "Breaker keeps tripping",
-  "images": ["maintenance/uuid/image1.jpg", "maintenance/uuid/image2.png"]
+  "body": "{\"location\":\"Bellville\",\"type\":\"Electrical\",\"priority\":\"High\",\"equipment\":\"Self Contained Island Freezer\",\"impact\":\"Production\",\"jobComments\":\"Breaker keeps tripping\",\"description\":\"Freezer is not working\",\"area\":\"shop floor\",\"assetID\":\"RT-0234\",\"images\":[]}"
 }

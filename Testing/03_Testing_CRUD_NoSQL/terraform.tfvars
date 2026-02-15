@@ -288,7 +288,7 @@ packageType         = "Image"
 s3_bucket           = "crud-nosql.app.fabian-portfolio.net"
 runtime             = "python3.12"
 lambda_handler      = "handler.lambda_handler"
-image_uri           = "157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v1.3"
+image_uri           = "157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v1"
 
 # $ ECR Repository
 repository_name      = "crud-nosql-pdf-generator"

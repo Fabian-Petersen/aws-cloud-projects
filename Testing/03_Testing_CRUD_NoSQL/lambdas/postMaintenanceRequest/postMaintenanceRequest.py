@@ -1,8 +1,9 @@
 import json
 import boto3
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from botocore.config import Config
+
 
 dynamodb = boto3.resource("dynamodb")
 s3 = boto3.client(
@@ -17,7 +18,6 @@ s3 = boto3.client(
 
 TABLE_NAME = "crud-nosql-app-maintenance-request-table"
 BUCKET_NAME = "crud-nosql-app-images"
-
 table = dynamodb.Table(TABLE_NAME)
 
 HEADERS = {
@@ -27,15 +27,37 @@ HEADERS = {
     "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Requested-With"
 }
 
+locations = {
+  'Phillipi': 'PHP',
+  'Bellville': 'BTX',
+  'Khayelitsha': 'IKH',
+  'Wynberg': 'WBG',
+  'Maitland': 'VTR',
+  'Golden Acre': 'GAC',
+  'Distribution Centre': 'DCN',
+  'Central Services': 'CTS'
+}
+
+def generateJobCardNo(location:str) -> str:
+    locationID = locations.get(location)
+    utc_now = datetime.now(timezone.utc)
+    capeTownTime = str(utc_now + timedelta(hours=2))
+    jobDate = datetime.fromisoformat(capeTownTime).strftime("%Y%m")
+    count = 12
+    counter = count + 1
+    formattedCount=f"{counter:04d}"
+    jobcardNumber=f"job-{locationID}-{jobDate}-{formattedCount}"
+    return jobcardNumber
+
 def lambda_handler(event, context):
     try:
         if not event.get("body"):
             return _response(400, {"message": "Missing request body"})
-
+        
         data = json.loads(event["body"])
 
         # Validate required fields
-        required_fields = ["store", "type", "priority", "equipment", "impact", "additional_notes"]
+        required_fields = ["location", "type", "priority", "equipment", "impact", "jobComments", "description", "area", "assetID"]
         for field in required_fields:
             if field not in data:
                 return _response(400, {"message": f"Missing field: {field}"})
@@ -43,7 +65,12 @@ def lambda_handler(event, context):
         # Create backend meta data
         item_id = str(uuid.uuid4())
         created_at = datetime.now(timezone.utc).isoformat()
-        status=str("pending")
+        status=str("Pending")
+        requested_by="" # data from the cognito user sign-in
+        
+        # Build the jobcardNumber
+        location = data["location"]
+        jobcardNumber = generateJobCardNo(location)
 
         presigned_urls = []
 
@@ -74,26 +101,30 @@ def lambda_handler(event, context):
 
         # Save metadata to DynamoDB
         item = {
-            "id": item_id,
-            "createdAt": created_at,
-            "status":status,
+            "id": item_id, #$ created on backend
+            "jobCreated": created_at, #$ created on backend
+            "status": status, #$ created on backend
+            "requested_by": requested_by, #$ created on backend
+            "jobcardNumber" : jobcardNumber, #$ created on backend
             "location": data["location"],
             "type": data["type"],
             "priority": data["priority"],
             "equipment": data["equipment"],
             "impact": data["impact"],
-            "additional_notes": data["additional_notes"],
+            "jobComments": data["jobComments"],
+            "description":data["description"],
+            "area":data["area"],
+            "assetID":data["assetID"],
             "images": []  # Will be updated by S3-triggered Lambda later
         }
 
         table.put_item(Item=item)
 
-        return _response(200, {"form": item, "presigned_urls": presigned_urls})
+        return _response(200, {"data":item, "presigned_urls": presigned_urls})
 
     except Exception as exc:
         print("Error:", exc)
         return _response(500, {"message": "Internal server error"})
-
 
 def _response(status_code, body):
     return {
@@ -101,3 +132,11 @@ def _response(status_code, body):
         "headers": HEADERS,
         "body": json.dumps(body),
     }
+
+# Run the lambda locally with the events.json file to test
+# if __name__ == "__main__":
+#     with open("event.json") as f:
+#         event = json.load(f)
+
+#     result = lambda_handler(event, None)
+#     print(json.dumps(result, indent=2))

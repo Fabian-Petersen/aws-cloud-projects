@@ -40,7 +40,7 @@ def lambda_handler(event, context):
         print("STATUS CHANGED TO COMPLETE")
         print("Full request_item:", new_item)
 
-        response = table_action.get_item(Key={"id": new_item["action_id"]}) #Skip for local testing
+        response = table_action.get_item(Key={"id": new_item["action_id"]})
         action_item = response.get("Item")
         print("action_item:", action_item)
 
@@ -48,37 +48,27 @@ def lambda_handler(event, context):
             print("No action item found - using mock data for test")
             continue
 
-# request_item: {'id': '7d823d4b-eb1e-44f4-9cae-cc967acb698c', 'status': 'Complete', 'jobcard_no': 'job-mx20260214-0010', 'asset_description': 'Generator', 'assetID': 'A123', 'action_id': 'e8d5b52a-415e-49ae-b9c3-ed67f7e59b8c', 'requested_by': 'Fabian', 'created_at': '2026-02-14T10:00:00Z', 'location': 'Cape Town', 'description': 'Routine maintenance'}
+        # Merge both dictionaries safely
+        # Make copies so originals aren’t modified
+        request_copy = new_item.copy()
+        action_copy = action_item.copy()
 
-# action_item: {'signature': 'signature', 'works_order_number': '134527354', 'total_km': '20', 'status': 'Completed', 'createdAt': '2026-02-14T20:01:07.275083+00:00', 'images': [], 'findings': 'breaker repaired', 'root_cause': 'negligence', 'start_time': '2026-02-12T19:12:00Z', 'end_time': '2026-02-12T19:14:00Z', 'id': 'e8d5b52a-415e-49ae-b9c3-ed67f7e59b8c', 'requestId': '7d823d4b-eb1e-44f4-9cae-cc967acb698c'}
+        # Rename the IDs so they don’t collide
+        request_copy["request_id"] = request_copy.pop("id")
+        action_copy["action_id"] = action_copy.pop("id")
 
-        jobcard_data = {
-            "jobcard_no": new_item["jobcard_no"],
-            "asset_description": new_item["asset_description"],
-            "asset_id": new_item["assetID"],
-            "requested_by": new_item["requested_by"],
-            "date": new_item["created_at"],
-            "location": new_item["location"],
-            "description": new_item["description"],
+        # Merge dictionaries
+        jobcard_data = {**request_copy, **action_copy}
 
-            "actioned_by": action_item["actioned_by"],
-            "date_actioned": action_item["createdAt"],
-            "root_cause": action_item["root_cause"],
-            "status": action_item["status"],
-            "kilometers": action_item["total_km"],
-            "hours_on_site": action_item["hours_on_site"],
-            "works_completed": action_item["works_completed"],
-            "findings": action_item["findings"],
-            "signature": action_item["signature"]
-        }
-
-        # print("jobcard_data:", jobcard_data)
+        if jobcard_data:
+            print("Merged jobcard_data:", jobcard_data)
         
         pdf = PDFGenerator()
         pdf_bytes = pdf.create_pdf(jobcard_data)
         print("PDF size:", len(pdf_bytes))
         
-        key = f"jobcards/{jobcard_data['jobcard_no']}.pdf"
+        # save the pdf to s3 bucket
+        key = f"jobcards/{jobcard_data['request_id']}.pdf"
         s3.put_object(
         Bucket=BUCKET_NAME,
         Key=key,

@@ -37,7 +37,7 @@ def lambda_handler(event, context):
         data = json.loads(event["body"])
 
         # Validate required fields
-        required_fields = ["start_time", "end_time", "total_km", "works_order_number", "work_completed", "status", "root_cause", "findings","signature", "selectedRowId"]
+        required_fields = ["start_time", "end_time", "total_km", "work_order_number", "work_completed", "status", "root_cause", "findings","signature", "selectedRowId"]
         for field in required_fields:
             if field not in data:
                 return _response(400, {"message": f"Missing field: {field}"})
@@ -75,13 +75,14 @@ def lambda_handler(event, context):
 
         # Save metadata to DynamoDB
         item = {
-            "id": item_id,
-            "createdAt": created_at,
-            "requestId": data["selectedRowId"],
+            "id": item_id, #$ created on backend
+            "actionCreated": created_at, #$ created on backend
+            "request_id": data["selectedRowId"], #$ created on backend
+
             "start_time": data["start_time"],
             "end_time": data["end_time"],
             "total_km": data["total_km"],
-            "works_order_number": data["works_order_number"],
+            "work_order_number": data["work_order_number"],
             "status": data["status"],
             "root_cause": data["root_cause"],
             "findings": data["findings"],
@@ -90,7 +91,6 @@ def lambda_handler(event, context):
         }
 
         # $ Upddate the status of the request created status
-        
         table_requests.update_item(
             Key={"id": data["selectedRowId"]},
             UpdateExpression="SET #s = :status, action_id = :action_id",
@@ -102,25 +102,23 @@ def lambda_handler(event, context):
             ConditionExpression="attribute_exists(id)"
         )
 
-
-
-        table_requests.update_item(
-            Key={
-                "id": data["selectedRowId"]   # PK = id
-            },
-            UpdateExpression="SET #s = :status",
-            ExpressionAttributeNames={
-                "#s": "status"
-            },
-            ExpressionAttributeValues={
-                ":status": data["status"]
-            },
-            ConditionExpression="attribute_exists(id)"
-        )
+        # table_requests.update_item(
+        #     Key={
+        #         "id": data["selectedRowId"]   # PK = id
+        #     },
+        #     UpdateExpression="SET #s = :status",
+        #     ExpressionAttributeNames={
+        #         "#s": "status"
+        #     },
+        #     ExpressionAttributeValues={
+        #         ":status": data["status"]
+        #     },
+        #     ConditionExpression="attribute_exists(id)"
+        # )
 
         table.put_item(Item=item)
 
-        return _response(200, {"form": item, "presigned_urls": presigned_urls})
+        return _response(200, {"data": item, "presigned_urls": presigned_urls})
 
     except Exception as exc:
         print("Error:", exc)
@@ -133,3 +131,11 @@ def _response(status_code, body):
         "headers": HEADERS,
         "body": json.dumps(body),
     }
+
+# Run the lambda locally with the events.json file to test
+if __name__ == "__main__":
+    with open("event.json") as f:
+        event = json.load(f)
+
+    result = lambda_handler(event, None)
+    print(json.dumps(result, indent=2))

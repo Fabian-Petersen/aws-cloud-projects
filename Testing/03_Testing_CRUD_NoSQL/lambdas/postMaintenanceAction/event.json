@@ -1,12 +1,3 @@
 {
-  "start_time": "2026-02-12T19:12:00Z",
-  "end_time": "2026-02-12T19:14:00Z",
-  "total_km": "20",
-  "works_order_number": "123456",
-  "work_completed": "changed the breaker",
-  "status": "completed",
-  "root_causes": "Operations halted",
-  "findings": "breaker repaired",
-  "images": ["maintenance/uuid/image1.jpg"],
-  "signature": "signature"
+  "body": "{\"start_time\": \"2026-02-12T19:12:00Z\", \"end_time\": \"2026-02-12T19:14:00Z\", \"total_km\": \"20\", \"work_order_number\": \"123456\", \"work_completed\": \"changed the breaker\", \"status\": \"complete\", \"root_cause\": \"Operations halted\", \"findings\": \"breaker repaired\", \"images\": [], \"selectedRowId\": \"9cb11b5b-a3bc-40c6-99b2-101dec0556ed\", \"signature\": \"signature\"}"
 }

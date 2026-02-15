@@ -1,4 +1,5 @@
 from reportlab.lib import colors
+from datetime import datetime
 from reportlab.lib.enums import TA_RIGHT
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
@@ -56,8 +57,14 @@ def build_services(jobcard, styles):
     KM_RATE = 4.50
     HOUR_RATE = 350.00
 
-    kilometers = float(jobcard.get("kilometers", 0))
-    hours = float(jobcard.get("hours_on_site", 0))
+    kilometers = float(jobcard.get("total_km", 0))
+
+    start = datetime.fromisoformat(jobcard["start_time"].replace("Z", "+00:00"))
+    end = datetime.fromisoformat(jobcard["end_time"].replace("Z", "+00:00"))
+
+    hours = (end - start).total_seconds() / 3600
+    print('hours on site:', hours)
+    hours = round(hours, 2)
 
     services_total = (kilometers * KM_RATE) + (hours * HOUR_RATE)
 
@@ -86,19 +93,6 @@ def build_services(jobcard, styles):
     story.append(
         Paragraph(f"SubTotal : <b>{zar(services_total)}</b>", right_small)
     )
-
-    # right_small = ParagraphStyle(
-    #     name="RightSmall",
-    #     parent=styles["Normal"],
-    #     fontSize=9,
-    #     alignment=TA_RIGHT
-    # )
-
-    # story.append(
-    #     Paragraph(f"Subtotal : <b>{zar(parts_total)}</b>", right_small)
-    # )
-
-
 
     # ---------------- Grand Total ----------------
     job_total = parts_total + services_total
