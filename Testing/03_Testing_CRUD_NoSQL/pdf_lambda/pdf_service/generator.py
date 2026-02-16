@@ -50,7 +50,7 @@ class PDFGenerator:
         story += build_services(jobcard, styles)
         story += build_findings(jobcard, styles)
         story += build_work_completed(jobcard, styles)
-        story += build_signature(styles, self.assets_dir)
+        story += build_signature(jobcard.get('signature', ''), styles)
 
         doc.build(
             story,

@@ -13,9 +13,11 @@ def build_job_info(jobcard, usable_width, meta_style):
     actionCreated = to_human_date(jobcard['actionCreated'])
 
     left_table = Table([
+        [Paragraph(f"<b>Jobcard No:</b> {jobcard.get('jobcardNumber', '')}", meta_style)],
         [Paragraph(f"<b>Requested By:</b> {jobcard.get('requested_by', '')}", meta_style)],
         [Paragraph(f"<b>Date Requested:</b> {jobCreated}", meta_style)],
         [Paragraph(f"<b>Asset Description:</b> {jobcard['equipment']}", meta_style)],
+        [Paragraph(f"<b>Asset ID:</b> {jobcard.get('assetID', '')}", meta_style)],
         [Paragraph(f"<b>Location:</b> {jobcard['location']}", meta_style)],
     ], colWidths=[usable_width * 0.48])
 
@@ -28,16 +30,15 @@ def build_job_info(jobcard, usable_width, meta_style):
     ]))
 
     right_table = Table([
+        [Paragraph(f"<b>Work Order No:</b> {jobcard.get('work_order_number', '')}", meta_style)],
         [Paragraph(f"<b>Actioned By:</b> {jobcard.get('actioned_by', '')}", meta_style)],
         [Paragraph(f"<b>Date Actioned:</b> {actionCreated}", meta_style)],
         [Paragraph(f"<b>Root Cause:</b> {jobcard['root_cause']}", meta_style)],
         [Paragraph(f"<b>Status:</b> {jobcard['status']}", meta_style)],
-        [Paragraph(f"<b>Status:</b> {jobcard['jobcardNumber']}", meta_style)],
     ], colWidths=[usable_width * 0.48])
 
     
     right_table.setStyle(TableStyle([
-        ('BOTTOMPADDING', (0,3), (0,3), 10),  # Add 10 pts below row 3 for Spacer effect
         ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 70),

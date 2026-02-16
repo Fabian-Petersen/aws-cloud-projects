@@ -1,0 +1,61 @@
+{
+  "Records": [
+    {
+      "eventID": "1",
+      "eventName": "MODIFY",
+      "eventVersion": "1.1",
+      "eventSource": "aws:dynamodb",
+      "awsRegion": "af-south-1",
+      "dynamodb": {
+        "ApproximateCreationDateTime": 1739638369,
+        "Keys": {
+          "id": { "S": "4ee53546-aaea-4296-981d-e49c7ffa1159" }
+        },
+        "OldImage": {
+          "id": { "S": "180a2bae-0c60-4fa1-b43b-9a8aadc55c9c" },
+          "area": { "S": "Processing Room" },
+          "impact": { "S": "production" },
+          "description": { "S": "Testing the pdf creation from the frontend" },
+          "equipment": { "S": "Vacuum Sausage Filler" },
+          "priority": { "S": "Critical" },
+          "type": { "S": "corrective" },
+          "jobcardNumber": { "S": "job-VTR-202602-0013" },
+          "requested_by": { "S": "Fabian" },
+          "action_id": { "S": "f92b6d65-58e5-4792-ba03-0dd1c3069fd2" },
+          "assetID": { "S": "RT-0009" },
+          "location": { "S": "Maitland" },
+          "jobComments": { "S": "Tetsting the pdf creation,..." },
+          "status": { "S": "Pending" }
+        },
+        "NewImage": {
+          "id": { "S": "180a2bae-0c60-4fa1-b43b-9a8aadc55c9c" },
+          "area": { "S": "Processing Room" },
+          "impact": { "S": "production" },
+          "description": { "S": "Testing the pdf creation from the frontend" },
+          "equipment": { "S": "Vacuum Sausage Filler" },
+          "priority": { "S": "Critical" },
+          "type": { "S": "corrective" },
+          "jobcardNumber": { "S": "job-VTR-202602-0013" },
+          "requested_by": { "S": "Fabian" },
+          "action_id": { "S": "f92b6d65-58e5-4792-ba03-0dd1c3069fd2" },
+          "assetID": { "S": "RT-0009" },
+          "location": { "S": "Maitland" },
+          "jobComments": { "S": "Tetsting the pdf creation,..." },
+          "status": { "S": "Complete" },
+          "signature": { "S": "data:image/png;base64,i...." },
+          "total_km": { "S": "40" },
+          "findings": {
+            "S": "This is the last step to complete before creating the email trigger"
+          },
+          "root_cause": { "S": "Wear & Tear" },
+          "start_time": { "S": "2026-02-15T13:00" },
+          "end_time": { "S": "2026-02-15T20:00" },
+          "jobCreated": { "S": "2026-02-15T17:43:39.786034+00:00" },
+          "actionCreated": { "S": "2026-02-15T17:52:49.702487+00:00" },
+          "work_order_number": { "S": "INV-235432" }
+        },
+        "StreamViewType": "NEW_AND_OLD_IMAGES"
+      }
+    }
+  ]
+}

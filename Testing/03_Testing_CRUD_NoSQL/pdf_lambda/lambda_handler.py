@@ -1,6 +1,7 @@
 from pdf_service.generator import PDFGenerator
 from datetime import datetime
 import boto3
+import json
 from boto3.dynamodb.types import TypeDeserializer
 
 deserializer = TypeDeserializer()
@@ -65,7 +66,7 @@ def lambda_handler(event, context):
         
         pdf = PDFGenerator()
         pdf_bytes = pdf.create_pdf(jobcard_data)
-        print("PDF size:", len(pdf_bytes))
+        print("pdf size:", len(pdf_bytes))
         
         # save the pdf to s3 bucket
         key = f"jobcards/{jobcard_data['request_id']}.pdf"
@@ -82,6 +83,18 @@ def lambda_handler(event, context):
             "message": "PDF created and uploaded to s3",
         }
     }
+
+# Run the lambda locally with the events.json file to test
+if __name__ == "__main__":
+    with open("event.json") as f:
+        event = json.load(f)
+
+    result = lambda_handler(event, None)
+    print(json.dumps(result, indent=2))
+
+
+
+
 
 # $ Local execution only
 # if __name__ == "__main__":
