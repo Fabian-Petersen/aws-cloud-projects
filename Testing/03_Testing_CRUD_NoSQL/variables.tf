@@ -111,19 +111,27 @@ variable "api_name" {
 #   }))
 # }
 
-
 variable "api_parent_routes" {
   type = map(object({
-    methods = map(string)
+    methods = optional(map(object({
+      lambda        = string
+      authorization = string
+    })), {}) # default empty map
   }))
+  default = {}
 }
 
 variable "api_child_routes" {
   type = map(object({
     parent_key = string
     path_part  = string
-    methods    = map(string)
-  }))
+    methods = map(object({
+      lambda        = string
+      authorization = string
+    }))
+    }
+    )
+  )
 }
 
 #$ ======================== lambda functions ====================
@@ -207,6 +215,22 @@ variable "test_user_name" {
 variable "test_user_email" {
   description = "test user email"
   type        = string
+}
+
+variable "users" {
+  type = map(object({
+    username   = string
+    group      = string
+    attributes = map(string) # extra attributes like surname, given_name, etc.
+  }))
+}
+
+variable "user_groups" {
+  type = map(object({
+    precedence = number
+    }
+    )
+  )
 }
 
 # $ pdf generator variables

@@ -60,23 +60,47 @@ api_name = "crud-nosql-app-apigateway"
 api_parent_routes = {
   maintenance-request = {
     methods = {
-      GET  = "getMaintenanceRequest"
-      POST = "postMaintenanceRequest"
+      GET = {
+        lambda        = "getMaintenanceRequest"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      POST = {
+        lambda        = "postMaintenanceRequest"
+        authorization = "COGNITO_USER_POOLS"
+      }
     }
   }
   maintenance-action = {
     methods = {
-      GET  = "getMaintenanceAction"
-      POST = "postMaintenanceAction"
+      GET = {
+        lambda        = "getMaintenanceAction"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      POST = {
+        lambda        = "postMaintenanceAction"
+        authorization = "COGNITO_USER_POOLS"
+      }
     }
   }
   asset = {
     methods = {
-      GET  = "getAsset"
-      POST = "postCreateAsset"
-      PUT  = "updateAsset"
+      GET = {
+        lambda        = "getAsset"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      POST = {
+        lambda        = "postCreateAsset"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      PUT = {
+        lambda        = "updateAsset"
+        authorization = "COGNITO_USER_POOLS"
+      }
     }
   }
+
+  # 
+  maintenance-jobcard = {}
 }
 
 api_child_routes = {
@@ -86,10 +110,14 @@ api_child_routes = {
     parent_key = "maintenance-request"
     path_part  = "{id}"
     methods = {
-      GET = "getMaintenanceRequestById"
-      # POST   = "postMaintenanceRequestById"
-      # PUT    = "updateMaintenanceRequestById"
-      DELETE = "deleteMaintenanceRequestById"
+      GET = {
+        lambda        = "getMaintenanceRequestById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      DELETE = {
+        lambda        = "deleteMaintenanceRequestById"
+        authorization = "COGNITO_USER_POOLS"
+      }
     }
   }
   maintenance-action-id = {
@@ -97,10 +125,16 @@ api_child_routes = {
     parent_key = "maintenance-action"
     path_part  = "{id}"
     methods = {
-      GET = "getMaintenanceActionById"
+      GET = {
+        lambda        = "getMaintenanceActionById"
+        authorization = "COGNITO_USER_POOLS"
+      }
       # POST   = "postMaintenanceActionById"
       # PUT    = "updateMaintenanceActionById"
-      DELETE = "deleteMaintenanceActionById"
+      DELETE = {
+        lambda        = "deleteMaintenanceActionById"
+        authorization = "COGNITO_USER_POOLS"
+      }
     }
   }
   asset-id = {
@@ -108,10 +142,26 @@ api_child_routes = {
     parent_key = "asset"
     path_part  = "{id}"
     methods = {
-      GET    = "getAssetById"
-      DELETE = "deleteAsset"
+      GET = {
+        lambda        = "getAssetById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      DELETE = {
+        lambda = "deleteAsset"
+      authorization = "COGNITO_USER_POOLS" }
       # POST   = "postMaintenanceRequestById"
       # PUT    = "updateMaintenanceRequestById"
+    }
+  }
+  maintenance-jobcard-id = {
+    # path       = "/maintenance-request/{id}"
+    parent_key = "maintenance-jobcard"
+    path_part  = "{id}"
+    methods = {
+      GET = {
+        lambda        = "getMaintenanceJobcardById"
+        authorization = "COGNITO_USER_POOLS"
+      }
     }
   }
 }
@@ -125,6 +175,7 @@ extra_policies = {
   deleteMaintenanceActionById  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   postCreateAsset              = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   deleteAsset                  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  getMaintenanceJobcardById    = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   // existing policy created for s3EventLambda to allow putObject on s3 bucket 
 }
 
@@ -230,6 +281,15 @@ lambda_functions = {
     action              = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-assets-table"
   }
+
+  # $ // ================================= Jobcard lambdas ==================================== // 
+  getMaintenanceJobcardById = {
+    file_name           = "getMaintenanceJobcardById.py"
+    handler             = "getMaintenanceJobcardById.lambda_handler"
+    runtime             = "python3.12"
+    action              = ["dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-assets-table"
+  }
 }
 
 #$ dynamoDB variables
@@ -272,13 +332,70 @@ test_user_email        = "fpetersen2tech@gmail.com"
 test_user_username     = "fpetersen2tech@gmail.com"
 test_user_name         = "fabian"
 
+users = {
+  fabian = {
+    username = "fpetersen2tech@gmail.com"
+    group    = "admin"
+    attributes = {
+      email         = "fpetersen2tech@gmail.com"
+      email_verfied = "true"
+      family_name   = "petersen"
+      "name"        = "fabian"
+    }
+  }
+  leon = {
+    username = "c2ktech100@gmail.com"
+    group    = "technician"
+    attributes = {
+      email          = "c2ktech100@gmail.com"
+      email_verified = "true"
+      family_name    = "matalay"
+      "name"         = "leon"
+    }
+  }
+  deon = {
+    username = "fpetersen2@gmail.com"
+    group    = "manager"
+    attributes = {
+      email          = "fpetersen2@gmail.com"
+      email_verified = "true"
+      family_name    = "williams"
+      "name"         = "deon"
+    }
+  }
+  chrystal = {
+    username = "cristalfk@gmail.com"
+    group    = "user"
+    attributes = {
+      email          = "cristalfk@gmail.com"
+      email_verified = "true"
+      family_name    = "petersen"
+      "name"         = "chrystal"
+    }
+  }
+}
+
+user_groups = {
+  "admin" = {
+    precedence = 1
+  }
+  "user" = {
+    precedence = 2
+  }
+  "mmanager" = {
+    precedence = 3
+  }
+  "technician" = {
+    precedence = 4
+  }
+}
+
 # $ s3EventLambda - lambda triggers on s3 file upload
 file_name   = "s3EventLambda.py"
 table_names = ["crud-nosql-app-maintenance-request-table", "crud-nosql-app-maintenance-action-table", "crud-nosql-app-assets-table"]
 bucket_name = "crud-nosql-app-images"
 handler     = "s3EventLambda.lambda_handler"
 lambda_name = "s3EventLambda"
-
 
 # $ pdf lambda
 # lambda_zip_path     = "dist/pdf-generator.zip"

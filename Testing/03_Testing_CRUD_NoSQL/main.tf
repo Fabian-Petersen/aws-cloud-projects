@@ -101,7 +101,7 @@ module "apigateway" {
   api_name          = var.api_name
   env               = var.env
   project_name      = var.project_name
-  # authorizer_id      = var.env == "dev" ? null : aws_apigatewayv2_authorizer.cognito.id
+  cognito_arn       = module.cognito.cognito_userpool_arn
 }
 
 #$ // =========================== API Method lambda functions ========================== //
@@ -148,6 +148,8 @@ module "cognito" {
   test_user_name         = var.test_user_name
   test_user_username     = var.test_user_username
   prevent_user_existence = var.prevent_user_existence
+  users                  = var.users
+  user_groups            = var.user_groups
 }
 
 #$ // ========================= pdf Lambda ======================== //
