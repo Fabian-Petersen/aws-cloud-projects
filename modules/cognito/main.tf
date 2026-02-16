@@ -10,4 +10,6 @@ module "cognito" {
   test_user_name         = var.test_user_name
   test_user_username     = var.test_user_username
   prevent_user_existence = var.prevent_user_existence
+  user_groups            = var.user_groups
+  users                  = var.users
 }

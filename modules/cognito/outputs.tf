@@ -10,3 +10,6 @@
 #   value = "https://cognito-idp.${var.region}.amazonaws.com/${aws_cognito_user_pool.pool.id}"
 # }
 
+output "cognito_userpool_arn" {
+  value = module.cognito.cognito_userpool_arn
+}

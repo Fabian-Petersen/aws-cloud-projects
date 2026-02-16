@@ -62,18 +62,29 @@ resource "aws_cognito_user_pool_client" "app_client" {
   prevent_user_existence_errors = var.prevent_user_existence # ENABLED
 }
 
-resource "aws_cognito_user" "test_user" {
+resource "aws_cognito_user" "users" {
+  for_each                 = var.users
   user_pool_id             = aws_cognito_user_pool.pool.id
-  username                 = var.test_user_username
+  username                 = each.value.username
   desired_delivery_mediums = ["EMAIL"]
 
   ## [INFO] : message_action(optional) Set to to resend the invitation message to a user that already exists and reset the expiration limit on the user's account.
   #   message_action = "RESEND"
 
   ## [INFO] : attributes(optional) - A map that contains user attributes and attribute values to be set for the user.
-  attributes = {
-    name           = var.test_user_name
-    email          = var.test_user_email
-    email_verified = true
-  }
+  attributes = each.value.attributes
+
+  # attributes = {
+  #   name           = var.test_user_name
+  #   email          = var.test_user_email
+  #   email_verified = true
+  # }
 }
+
+# $  Add the users to their groups
+# resource "aws_cognito_user_group" "groups" {
+#   for_each     = var.users
+#   user_pool_id = aws_cognito_user_pool.pool.id
+#   username     = aws_cognito_user[each.key].username
+#   group_name   = aws_cognito_user_group.groups[each.value.group]
+#   }

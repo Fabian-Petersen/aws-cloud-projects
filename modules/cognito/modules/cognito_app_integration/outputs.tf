@@ -10,3 +10,7 @@ output "client_id" {
 output "cognito_api_endpoint" {
   value = "https://cognito-idp.${var.region}.amazonaws.com/${aws_cognito_user_pool.pool.id}"
 }
+
+output "cognito_userpool_arn" {
+  value = aws_cognito_user_pool.pool.arn
+}

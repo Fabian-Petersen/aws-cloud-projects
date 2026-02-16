@@ -17,20 +17,28 @@ variable "api_name" {
   description = "Name of the api for the project"
   type        = string
 }
-
-variable "api_parent_routes" { # method => lambda_function_name
+variable "api_parent_routes" {
   type = map(object({
-    methods = map(string)
+    methods = optional(map(object({
+      lambda        = string
+      authorization = string
+    })), {}) # default empty map
   }))
+  default = {}
 }
+
 
 variable "api_child_routes" {
   type = map(object({
     parent_key = string
     path_part  = string
-    methods    = map(string)
+    methods = map(object({
+      lambda        = string
+      authorization = string
+    }))
   }))
 }
+
 
 
 #$ ============== Add the lambda functions to integrate with the api ===================
@@ -44,6 +52,8 @@ variable "lambda_functions" {
     dynamodb_table_name = string
   }))
 }
+
+variable "cognito_arn" {}
 
 variable "lambda_arns" {
   description = "arn values for each lambda function passed to the api for integration"

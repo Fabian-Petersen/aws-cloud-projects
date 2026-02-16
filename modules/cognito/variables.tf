@@ -42,3 +42,19 @@ variable "test_user_email" {
 variable "env" {
   type = string
 }
+
+variable "users" {
+  type = map(object({
+    username   = string
+    group      = string
+    attributes = map(string) # extra attributes like surname, given_name, etc.
+  }))
+}
+
+variable "user_groups" {
+  type = map(object({
+    precedence = number
+    }
+    )
+  )
+}

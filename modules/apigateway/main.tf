@@ -29,18 +29,47 @@ locals {
     { for k, v in var.api_child_routes : k => v }
   )
 
+  # This is used to flatten the object when the variable is not a nested object method ={GET = "function-name"}
+  #   method_map = flatten([
+  #     for key, route in local.all_routes : [
+  #       for method, lambda in route.methods : {
+  #         resource_name = key
+  #         http_method   = method
+  #         lambda_name   = lambda
+  #       }
+  #     ]
+  #   ])
+  # }
+
+  # This is used to flatten the object when the variable is a nested object method = {GET = {
+  # lambda = "function-name", ""}
+
   method_map = flatten([
     for key, route in local.all_routes : [
-      for method, lambda in route.methods : {
+      for method, info in route.methods : { # rename lambda -> info
         resource_name = key
         http_method   = method
-        lambda_name   = lambda
+        lambda_name   = info.lambda
+        authorization = info.authorization
       }
     ]
   ])
 }
 
 #$ [Step 5] : Methods
+# resource "aws_api_gateway_method" "methods" {
+#   for_each = {
+#     for m in local.method_map :
+#     "${m.resource_name}_${m.http_method}" => m
+#   }
+
+#   rest_api_id   = aws_api_gateway_rest_api.project_apigateway.id
+#   resource_id   = lookup(aws_api_gateway_resource.parents, each.value.resource_name, null) != null ? aws_api_gateway_resource.parents[each.value.resource_name].id : aws_api_gateway_resource.children[each.value.resource_name].id
+#   http_method   = each.value.http_method
+#   authorization = each.value.methods[each.key].authorization
+#   authorizer_id = aws_api_gateway_authorizer.cognito.id
+# }
+
 resource "aws_api_gateway_method" "methods" {
   for_each = {
     for m in local.method_map :
@@ -50,10 +79,30 @@ resource "aws_api_gateway_method" "methods" {
   rest_api_id   = aws_api_gateway_rest_api.project_apigateway.id
   resource_id   = lookup(aws_api_gateway_resource.parents, each.value.resource_name, null) != null ? aws_api_gateway_resource.parents[each.value.resource_name].id : aws_api_gateway_resource.children[each.value.resource_name].id
   http_method   = each.value.http_method
-  authorization = "NONE"
+  authorization = each.value.authorization # use authorization from locals
+  authorizer_id = aws_api_gateway_authorizer.cognito.id
 }
 
 #$ [Step 6]: Integrations
+# resource "aws_api_gateway_integration" "integrations" {
+#   for_each = {
+#     for m in local.method_map :
+#     "${m.resource_name}_${m.http_method}" => m
+#   }
+
+#   rest_api_id             = aws_api_gateway_rest_api.project_apigateway.id
+#   resource_id             = lookup(aws_api_gateway_resource.parents, each.value.resource_name, null) != null ? aws_api_gateway_resource.parents[each.value.resource_name].id : aws_api_gateway_resource.children[each.value.resource_name].id
+#   http_method             = each.value.http_method
+#   integration_http_method = "POST"
+#   type                    = "AWS_PROXY"
+#   # uri                     = var.lambda_arns[each.value.lambda_name]
+#   uri = var.lambda_arns[each.value.methods[each.key].lambda]
+
+#   depends_on = [
+#     aws_api_gateway_method.methods
+#   ]
+# }
+
 resource "aws_api_gateway_integration" "integrations" {
   for_each = {
     for m in local.method_map :
@@ -70,7 +119,16 @@ resource "aws_api_gateway_integration" "integrations" {
   depends_on = [
     aws_api_gateway_method.methods
   ]
+}
 
+#$ [Step 6]: Cognito Authorisation
+resource "aws_api_gateway_authorizer" "cognito" {
+  name            = "CognitoAuthorizer"
+  rest_api_id     = aws_api_gateway_rest_api.project_apigateway.id
+  identity_source = "method.request.header.Authorization"
+  type            = "COGNITO_USER_POOLS"
+  provider_arns   = [var.cognito_arn]
+  # provider_arns   = [aws_cognito_user_pool.users.arn]
 }
 
 
