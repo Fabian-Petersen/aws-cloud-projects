@@ -40,6 +40,8 @@ variable "api_child_routes" {
 }
 
 
+variable "subdomain_name" {}
+
 
 #$ ============== Add the lambda functions to integrate with the api ===================
 variable "lambda_functions" {

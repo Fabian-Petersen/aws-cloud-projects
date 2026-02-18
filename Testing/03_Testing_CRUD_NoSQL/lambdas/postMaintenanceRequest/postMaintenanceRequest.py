@@ -55,6 +55,7 @@ def lambda_handler(event, context):
             return _response(400, {"message": "Missing request body"})
         
         data = json.loads(event["body"])
+        claims = event["requestContext"]["authorizer"]["jwt"]["claims"] # Get the user information from the authoriser token.
 
         # Validate required fields
         required_fields = ["location", "type", "priority", "equipment", "impact", "jobComments", "description", "area", "assetID"]
@@ -66,7 +67,10 @@ def lambda_handler(event, context):
         item_id = str(uuid.uuid4())
         created_at = datetime.now(timezone.utc).isoformat()
         status=str("Pending")
-        requested_by="" # data from the cognito user sign-in
+
+        # data from the cognito user sign-in
+        user_id = claims["sub"]
+        requested_by = f'{claims.get("name", "")} {claims.get("family_name", "")}'
         
         # Build the jobcardNumber
         location = data["location"]
@@ -106,6 +110,7 @@ def lambda_handler(event, context):
             "status": status, #$ created on backend
             "requested_by": requested_by, #$ created on backend
             "jobcardNumber" : jobcardNumber, #$ created on backend
+            "request_sub" : user_id, #$ created on backend
             "location": data["location"],
             "type": data["type"],
             "priority": data["priority"],

@@ -28,6 +28,36 @@ def decimal_serializer(obj):
 
     
 def lambda_handler(event, context):
+    #Grab the Origin header from the incoming request
+    headers = event.get("headers") or {}
+    origin = headers.get("origin") or headers.get("Origin") or ""
+
+    allowedOrigins = [
+    'https://www.crud-nosql.app.fabian-portfolio.net',
+    'https://crud-nosql.app.fabian-portfolio.net',
+    'http://localhost:5173'
+    ]
+
+    # Only allow known origins
+    allowedOrigin = origin if origin in allowedOrigins else ""
+    
+    HEADERS = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+    "Access-Control-Allow-Credentials": "true"
+        }
+
+    method = (
+        event.get("httpMethod")
+        or event.get("requestContext", {}).get("http", {}).get("method")
+    )
+
+    if method == "OPTIONS":
+        print("OPTIONS request...")
+        return _response(200, {"message": "Success"}, HEADERS)
+
     try:
         response = table.scan()
         items = response.get("Items", [])
@@ -35,16 +65,16 @@ def lambda_handler(event, context):
             if "createdAt" in item:
               item["createdAt"] = to_human_date(item["createdAt"])
 
-        return _response(200, {"assets": items})
+
+        return _response(200, response.get("Items", []), HEADERS)
 
     except Exception as exc:
         print("Error:", exc)
         return _response(500, {"message": "Internal server error"})
 
-
-def _response(status_code, body):
+def _response(status_code, body, headers):
     return {
         "statusCode": status_code,
-        "headers": HEADERS,
+        "headers": headers,
         "body": json.dumps(body, default=decimal_serializer),
     }

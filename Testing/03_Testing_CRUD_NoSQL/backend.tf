@@ -16,6 +16,6 @@ terraform {
     region       = "af-south-1"
     use_lockfile = true
     encrypt      = true
-    profile      = "fabian-user2"
+    profile      = "default"
   }
 }

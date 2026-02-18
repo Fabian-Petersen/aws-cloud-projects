@@ -102,6 +102,7 @@ module "apigateway" {
   env               = var.env
   project_name      = var.project_name
   cognito_arn       = module.cognito.cognito_userpool_arn
+  subdomain_name    = var.subdomain_name
 }
 
 #$ // =========================== API Method lambda functions ========================== //
@@ -178,4 +179,9 @@ module "ecr_pdf" {
   max_image_count = var.max_image_count
   scan_on_push    = var.scan_on_push
   project_name    = var.project_name
+}
+
+
+output "cognito_userpool_arn" {
+  value = module.cognito.cognito_userpool_arn
 }

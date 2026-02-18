@@ -15,8 +15,9 @@ provider "aws" {
 # $ ===================================== Free Tier Account ====================================== #
 
 provider "aws" {
-  alias   = "free_tier_account_global"
-  profile = "fabian-user2"
+  alias = "free_tier_account_global"
+  # profile = "fabian-user2"
+  profile = "default"
   region  = var.global_region
 
   # Manually create this role in the console to get role_arn
@@ -27,8 +28,9 @@ provider "aws" {
 }
 
 provider "aws" {
-  alias   = "free_tier_account"
-  profile = "fabian-user2"
+  alias = "free_tier_account"
+  # profile = "fabian-user2"
+  profile = "default"
   region  = var.region
 
   # Manually create this role in the console to get role_arn

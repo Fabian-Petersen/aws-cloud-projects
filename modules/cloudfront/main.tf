@@ -4,6 +4,7 @@
 # % terraform import module.cloudfront.aws_cloudfront_distribution.distribution E20QZ4G1Y7PO33
 # bucket url "http://uwc.app.fabian-portfolio.net.s3.af-south-1.amazonaws.com"
 # origin regional endpoint without OAC fabian-portfolio.net: www.fabian-portfolio.net.s3-website.af-south-1.amazonaws.com
+# Create invalidation "aws cloudfront create-invalidation --distribution-id <Distribution-ID> --paths "/*" "
 
 #% [INFO] : Local variables that can be used inside module
 locals {
@@ -17,6 +18,7 @@ data "aws_acm_certificate" "my_domain" {
   domain   = var.subdomain_name
   statuses = ["ISSUED"]
 }
+
 
 #$ [Step 2] : Create CloudFront Origin Access Control for s3 bucket access
 resource "aws_cloudfront_origin_access_control" "oac" {
@@ -90,6 +92,7 @@ resource "aws_cloudfront_distribution" "distribution" {
     }
   }
 
+
   dynamic "ordered_cache_behavior" {
     for_each = var.ordered_cache_items
     content {
@@ -107,8 +110,9 @@ resource "aws_cloudfront_distribution" "distribution" {
       viewer_protocol_policy = "redirect-to-https"
 
       #% Managed policies
-      cache_policy_id          = var.cloudfront_policies.caching_disabled # Recommended for API Gateway
-      origin_request_policy_id = var.cloudfront_policies.cors_s3_origin
+      cache_policy_id            = var.cloudfront_policies.caching_disabled
+      origin_request_policy_id   = var.cloudfront_policies.allViewerExceptHostHeader
+      response_headers_policy_id = var.cloudfront_policies.CORSwithPreflightSecurityHeadersPolicy
     }
   }
 

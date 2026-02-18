@@ -35,6 +35,7 @@ def lambda_handler(event, context):
             return _response(400, {"message": "Missing request body"})
 
         data = json.loads(event["body"])
+        claims = event["requestContext"]["authorizer"]["jwt"]["claims"] # Get the user information from the authoriser token.
 
         # Validate required fields
         required_fields = ["start_time", "end_time", "total_km", "work_order_number", "work_completed", "status", "root_cause", "findings","signature", "selectedRowId"]
@@ -45,6 +46,10 @@ def lambda_handler(event, context):
         # Create backend meta data
         item_id = str(uuid.uuid4())
         created_at = datetime.now(timezone.utc).isoformat()
+        
+        # data from the cognito user sign-in
+        user_id = claims["sub"]
+        actioned_by = f'{claims.get("name", "")} {claims.get("family_name", "")}'
 
         presigned_urls = []
 
@@ -78,7 +83,8 @@ def lambda_handler(event, context):
             "id": item_id, #$ created on backend
             "actionCreated": created_at, #$ created on backend
             "request_id": data["selectedRowId"], #$ created on backend
-
+            "action_sub": user_id,  #$ created on backend
+            "actioned_by": actioned_by, #$ created on backend
             "start_time": data["start_time"],
             "end_time": data["end_time"],
             "total_km": data["total_km"],

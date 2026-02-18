@@ -20,7 +20,11 @@ hosted_zone             = "app.fabian-portfolio.net" # hosted zone used as varia
 
 #$ cloudfront
 cloudfront_policies = {
-  caching_disabled  = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # Managed-CachingDisabled - Recommended for API Gateway
+  # These policies is required for Authorization with Cloudfront enabled
+  caching_disabled                       = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+  allViewerExceptHostHeader              = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
+  CORSwithPreflightSecurityHeadersPolicy = "eaab4381-ed33-4a86-88ca-d9558dc6cd63"
+
   caching_optimized = "658327ea-f89d-4fab-a63d-7e88639e58f6" # Managed-CachingOptimized - Recommended for S3
   cors_s3_origin    = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf" # All Viewer (forwards everything)
   cors_all_viewer   = "216adef6-5c7f-47e4-b989-5492eafa07d3" # Managed-CORS-S3Origin
@@ -30,12 +34,32 @@ price_class  = "PriceClass_200"
 s3_origin_id = "s3-origin"
 
 ordered_cache_items = [
+  # The order below will give the precedence in the distribution config
+  # $ Requests
+  {
+    path_pattern    = "/maintenance-requests-list" # exact match
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
+  {
+    path_pattern    = "/maintenance-requests-list/*" # matches trailing slash or subpaths
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
   {
     path_pattern    = "/maintenance-request"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
   {
     path_pattern    = "/maintenance-request/*"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
+
+  # $ Actions
+  {
+    path_pattern    = "/maintenance-actions-list"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
+  {
+    path_pattern    = "/maintenance-actions-list/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
   {
@@ -46,6 +70,14 @@ ordered_cache_items = [
     path_pattern    = "/maintenance-action/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
+  # $ Assets
+  {
+    path_pattern    = "/assets-list"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    }, {
+    path_pattern    = "/assets-list/*"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
   {
     path_pattern    = "/asset"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
@@ -53,53 +85,86 @@ ordered_cache_items = [
     path_pattern    = "/asset/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
+
 ]
 
 #$ api gateway variables
 api_name = "crud-nosql-app-apigateway"
 api_parent_routes = {
-  maintenance-request = {
+  # $ GET: All Items from the backend"
+  maintenance-requests-list = {
     methods = {
       GET = {
-        lambda        = "getMaintenanceRequest"
+        lambda        = "getMaintenanceRequestsList"
         authorization = "COGNITO_USER_POOLS"
       }
-      POST = {
-        lambda        = "postMaintenanceRequest"
-        authorization = "COGNITO_USER_POOLS"
+      OPTIONS = {
+        authorization = "NONE"
       }
     }
   }
-  maintenance-action = {
+  assets-list = {
     methods = {
       GET = {
-        lambda        = "getMaintenanceAction"
+        lambda        = "getAssetsList"
         authorization = "COGNITO_USER_POOLS"
       }
-      POST = {
-        lambda        = "postMaintenanceAction"
-        authorization = "COGNITO_USER_POOLS"
-      }
-    }
-  }
-  asset = {
-    methods = {
-      GET = {
-        lambda        = "getAsset"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      POST = {
-        lambda        = "postCreateAsset"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      PUT = {
-        lambda        = "updateAsset"
-        authorization = "COGNITO_USER_POOLS"
+      OPTIONS = {
+        authorization = "NONE"
       }
     }
   }
 
-  # 
+  maintenance-actions-list = {
+    methods = {
+      GET = {
+        lambda        = "getMaintenanceActionsList"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  # $ POST: Item created Routes"
+  maintenance-request = {
+    methods = {
+      POST = {
+        lambda        = "postMaintenanceRequest"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  asset = {
+    methods = {
+      POST = {
+        lambda        = "postCreateAsset"
+        authorization = "COGNITO_USER_POOLS"
+      }
+
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  maintenance-action = {
+    methods = {
+      POST = {
+        lambda        = "postMaintenanceAction"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
   maintenance-jobcard = {}
 }
 
@@ -118,6 +183,9 @@ api_child_routes = {
         lambda        = "deleteMaintenanceRequestById"
         authorization = "COGNITO_USER_POOLS"
       }
+      OPTIONS = {
+        authorization = "NONE"
+      }
     }
   }
   maintenance-action-id = {
@@ -135,6 +203,9 @@ api_child_routes = {
         lambda        = "deleteMaintenanceActionById"
         authorization = "COGNITO_USER_POOLS"
       }
+      OPTIONS = {
+        authorization = "NONE"
+      }
     }
   }
   asset-id = {
@@ -146,11 +217,17 @@ api_child_routes = {
         lambda        = "getAssetById"
         authorization = "COGNITO_USER_POOLS"
       }
+      PUT = {
+        lambda        = "updateAssetById"
+        authorization = "COGNITO_USER_POOLS"
+      }
       DELETE = {
-        lambda = "deleteAsset"
-      authorization = "COGNITO_USER_POOLS" }
-      # POST   = "postMaintenanceRequestById"
-      # PUT    = "updateMaintenanceRequestById"
+        lambda        = "deleteAssetById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
     }
   }
   maintenance-jobcard-id = {
@@ -169,21 +246,21 @@ api_child_routes = {
 extra_policies = {
   postMaintenanceRequest       = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   postMaintenanceAction        = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  getMaintenanceRequest        = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  getMaintenanceAction         = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  getMaintenanceRequestsList   = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  getMaintenanceActionById     = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   deleteMaintenanceRequestById = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   deleteMaintenanceActionById  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   postCreateAsset              = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  deleteAsset                  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  deleteAssetById              = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   getMaintenanceJobcardById    = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   // existing policy created for s3EventLambda to allow putObject on s3 bucket 
 }
 
 #$ lambda variables
 lambda_functions = {
-  getMaintenanceRequest = {
-    file_name           = "getMaintenanceRequest.py"
-    handler             = "getMaintenanceRequest.lambda_handler"
+  getMaintenanceRequestsList = {
+    file_name           = "getMaintenanceRequestsList.py"
+    handler             = "getMaintenanceRequestsList.lambda_handler"
     runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
@@ -213,9 +290,9 @@ lambda_functions = {
   }
 
   # $ // ================================= Maintenance Actions ======================= //
-  getMaintenanceAction = {
-    file_name           = "getMaintenanceAction.py"
-    handler             = "getMaintenanceRequest.lambda_handler"
+  getMaintenanceActionsList = {
+    file_name           = "getMaintenanceActionsList.py"
+    handler             = "getMaintenanceActionsList.lambda_handler"
     runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-maintenance-action-table"
@@ -246,9 +323,9 @@ lambda_functions = {
   }
   # $ // ================================= Assets ==================================== // 
 
-  getAsset = {
-    file_name           = "getAsset.py"
-    handler             = "getAsset.lambda_handler"
+  getAssetsList = {
+    file_name           = "getAssetsList.py"
+    handler             = "getAssetsList.lambda_handler"
     runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-assets-table"
@@ -267,16 +344,16 @@ lambda_functions = {
     action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-assets-table"
   }
-  deleteAsset = {
-    file_name           = "deleteAsset.py"
-    handler             = "deleteAsset.lambda_handler"
+  deleteAssetById = {
+    file_name           = "deleteAssetById.py"
+    handler             = "deleteAssetById.lambda_handler"
     runtime             = "python3.12"
     action              = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:GetItem"]
     dynamodb_table_name = "crud-nosql-app-assets-table"
   }
-  updateAsset = {
-    file_name           = "updateAsset.py"
-    handler             = "updateAsset.lambda_handler"
+  updateAssetById = {
+    file_name           = "updateAssetById.py"
+    handler             = "updateAssetById.lambda_handler"
     runtime             = "python3.12"
     action              = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-assets-table"
@@ -338,9 +415,10 @@ users = {
     group    = "admin"
     attributes = {
       email         = "fpetersen2tech@gmail.com"
-      email_verfied = "true"
+      email_verified = "true"
       family_name   = "petersen"
-      "name"        = "fabian"
+      name          = "fabian"
+      phone_number  = ""
     }
   }
   leon = {
@@ -350,7 +428,8 @@ users = {
       email          = "c2ktech100@gmail.com"
       email_verified = "true"
       family_name    = "matalay"
-      "name"         = "leon"
+      name           = "leon"
+      phone_number   = ""
     }
   }
   deon = {
@@ -360,21 +439,23 @@ users = {
       email          = "fpetersen2@gmail.com"
       email_verified = "true"
       family_name    = "williams"
-      "name"         = "deon"
+      name           = "deon"
+      phone_number   = ""
     }
   }
   chrystal = {
+
     username = "cristalfk@gmail.com"
     group    = "user"
     attributes = {
       email          = "cristalfk@gmail.com"
       email_verified = "true"
       family_name    = "petersen"
-      "name"         = "chrystal"
+      name         = "chrystal"
+      phone_number =""
     }
   }
 }
-
 user_groups = {
   "admin" = {
     precedence = 1

@@ -104,17 +104,10 @@ variable "api_name" {
   type        = string
 }
 
-# variable "api_routes" {
-#   type = map(object({
-#     methods = map(string) # method => lambda_function_name
-#     path    = optional(string)
-#   }))
-# }
-
 variable "api_parent_routes" {
   type = map(object({
     methods = optional(map(object({
-      lambda        = string
+      lambda        = optional(string)
       authorization = string
     })), {}) # default empty map
   }))
@@ -125,13 +118,12 @@ variable "api_child_routes" {
   type = map(object({
     parent_key = string
     path_part  = string
-    methods = map(object({
-      lambda        = string
+    methods = optional(map(object({
+      lambda        = optional(string)
       authorization = string
-    }))
-    }
-    )
-  )
+    })), {})
+  }))
+  default = {}
 }
 
 #$ ======================== lambda functions ====================
