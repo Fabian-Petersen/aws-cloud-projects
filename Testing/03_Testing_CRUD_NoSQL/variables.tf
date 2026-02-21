@@ -170,6 +170,10 @@ variable "dynamodb_tables" {
     enable_gsi    = bool
     enable_stream = bool
 
+    # Per-table primary key config
+    pk = optional(string) # default "id" if not set
+    sk = optional(string) # only set if you want a sort key
+
     gsi = optional(object({
       name       = string
       hash_key   = string
@@ -177,16 +181,6 @@ variable "dynamodb_tables" {
     }))
   }))
 }
-# Optional GSI map: key = table_name, value = GSI config.
-# Used in the DynamoDB module to create GSIs if needed where column in unique and query patterns require it.
-# variable "table_gsi_map" {
-#   type = map(object({
-#     name       = string
-#     hash_key   = string
-#     projection = string
-#   }))
-#   default = {}
-# }
 
 #$ ======================== Cognito ====================
 variable "prevent_user_existence" {

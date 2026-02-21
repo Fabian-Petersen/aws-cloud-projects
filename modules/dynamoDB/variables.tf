@@ -9,6 +9,10 @@ variable "dynamodb_tables" {
     enable_gsi    = bool
     enable_stream = bool
 
+    # Per-table primary key config
+    pk = optional(string) # default "id" if not set
+    sk = optional(string) # only set if you want a sort key
+
     gsi = optional(object({
       name       = string
       hash_key   = string
@@ -16,6 +20,7 @@ variable "dynamodb_tables" {
     }))
   }))
 }
+
 variable "env" {
   type = string
 }

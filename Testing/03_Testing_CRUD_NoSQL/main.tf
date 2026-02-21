@@ -132,8 +132,7 @@ module "s3_event_lambda" {
 module "dynamodb_tables" {
   source = "../../modules/dynamoDB"
   # dynamoDB_table_names = var.dynamoDB_table_names # % List variable - "constrained to only name"
-  env = var.env
-  # table_gsi_map        = var.table_gsi_map
+  env             = var.env
   dynamodb_tables = var.dynamodb_tables # % Map variable - added features can be passed in map
 }
 

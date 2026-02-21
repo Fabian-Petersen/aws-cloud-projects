@@ -268,6 +268,20 @@ api_child_routes = {
       }
     }
   }
+  comment-id = {
+    # path       = "/maintenance-request/{id}"
+    parent_key = "comment"
+    path_part  = "{id}"
+    methods = {
+      GET = {
+        lambda        = "getCommentById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
   maintenance-jobcard-id = {
     # path       = "/maintenance-request/{id}"
     parent_key = "maintenance-jobcard"
@@ -420,19 +434,29 @@ lambda_functions = {
     action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-comments-table"
   }
+  getCommentById = {
+    file_name           = "getCommentById.py"
+    handler             = "getCommentById.lambda_handler"
+    runtime             = "python3.12"
+    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-comments-table"
+  }
 }
 
 #$ dynamoDB variables
 dynamodb_tables = {
   crud-nosql-app-maintenance-request = {
+    pk            = "id"
     enable_gsi    = false
     enable_stream = true
   }
   crud-nosql-app-images = {
+    pk            = "id"
     enable_gsi    = false
     enable_stream = false
   }
   crud-nosql-app-assets = {
+    pk            = "id"
     enable_gsi    = true
     enable_stream = false
     gsi = {
@@ -442,14 +466,71 @@ dynamodb_tables = {
     }
   }
   crud-nosql-app-maintenance-action = {
+    pk            = "id"
     enable_gsi    = false
     enable_stream = false
   }
+
+  # request_id for comments by job and + createdAt for sorting
   crud-nosql-app-comments = {
+    pk            = "request_id"
+    sk            = "createdAt"
     enable_gsi    = false
     enable_stream = false
   }
 }
+
+# dynamodb_tables = {
+#   crud-nosql-app-maintenance-request = {
+#     pk            = "id" # Explicitly defined
+#     enable_gsi    = false
+#     enable_stream = true
+#   }
+#   crud-nosql-app-images = {
+#     pk            = "id"
+#     enable_gsi    = false
+#     enable_stream = false
+#   }
+#   crud-nosql-app-assets = {
+#     pk            = "id"
+#     enable_gsi    = true
+#     enable_stream = false
+#     gsi = {
+#       name       = "AssetIDIndex"
+#       hash_key   = "assetID"
+#       projection = "ALL"
+#     }
+#   }
+#   # ... and so on
+# }
+
+# dynamodb_tables = {
+#   crud-nosql-app-maintenance-request = {
+#     enable_gsi    = false
+#     enable_stream = true
+#   }
+#   crud-nosql-app-images = {
+#     enable_gsi    = false
+#     enable_stream = false
+#   }
+#   crud-nosql-app-assets = {
+#     enable_gsi    = true
+#     enable_stream = false
+#     gsi = {
+#       name       = "AssetIDIndex"
+#       hash_key   = "assetID"
+#       projection = "ALL"
+#     }
+#   }
+#   crud-nosql-app-maintenance-action = {
+#     enable_gsi    = false
+#     enable_stream = false
+#   }
+#   crud-nosql-app-comments = {
+#     enable_gsi    = false
+#     enable_stream = false
+#   }
+# }
 
 #$ cognito
 prevent_user_existence = "ENABLED" # use in production environment
