@@ -24,9 +24,10 @@ table_requests = dynamodb.Table(TABLE_NAME_REQUESTS)
 
 HEADERS = {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": "http://localhost:5173",
     "Access-Control-Allow-Methods": "POST,PUT,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Requested-With"
+    "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Requested-With",
+    "Access-Control-Allow-Credentials": "true"
 }
 
 def lambda_handler(event, context):
@@ -35,7 +36,7 @@ def lambda_handler(event, context):
             return _response(400, {"message": "Missing request body"})
 
         data = json.loads(event["body"])
-        claims = event["requestContext"]["authorizer"]["jwt"]["claims"] # Get the user information from the authoriser token.
+        claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {}) # Get the user information from the authoriser token.
 
         # Validate required fields
         required_fields = ["start_time", "end_time", "total_km", "work_order_number", "work_completed", "status", "root_cause", "findings","signature", "selectedRowId"]
@@ -48,7 +49,7 @@ def lambda_handler(event, context):
         created_at = datetime.now(timezone.utc).isoformat()
         
         # data from the cognito user sign-in
-        user_id = claims["sub"]
+        user_id = claims.get("sub")
         actioned_by = f'{claims.get("name", "")} {claims.get("family_name", "")}'
 
         presigned_urls = []
@@ -104,7 +105,7 @@ def lambda_handler(event, context):
             ExpressionAttributeNames={"#s": "status"},
             ExpressionAttributeValues={
                 ":status": data["status"],
-                ":action_id": item_id
+                ":action_id": item_id # $ id passed to the request table to link the 'request made & action taken'
             },
             ConditionExpression="attribute_exists(id)"
         )
