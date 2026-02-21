@@ -70,12 +70,12 @@ resource "aws_api_gateway_integration" "integrations" {
   resource_id             = lookup(aws_api_gateway_resource.parents, each.value.resource_name, null) != null ? aws_api_gateway_resource.parents[each.value.resource_name].id : aws_api_gateway_resource.children[each.value.resource_name].id
   http_method             = each.value.http_method
   integration_http_method = each.value.http_method == "OPTIONS" ? null : "POST"
-  type                    = each.value.http_method  == "OPTIONS" ? "MOCK" : "AWS_PROXY"
+  type                    = each.value.http_method == "OPTIONS" ? "MOCK" : "AWS_PROXY"
   uri                     = each.value.http_method == "OPTIONS" ? null : var.lambda_arns[each.value.lambda_name]
 
   request_templates = each.value.http_method == "OPTIONS" ? {
-    "application/json" = "{\"statusCode\": 200}" 
-    } : null
+    "application/json" = "{\"statusCode\": 200}"
+  } : null
 
   depends_on = [
     aws_api_gateway_method.methods
@@ -90,15 +90,16 @@ resource "aws_api_gateway_method_response" "options_response" {
     if m.http_method == "OPTIONS" # $ <-- Only executed on the OPTIONS methods defined here
   }
   rest_api_id = aws_api_gateway_rest_api.project_apigateway.id
-  resource_id = lookup(aws_api_gateway_resource.parents, each.value.resource_name, null) != null ?aws_api_gateway_resource.parents[each.value.resource_name].id : aws_api_gateway_resource.children[each.value.resource_name].id
+  resource_id = lookup(aws_api_gateway_resource.parents, each.value.resource_name, null) != null ? aws_api_gateway_resource.parents[each.value.resource_name].id : aws_api_gateway_resource.children[each.value.resource_name].id
   http_method = each.value.http_method
   status_code = "200"
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" = true
-    "method.response.header.Access-Control-Allow-Methods" = true
-    "method.response.header.Access-Control-Allow-Origin"  = true
+    "method.response.header.Access-Control-Allow-Headers"     = true
+    "method.response.header.Access-Control-Allow-Methods"     = true
+    "method.response.header.Access-Control-Allow-Origin"      = true
     "method.response.header.Access-Control-Allow-Credentials" = true # check if this will break the CORS
   }
+  depends_on = [aws_api_gateway_method.methods]
 }
 
 # $ Integration Response for OPTIONS
@@ -116,14 +117,15 @@ resource "aws_api_gateway_integration_response" "options_integration_response" {
 
   response_parameters = {
     # "method.response.header.Access-Control-Allow-Origin"  = "'https://${var.subdomain_name}'"
-    "method.response.header.Access-Control-Allow-Origin"  = "'http://localhost:5173'"
-    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-    "method.response.header.Access-Control-Allow-Methods" =  "'GET,POST,OPTIONS,PUT,DELETE'"
+    "method.response.header.Access-Control-Allow-Origin"      = "'http://localhost:5173'"
+    "method.response.header.Access-Control-Allow-Headers"     = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods"     = "'GET,POST,OPTIONS,PUT,DELETE'"
     "method.response.header.Access-Control-Allow-Credentials" = "'true'"
   }
   response_templates = {
     "application/json" = "{}"
   }
+  depends_on = [aws_api_gateway_integration.integrations]
 }
 
 
@@ -133,9 +135,9 @@ resource "aws_api_gateway_gateway_response" "default_4xx" {
   response_type = "DEFAULT_4XX"
 
   response_parameters = {
-    "gatewayresponse.header.Access-Control-Allow-Origin"  = "'https://${var.subdomain_name}'"
-    "gatewayresponse.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-    "gatewayresponse.header.Access-Control-Allow-Methods" = "'GET,POST,OPTIONS,PUT,DELETE'"
+    "gatewayresponse.header.Access-Control-Allow-Origin"      = "'https://${var.subdomain_name}'"
+    "gatewayresponse.header.Access-Control-Allow-Headers"     = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "gatewayresponse.header.Access-Control-Allow-Methods"     = "'GET,POST,OPTIONS,PUT,DELETE'"
     "gatewayresponse.header.Access-Control-Allow-Credentials" = "'true'"
   }
 }
@@ -145,9 +147,9 @@ resource "aws_api_gateway_gateway_response" "default_5xx" {
   response_type = "DEFAULT_5XX"
 
   response_parameters = {
-    "gatewayresponse.header.Access-Control-Allow-Origin"  = "'https://${var.subdomain_name}'"
-    "gatewayresponse.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-    "gatewayresponse.header.Access-Control-Allow-Methods" = "'GET,POST,OPTIONS,PUT,DELETE'"
+    "gatewayresponse.header.Access-Control-Allow-Origin"      = "'https://${var.subdomain_name}'"
+    "gatewayresponse.header.Access-Control-Allow-Headers"     = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "gatewayresponse.header.Access-Control-Allow-Methods"     = "'GET,POST,OPTIONS,PUT,DELETE'"
     "gatewayresponse.header.Access-Control-Allow-Credentials" = "'true'"
   }
 }
