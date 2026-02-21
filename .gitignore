@@ -11,6 +11,9 @@
 crash.log
 .terraform.lock.hcl
 
+terraform.tfvars
+*.auto.tfvars
+
 # ==========================
 # Python
 # ==========================
