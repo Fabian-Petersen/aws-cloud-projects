@@ -269,7 +269,7 @@ api_child_routes = {
     }
   }
   comment-id = {
-    # path       = "/maintenance-request/{id}"
+    # path       = "/comment/{id}"
     parent_key = "comment"
     path_part  = "{id}"
     methods = {
@@ -419,6 +419,7 @@ lambda_functions = {
     action              = ["dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-assets-table"
   }
+
   # $ // ================================= Comments ==================================== // 
   getCommentsList = {
     file_name           = "getCommentsList.py"

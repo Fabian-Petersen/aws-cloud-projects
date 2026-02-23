@@ -34,17 +34,27 @@ def lambda_handler(event, context):
 
         data = json.loads(event["body"])
 
-        # Check if the asset already exist with the same assetID and serialNumber
-        existing_item = table.scan(
-            FilterExpression="assetID = :assetID AND serialNumber = :serialNumber",
+        # Check if the assetID already
+        existing_assetID = table.scan(
+            FilterExpression="assetID = :assetID",
             ExpressionAttributeValues={
                 ":assetID": data.get("assetID"),
-                ":serialNumber": data.get("serialNumber")
             }
         ).get("Items", [])
         
-        if existing_item:
-            return _response(400, {"message": "Asset with this assetID or Serial Number already exists"})
+        if existing_assetID:
+            return _response(400, {"message": f"Asset with Asset ID {existing_assetID} already exists"})
+
+        # Check if the serial number already exist
+        existing_serialNumber = table.scan(
+            FilterExpression="serialNumber = :serialNumber",
+            ExpressionAttributeValues={
+                ":serialNumber": data.get("serialNUmber"),
+            }
+        ).get("Items", [])
+        
+        if existing_serialNumber:
+            return _response(400, {"message": f"Asset with Serial Number {existing_serialNumber} already exists"})
 
         # Validate required fields
         required_fields = ["business_unit","category","equipment", "location", "assetID", "serialNumber", "condition", "additional_notes"]
