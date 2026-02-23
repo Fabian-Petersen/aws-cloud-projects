@@ -1,0 +1,14 @@
+{
+  "resource": "/jobcards/{id}",
+  "path": "/jobcards/eab52c2b-cef6-4d89-89d8-8c7c6c0faefa.pdf",
+  "httpMethod": "GET",
+  "headers": {
+    "Accept": "application/json"
+  },
+  "pathParameters": {
+    "id": "eab52c2b-cef6-4d89-89d8-8c7c6c0faefa"
+  },
+  "queryStringParameters": null,
+  "body": null,
+  "isBase64Encoded": false
+}

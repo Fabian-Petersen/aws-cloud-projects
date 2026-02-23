@@ -101,6 +101,16 @@ ordered_cache_items = [
     path_pattern    = "/comment/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
+  # $ Jobcards
+
+  {
+    path_pattern    = "/maintenance-jobcard"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
+  {
+    path_pattern    = "/maintenance-jobcard/*"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
 
 ]
 
@@ -291,9 +301,14 @@ api_child_routes = {
         lambda        = "getMaintenanceJobcardById"
         authorization = "COGNITO_USER_POOLS"
       }
+      OPTIONS = {
+        authorization = "NONE"
+      }
     }
   }
 }
+
+// $ Must create a dynamic resource to add actions
 
 extra_policies = {
   postMaintenanceRequest       = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
@@ -416,8 +431,8 @@ lambda_functions = {
     file_name           = "getMaintenanceJobcardById.py"
     handler             = "getMaintenanceJobcardById.lambda_handler"
     runtime             = "python3.12"
-    action              = ["dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-assets-table"
+    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
   }
 
   # $ // ================================= Comments ==================================== // 

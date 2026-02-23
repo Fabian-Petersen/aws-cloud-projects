@@ -35,7 +35,7 @@ def lambda_handler(event, context):
 
         data = json.loads(event["body"])
 
-        # Check if the assetID already
+        # $ Check if the assetID already
         existing_assetID = table.scan(
             FilterExpression="assetID = :assetID",
             ExpressionAttributeValues={
@@ -46,7 +46,7 @@ def lambda_handler(event, context):
         if existing_assetID:
             return _response(400, {"message": f"Asset with Asset ID {existing_assetID[0].get('assetID')} already exists"})
 
-        # Check if the serial number already exist
+        # $ Check if the serial number already exist
         existing_serialNumber = table.scan(
             FilterExpression="serialNumber = :serialNumber",
             ExpressionAttributeValues={
