@@ -227,7 +227,7 @@ api_child_routes = {
     }
   }
   maintenance-action-id = {
-    # path       = "/maintenance-request/{id}"
+    # path       = "/maintenance-action/{id}"
     parent_key = "maintenance-action"
     path_part  = "{id}"
     methods = {
@@ -247,7 +247,7 @@ api_child_routes = {
     }
   }
   asset-id = {
-    # path       = "/maintenance-request/{id}"
+    # path       = "/asset/{id}"
     parent_key = "asset"
     path_part  = "{id}"
     methods = {
@@ -283,7 +283,7 @@ api_child_routes = {
     }
   }
   maintenance-jobcard-id = {
-    # path       = "/maintenance-request/{id}"
+    # path       = "/maintenance-jobcard/{id}"
     parent_key = "maintenance-jobcard"
     path_part  = "{id}"
     methods = {

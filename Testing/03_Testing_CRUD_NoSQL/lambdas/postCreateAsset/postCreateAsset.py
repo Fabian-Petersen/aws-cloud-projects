@@ -22,9 +22,10 @@ table = dynamodb.Table(TABLE_NAME)
 
 HEADERS = {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": "http://localhost:5173",
     "Access-Control-Allow-Methods": "POST,PUT,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Requested-With"
+    "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Requested-With",
+    "Access-Control-Allow-Credentials": "true"
 }
 
 def lambda_handler(event, context):
@@ -43,21 +44,21 @@ def lambda_handler(event, context):
         ).get("Items", [])
         
         if existing_assetID:
-            return _response(400, {"message": f"Asset with Asset ID {existing_assetID} already exists"})
+            return _response(400, {"message": f"Asset with Asset ID {existing_assetID[0].get('assetID')} already exists"})
 
         # Check if the serial number already exist
         existing_serialNumber = table.scan(
             FilterExpression="serialNumber = :serialNumber",
             ExpressionAttributeValues={
-                ":serialNumber": data.get("serialNUmber"),
+                ":serialNumber": data.get("serialNumber"),
             }
         ).get("Items", [])
         
         if existing_serialNumber:
-            return _response(400, {"message": f"Asset with Serial Number {existing_serialNumber} already exists"})
+            return _response(400, {"message": f"Asset with Serial Number {existing_serialNumber[0].get('serialNumber')} already exists"})
 
         # Validate required fields
-        required_fields = ["business_unit","category","equipment", "location", "assetID", "serialNumber", "condition", "additional_notes"]
+        required_fields = ["business_unit","area","equipment", "location", "assetID", "serialNumber", "condition", "additional_notes"]
         for field in required_fields:
             if field not in data:
                 return _response(400, {"message": f"Missing field: {field}"})
@@ -99,7 +100,7 @@ def lambda_handler(event, context):
             "id": item_id,
             "createdAt": created_at,
             "business_unit": data["business_unit"],
-            "category": data["category"],
+            "area": data["area"],
             "equipment": data["equipment"],
             "condition": data["condition"],
             "location": data["location"],
@@ -111,7 +112,7 @@ def lambda_handler(event, context):
 
         table.put_item(
             Item=item, 
-            ConditionExpression="attribute_not_exists(assetID)" # Ensure that no item with the same assetID already exists
+            ConditionExpression="attribute_not_exists(assetID) AND attribute_not_exists(serialNumber)" # Ensure that no item with the same assetID already exists
             )
 
         return _response(200, {"form": item, "presigned_urls": presigned_urls})
