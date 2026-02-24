@@ -64,7 +64,7 @@ def lambda_handler(event, context):
                 "ResponseContentType": "application/pdf",
                 "ResponseContentDisposition": f'attachment; filename="{jobcardNumber}.pdf"',
             },
-            ExpiresIn=300,  # 5 minutes
+            ExpiresIn=600,  # 10 minutes
         )
 
         return _response(200, {"jobcard_url": url})
