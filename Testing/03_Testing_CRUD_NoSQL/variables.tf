@@ -126,6 +126,17 @@ variable "api_child_routes" {
   default = {}
 }
 
+#$ ======================== IAM Policies ====================
+
+variable "lambda_policies" {
+  description = "Reusable IAM policy statements for Lambda functions"
+  type = map(object({
+    actions   = list(string)
+    resources = list(string)
+    effect    = optional(string, "Allow")
+  }))
+}
+
 #$ ======================== lambda functions ====================
 variable "lambda_functions" {
   description = "lambda functions required for backend"
@@ -135,8 +146,25 @@ variable "lambda_functions" {
     runtime             = string
     action              = list(string)
     dynamodb_table_name = string
+    permissions         = set(string)
   }))
 }
+
+# $ Variable for iam functions 
+# variable "lambda_functions" {
+#   type = map(object({
+#     file_name   = string
+#     handler     = string
+#     runtime     = string
+#     permissions = optional(set(string), [])
+#     statements = optional(list(object({
+#       effect    = optional(string, "Allow")
+#       actions   = list(string)
+#       resources = list(string)
+#     })), [])
+#   }))
+# }
+
 variable "extra_policies" {
   description = "Optional map of extra IAM policy ARNs per Lambda"
   type        = map(string)

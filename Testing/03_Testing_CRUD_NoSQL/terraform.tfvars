@@ -323,6 +323,83 @@ extra_policies = {
   // existing policy created for s3EventLambda to allow putObject on s3 bucket 
 }
 
+# lambda_policies = {
+#   dynamodb_write = {
+#     actions = [
+#       "dynamodb:PutItem",
+#       "dynamodb:UpdateItem"
+#     ]
+#     resources = ["arn:aws:dynamodb:eu-west-1:123456789012:table/jobs"]
+#   }
+
+#   s3_write_assets = {
+#     actions   = ["s3:PutObject"]
+#     resources = ["arn:aws:s3:::my-bucket/assets/*"]
+#   }
+
+#   s3_list_bucket = {
+#     actions   = ["s3:ListBucket"]
+#     resources = ["arn:aws:s3:::my-bucket"]
+#   }
+# }
+
+lambda_policies = {
+  dynamodb_read = {
+    actions = [
+      "dynamodb:GetItem",
+      "dynamodb:Query",
+      "dynamodb:Scan",
+      "dynamodb:BatchGetItem"
+    ]
+    resources = [
+      "arn:aws:dynamodb:af-south-1:157489943321:table/maintenance",
+      "arn:aws:dynamodb:af-south-1:157489943321:table/jobs"
+
+    ] // add table ARN here
+  }
+
+  dynamodb_write = {
+    actions = ["dynamodb:PutItem", "dynamodb:UpdateItem"]
+    resources = [
+      "arn:aws:dynamodb:af-south-1:157489943321:table/jobs", "arn:aws:dynamodb:af-south-1:157489943321:table/assets"
+    ]
+  }
+
+  dynamodb_delete = {
+    actions = ["dynamodb:DeleteItem"]
+    resources = [
+      "arn:aws:dynamodb:af-south-1:157489943321:table/jobs",
+      "arn:aws:dynamodb:af-south-1:157489943321:table/assets"
+    ]
+  }
+
+  s3_read = {
+    actions = ["s3:GetObject"]
+    resources = [
+      "arn:aws:s3:::my-bucket/maintenance/*",
+      "arn:aws:s3:::my-bucket/assets/*"
+    ]
+  }
+
+  s3_write = {
+    actions = ["s3:PutObject"]
+    resources = [
+      "arn:aws:s3:::my-bucket/maintenance/*",
+      "arn:aws:s3:::my-bucket/assets/*"
+    ]
+  }
+
+  s3_delete_assets = {
+    actions   = ["s3:DeleteObject"]
+    resources = ["arn:aws:s3:::my-bucket/assets/*"]
+  }
+
+  s3_list_bucket = {
+    actions   = ["s3:ListBucket"]
+    resources = ["arn:aws:s3:::my-bucket"]
+  }
+}
+
 #$ lambda variables
 lambda_functions = {
   getMaintenanceRequestsList = {
@@ -330,7 +407,9 @@ lambda_functions = {
     handler             = "getMaintenanceRequestsList.lambda_handler"
     runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+    permissions         = ["dynamodb_read"]
     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+
   }
   postMaintenanceRequest = {
     file_name           = "postMaintenanceRequest.py"
