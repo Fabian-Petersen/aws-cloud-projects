@@ -8,7 +8,7 @@ data "aws_iam_policy_document" "lambda" {
     resources = ["*"]
   }
 
-  # Feature bundles
+  # $ Feature bundles
   dynamic "statement" {
     for_each = {
       for k, v in var.lambda_policies :
@@ -23,7 +23,7 @@ data "aws_iam_policy_document" "lambda" {
     }
   }
 
-  # Per-lambda custom statements (optional)
+  # $ Per-lambda custom statements (optional)
   dynamic "statement" {
     for_each = try(each.value.statements, [])
     content {

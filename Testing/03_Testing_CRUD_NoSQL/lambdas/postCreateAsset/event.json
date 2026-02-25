@@ -1,5 +1,5 @@
 {
-  "body": "{\"assetID\":\"VF-001\",\"condition\":\"new\",\"location\":\"Maitland\",\"serialNumber\":\"21606\",\"manufacturer\":\"Handtmann\",\"model\":\"VF608\",\"equipment\":\"Sausage Filler\",\"additional_notes\":\"Mincer MX300 not working\",\"images\":[{\"filename\":\"image1.jpg\",\"content_type\":\"image/jpeg\"},{\"filename\":\"image2.png\",\"content_type\":\"image/png\"}]}",
+  "body": "{\"id\":\"ef53251a-fb87-47c8-83e1-cc2b05d47d1f\",\"createdAt\":\"2026-02-25T09:00:00+00:00\",\"business_unit\":\"retail\",\"area\":\"processing\",\"equipment\":\"Band Saw\",\"condition\":\"Operational\",\"location\":\"Bellville\",\"assetID\":\"Test-0001\",\"serialNumber\":\"Test-0001\",\"additional_notes\":\"Initial asset capture\",\"images\":[{\"filename\":\"photo1.jpg\",\"content_type\":\"image/jpeg\"},{\"filename\":\"photo2.png\",\"content_type\":\"image/png\"}]}",
   "isBase64Encoded": false,
   "headers": {
     "Content-Type": "application/json"

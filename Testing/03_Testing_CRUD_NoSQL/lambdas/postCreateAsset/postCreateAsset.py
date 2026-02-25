@@ -94,6 +94,7 @@ def lambda_handler(event, context):
                 raise Exception("Presigned URL generated with incorrect S3 endpoint")
 
             presigned_urls.append({"filename": filename, "url": url, "key": key, "content_type": content_type})
+            print("presigned_urls", presigned_urls)
 
         # Save metadata to DynamoDB
         item = {
@@ -110,16 +111,17 @@ def lambda_handler(event, context):
             "images": []  # Will be updated by S3-triggered Lambda later
         }
 
+        print('item_id:', item_id)
         table.put_item(
             Item=item, 
             ConditionExpression="attribute_not_exists(assetID) AND attribute_not_exists(serialNumber)" # Ensure that no item with the same assetID already exists
             )
-
-        return _response(200, {"form": item, "presigned_urls": presigned_urls})
+        
+        return _response(200, {presigned_urls})
 
     except Exception as exc:
         print("Error:", exc)
-        return _response(500, {"message": "Internal server error"})
+        return _response(500, {"message": "Error from lambda, internal server error"})
 
 
 def _response(status_code, body):
@@ -128,3 +130,12 @@ def _response(status_code, body):
         "headers": HEADERS,
         "body": json.dumps(body),
     }
+
+
+# Run the lambda locally with the events.json file to test
+if __name__ == "__main__":
+    with open("event.json") as f:
+        event = json.load(f)
+
+    result = lambda_handler(event, None)
+    print(json.dumps(result, indent=2))
