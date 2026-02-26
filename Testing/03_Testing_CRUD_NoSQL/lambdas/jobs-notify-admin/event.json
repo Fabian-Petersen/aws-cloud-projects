@@ -1,33 +1,39 @@
 {
   "Records": [
     {
-      "eventID": "1",
+      "eventID": "1abd6f93af16e5eedcb39e1d12742935",
       "eventName": "INSERT",
       "eventVersion": "1.1",
       "eventSource": "aws:dynamodb",
       "awsRegion": "af-south-1",
       "dynamodb": {
-        "ApproximateCreationDateTime": 1739950000,
+        "ApproximateCreationDateTime": 1772134024.0,
+        "Keys": { "id": { "S": "5538fb27-6a46-4635-8383-279f1690195a" } },
         "NewImage": {
-          "id": { "S": "4ad9f723-cf2f-4815-a031-e95bd9f302fd" },
-          "request_id": { "S": "REQ-202602-0001" },
-          "createdAt": { "S": "2026-02-26T08:15:32.112Z" },
-          "createdBy": { "S": "john.doe" },
-          "business_unit": { "S": "Retail" },
-          "location": { "S": "Distribution Centre" },
-          "area": { "S": "Processing" },
-          "equipment": { "S": "Conveyor Belt" },
-          "assetID": { "S": "MT-0001" },
-          "serialNumber": { "S": "1528f7665364736" },
-          "condition": { "S": "Breakdown" },
+          "area": { "S": "Processing Room" },
+          "images": { "L": [] },
+          "request_sub": { "S": "614cb208-f061-7028-5eb8-b504e1357d64" },
+          "user_email": { "S": "cristalfk@gmail.com" },
+          "jobCreated": { "S": "2026-02-26T19:27:04.330423+00:00" },
+          "user_name": { "S": "chrystal" },
+          "impact": { "S": "production" },
+          "description": { "S": "testing email notification from frontend" },
+          "equipment": { "S": "Mixer" },
           "priority": { "S": "High" },
-          "requested_action": {
-            "S": "Motor not running, possible electrical fault"
-          },
-          "additional_notes": { "S": "Production halted" },
-          "status": { "S": "Open" }
-        }
-      }
+          "type": { "S": "corrective" },
+          "jobcardNumber": { "S": "Job-VTR-202602-0016" },
+          "requested_by": { "S": "chrystal petersen" },
+          "assetID": { "S": "RT-0006" },
+          "location": { "S": "Maitland" },
+          "id": { "S": "5538fb27-6a46-4635-8383-279f1690195a" },
+          "jobComments": { "S": "Testing from the frontend" },
+          "status": { "S": "Pending" }
+        },
+        "SequenceNumber": "289506700000470414769451374",
+        "SizeBytes": 486,
+        "StreamViewType": "NEW_AND_OLD_IMAGES"
+      },
+      "eventSourceARN": "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-maintenance-request-table/stream/2026-02-14T10:06:12.889"
     }
   ]
 }

@@ -209,12 +209,17 @@ module "ses" {
   project_name        = var.project_name
   from_email          = var.from_email
   dynamodb_stream_arn = module.dynamodb_tables.dynamodb_stream_arns["crud-nosql-app-maintenance-request"]
-
+  # % ================ ssm parameters =================
   ssm_param_names = module.ssm.ssm_param_names
   ssm_param_arns  = module.ssm.ssm_param_arns # map(string) convert to list(string) inside module
 
+  # % ================ lambda function ================
   ses_function_name  = var.ses_function_name
   ses_filename       = var.ses_filename
   ses_lambda_handler = var.ses_lambda_handler
   runtime            = var.runtime
+
+  #% ================= hosted zone ===================== 
+  zone_id        = data.aws_route53_zone.hosted_zone.zone_id
+  subdomain_name = var.subdomain_name
 }

@@ -73,7 +73,9 @@ def lambda_handler(event, context):
 
         #$ data from the cognito user sign-in
         user_id = claims.get("sub")
+        user_name = claims.get("name","")
         requested_by = f'{claims.get("name", "")} {claims.get("family_name", "")}'
+        user_email = claims.get("email")
         
         #$ Build the jobcardNumber
         location = data["location"]
@@ -111,9 +113,11 @@ def lambda_handler(event, context):
             "id": item_id, #$ created on backend
             "jobCreated": created_at, #$ created on backend
             "status": status, #$ created on backend
-            "requested_by": requested_by, #$ created on backend
+            "requested_by": requested_by, #$ created on backend for Jobcard
             "jobcardNumber" : jobcardNumber, #$ created on backend
             "request_sub" : user_id, #$ created on backend
+            "user_email" : user_email, #$ created on backend
+            "user_name" : user_name, #$ created on backend
             "location": data["location"],
             "type": data["type"],
             "priority": data["priority"],
@@ -142,9 +146,9 @@ def _response(status_code, body):
     }
 
 # Run the lambda locally with the events.json file to test
-# if __name__ == "__main__":
-#     with open("event.json") as f:
-#         event = json.load(f)
+if __name__ == "__main__":
+    with open("event.json") as f:
+        event = json.load(f)
 
-#     result = lambda_handler(event, None)
-#     print(json.dumps(result, indent=2))
+    result = lambda_handler(event, None)
+    print(json.dumps(result, indent=2))

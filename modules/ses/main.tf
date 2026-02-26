@@ -5,10 +5,6 @@ data "archive_file" "lambda_zip" {
   output_path = "${path.root}/lambdas/jobs-notify-admin/${replace("jobs-notify-admin.py", ".py", ".zip")}"
 }
 
-resource "aws_ses_email_identity" "from" {
-  email = var.from_email
-}
-
 #$ [Step 1] : Create an IAM role for the Lambda function to execute operations on dynamoDB
 resource "aws_iam_role" "lambda_exec_role" {
   name = "${var.ses_function_name}_exec_role"
@@ -67,11 +63,12 @@ resource "aws_iam_role_policy_attachment" "attach" {
 
 #$ [Step 3] : Create the lambda function
 resource "aws_lambda_function" "lambda_function" {
-  function_name = var.ses_function_name
-  role          = aws_iam_role.lambda_exec_role.arn
-  filename      = var.ses_filename
-  handler       = var.ses_lambda_handler
-  runtime       = var.runtime
+  function_name    = var.ses_function_name
+  role             = aws_iam_role.lambda_exec_role.arn
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+  filename         = data.archive_file.lambda_zip.output_path # match the filename and the hash source to avoid weird behavior
+  handler          = var.ses_lambda_handler
+  runtime          = var.runtime
 
   environment {
     variables = {
@@ -88,4 +85,46 @@ resource "aws_lambda_event_source_mapping" "dynamoDB_to_lambda" {
   starting_position = "LATEST"
   batch_size        = 5
   enabled           = true
+}
+
+# $ =========================== Email Verification & Records ============================== //
+
+resource "aws_ses_email_identity" "from" {
+  email = var.from_email
+}
+
+resource "aws_sesv2_email_identity" "domain" {
+  email_identity = var.subdomain_name
+}
+
+# % DKIM records (3 CNAMEs) - SES provides these tokens after identity creation
+resource "aws_route53_record" "ses_dkim" {
+  count = 3
+
+  zone_id = var.zone_id
+  name    = "${aws_sesv2_email_identity.domain.dkim_signing_attributes[0].tokens[count.index]}._domainkey.${var.subdomain_name}"
+  type    = "CNAME"
+  ttl     = 300
+  records = [
+    "${aws_sesv2_email_identity.domain.dkim_signing_attributes[0].tokens[count.index]}.dkim.amazonses.com"
+  ]
+}
+
+resource "aws_route53_record" "ses_spf" {
+  zone_id = var.zone_id
+  name    = var.subdomain_name
+  type    = "TXT"
+  ttl     = 300
+
+  records = ["v=spf1 include:amazonses.com -all"]
+}
+
+resource "aws_route53_record" "dmarc" {
+  zone_id = var.zone_id
+  name    = "_dmarc.${var.subdomain_name}"
+  type    = "TXT"
+  ttl     = 300
+
+  # Start with p=none while testing, then move to quarantine/reject later
+  records = ["v=DMARC1; p=none; rua=mailto:dmarc@${var.subdomain_name}; fo=1"]
 }

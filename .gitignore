@@ -3,7 +3,12 @@
 # ==========================
 # Ignore all .terraform directories anywhere
 **/.terraform/
+**/*.zip # ignore the zip files from committinf every time
+# any normal zip anywhere
+**/*.zip
 
+# ALSO ignore a file literally named ".zip" anywhere
+**/.zip
 # Ignore state and plan files
 *.tfstate
 *.tfstate.*

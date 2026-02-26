@@ -668,9 +668,9 @@ scan_on_push         = true
 
 # $ SSM Parameters
 parameters = {
-  from_email = { value = "no-reply@yourdomain.com" }
+  from_email = { value = "no-reply@crud-nosql.app.fabian-portfolio.net" }
   admin_email = {
-    value       = "admin@yourdomain.com"
+    value       = "admin@crud-nosql.app.fabian-portfolio.net"
     description = "Maintenance request notifications"
   }
 }
@@ -681,6 +681,6 @@ ssm_prefix = "/crud-nosql/jobs/ses"
 ses_function_name  = "jobs-notify-admin"
 ses_filename       = "jobs-notify-admin.py"
 ses_lambda_handler = "jobs-notify-admin.lambda_handler"
-from_email         = "no-reply@yourdomain.com"
+from_email         = "no-reply@crud-nosql.app.fabian-portfolio.net"
 # dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
 

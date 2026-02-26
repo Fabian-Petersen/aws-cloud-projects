@@ -28,3 +28,12 @@ variable "project_name" {}
 variable "env" {}
 
 variable "ssm_param_names" {}
+
+# Verify email with domain
+variable "subdomain_name" {
+  type = string
+}
+
+variable "zone_id" {
+  type = string
+}
