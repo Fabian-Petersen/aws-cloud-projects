@@ -403,11 +403,11 @@ lambda_policies = {
 #$ lambda variables
 lambda_functions = {
   getMaintenanceRequestsList = {
-    file_name           = "getMaintenanceRequestsList.py"
-    handler             = "getMaintenanceRequestsList.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    permissions         = ["dynamodb_read"]
+    file_name = "getMaintenanceRequestsList.py"
+    handler   = "getMaintenanceRequestsList.lambda_handler"
+    runtime   = "python3.12"
+    action    = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+    # permissions         = ["dynamodb_read"]
     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
 
   }
@@ -534,8 +534,11 @@ lambda_functions = {
     handler             = "getCommentById.lambda_handler"
     runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-comments-table"
+    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
   }
+
+  # $ // ================================= SES lambdas ==================================== // 
+  # $ This lambda handles the email to be send to admin
 }
 
 #$ dynamoDB variables
@@ -574,58 +577,6 @@ dynamodb_tables = {
     enable_stream = false
   }
 }
-
-# dynamodb_tables = {
-#   crud-nosql-app-maintenance-request = {
-#     pk            = "id" # Explicitly defined
-#     enable_gsi    = false
-#     enable_stream = true
-#   }
-#   crud-nosql-app-images = {
-#     pk            = "id"
-#     enable_gsi    = false
-#     enable_stream = false
-#   }
-#   crud-nosql-app-assets = {
-#     pk            = "id"
-#     enable_gsi    = true
-#     enable_stream = false
-#     gsi = {
-#       name       = "AssetIDIndex"
-#       hash_key   = "assetID"
-#       projection = "ALL"
-#     }
-#   }
-#   # ... and so on
-# }
-
-# dynamodb_tables = {
-#   crud-nosql-app-maintenance-request = {
-#     enable_gsi    = false
-#     enable_stream = true
-#   }
-#   crud-nosql-app-images = {
-#     enable_gsi    = false
-#     enable_stream = false
-#   }
-#   crud-nosql-app-assets = {
-#     enable_gsi    = true
-#     enable_stream = false
-#     gsi = {
-#       name       = "AssetIDIndex"
-#       hash_key   = "assetID"
-#       projection = "ALL"
-#     }
-#   }
-#   crud-nosql-app-maintenance-action = {
-#     enable_gsi    = false
-#     enable_stream = false
-#   }
-#   crud-nosql-app-comments = {
-#     enable_gsi    = false
-#     enable_stream = false
-#   }
-# }
 
 #$ cognito
 prevent_user_existence = "ENABLED" # use in production environment
@@ -713,3 +664,23 @@ repository_name      = "crud-nosql-pdf-generator"
 max_image_count      = 5
 image_tag_mutability = "MUTABLE"
 scan_on_push         = true
+
+
+# $ SSM Parameters
+parameters = {
+  from_email = { value = "no-reply@yourdomain.com" }
+  admin_email = {
+    value       = "admin@yourdomain.com"
+    description = "Maintenance request notifications"
+  }
+}
+
+ssm_prefix = "/crud-nosql/jobs/ses"
+
+# $ SES
+ses_function_name  = "jobs-notify-admin"
+ses_filename       = "jobs-notify-admin.py"
+ses_lambda_handler = "jobs-notify-admin.lambda_handler"
+from_email         = "no-reply@yourdomain.com"
+# dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+

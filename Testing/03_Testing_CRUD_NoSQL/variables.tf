@@ -146,7 +146,7 @@ variable "lambda_functions" {
     runtime             = string
     action              = list(string)
     dynamodb_table_name = string
-    permissions         = set(string)
+    # permissions         = set(string) # Add permission with dynamic IAM Roles
   }))
 }
 
@@ -294,3 +294,27 @@ variable "image_tag_mutability" {
 variable "scan_on_push" {
   type = bool
 }
+
+# $ SSM Paraments
+variable "parameters" {
+  description = "SSM parameters to create."
+  type = map(object({
+    value       = string
+    type        = optional(string, "String")   # String | SecureString | StringList
+    tier        = optional(string, "Standard") # Standard | Advanced
+    description = optional(string, null)
+  }))
+}
+
+variable "ssm_prefix" {
+  type        = string
+  description = "SSM path prefix."
+}
+
+# $ SES Variables
+variable "from_email" { type = string } # for SES identity
+
+#$ lambda packaging
+variable "ses_function_name" { type = string }
+variable "ses_lambda_handler" { type = string }
+variable "ses_filename" {}

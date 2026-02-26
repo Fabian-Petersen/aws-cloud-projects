@@ -153,7 +153,7 @@ module "cognito" {
 }
 
 #$ // ========================= pdf Lambda ======================== //
-# This lambda is triggered by dynamodb streams to build the pdf jobcard once the status of the job changed. The created jobcard is stored in s3 /jobcards/*
+# % This lambda is triggered by dynamodb streams to build the pdf jobcard once the status of the job changed. The created jobcard is stored in s3 /jobcards/*
 data "aws_s3_bucket" "pdf_bucket" {
   bucket = "crud-nosql-app-images"
 }
@@ -182,4 +182,39 @@ module "ecr_pdf" {
 
 output "cognito_userpool_arn" {
   value = module.cognito.cognito_userpool_arn
+}
+
+#$ // ========================= SSM Params ======================== //
+# % This module create paramters for the SES module
+module "ssm" {
+  source       = "../../modules/ssm"
+  env          = var.env
+  project_name = var.project_name
+  parameters   = var.parameters
+  ssm_prefix   = var.ssm_prefix
+}
+
+#$ // ========================= SES Lambda ======================== //
+# This module create the lambda, SSM Parameters and SES to send an email once a user create a maintenance request and email the request details to the admin for approval.
+# module "ses_notify" {
+#   source = "../../modules/ses"
+# ssm_param_arns = module.ssm.ssm_param_arns
+# lambda_function_name = var.lambda_function_name
+# dynamodb_stream_arn = module.dynamodb_tables.dynamodb_stream_arns["crud-nosql-app-maintenance-request"]
+# }
+
+module "ses" {
+  source              = "../../modules/ses"
+  env                 = var.env
+  project_name        = var.project_name
+  from_email          = var.from_email
+  dynamodb_stream_arn = module.dynamodb_tables.dynamodb_stream_arns["crud-nosql-app-maintenance-request"]
+
+  ssm_param_names = module.ssm.ssm_param_names
+  ssm_param_arns  = module.ssm.ssm_param_arns # map(string) convert to list(string) inside module
+
+  ses_function_name  = var.ses_function_name
+  ses_filename       = var.ses_filename
+  ses_lambda_handler = var.ses_lambda_handler
+  runtime            = var.runtime
 }

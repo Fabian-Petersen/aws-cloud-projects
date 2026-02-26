@@ -1,0 +1,33 @@
+{
+  "Records": [
+    {
+      "eventID": "1",
+      "eventName": "INSERT",
+      "eventVersion": "1.1",
+      "eventSource": "aws:dynamodb",
+      "awsRegion": "af-south-1",
+      "dynamodb": {
+        "ApproximateCreationDateTime": 1739950000,
+        "NewImage": {
+          "id": { "S": "4ad9f723-cf2f-4815-a031-e95bd9f302fd" },
+          "request_id": { "S": "REQ-202602-0001" },
+          "createdAt": { "S": "2026-02-26T08:15:32.112Z" },
+          "createdBy": { "S": "john.doe" },
+          "business_unit": { "S": "Retail" },
+          "location": { "S": "Distribution Centre" },
+          "area": { "S": "Processing" },
+          "equipment": { "S": "Conveyor Belt" },
+          "assetID": { "S": "MT-0001" },
+          "serialNumber": { "S": "1528f7665364736" },
+          "condition": { "S": "Breakdown" },
+          "priority": { "S": "High" },
+          "requested_action": {
+            "S": "Motor not running, possible electrical fault"
+          },
+          "additional_notes": { "S": "Production halted" },
+          "status": { "S": "Open" }
+        }
+      }
+    }
+  ]
+}

@@ -30,7 +30,6 @@ output "lambda_function_names" {
     for k, lambda in aws_lambda_function.lambda_function : k => lambda.function_name
   }
 }
-
 # This should retun a map example {{
 #   "getBookings_lambda" = "arn:aws:lambda:region:acct:function:getBookings_lambda"
 #   "postBooking_lambda" = "arn:aws:lambda:region:acct:function:postBooking_lambda"
