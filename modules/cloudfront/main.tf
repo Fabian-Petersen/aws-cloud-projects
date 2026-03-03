@@ -116,6 +116,22 @@ resource "aws_cloudfront_distribution" "distribution" {
     }
   }
 
+  # SPA routing: serve index.html for deep links
+  # This is used for deeplinks when email reponses tries to route to the link provided
+  custom_error_response {
+    error_code            = 403
+    response_code         = 200
+    response_page_path    = "/index.html"
+    error_caching_min_ttl = 0
+  }
+
+  custom_error_response {
+    error_code            = 404
+    response_code         = 200
+    response_page_path    = "/index.html"
+    error_caching_min_ttl = 0
+  }
+
   restrictions {
     geo_restriction {
       locations        = []

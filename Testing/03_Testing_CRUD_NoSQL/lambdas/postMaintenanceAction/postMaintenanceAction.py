@@ -52,6 +52,12 @@ def lambda_handler(event, context):
         user_id = claims.get("sub")
         actioned_by = f'{claims.get("name", "")} {claims.get("family_name", "")}'
 
+        # Check if the request was completed, if yes add a completed date.
+        if data.get("status", "") == "Complete":
+            completed_at = datetime.now(timezone.utc).isoformat()
+        else:
+            completed_at = ""
+
         presigned_urls = []
 
         # Check if frontend included any files
@@ -86,6 +92,7 @@ def lambda_handler(event, context):
             "request_id": data["selectedRowId"], #$ created on backend
             "action_sub": user_id,  #$ created on backend
             "actioned_by": actioned_by, #$ created on backend
+            "completed_at": completed_at, #$ created on backend
             "start_time": data["start_time"],
             "end_time": data["end_time"],
             "total_km": data["total_km"],
@@ -127,9 +134,9 @@ def _response(status_code, body):
     }
 
 # Run the lambda locally with the events.json file to test
-# if __name__ == "__main__":
-#     with open("event.json") as f:
-#         event = json.load(f)
+if __name__ == "__main__":
+    with open("event.json") as f:
+        event = json.load(f)
 
-#     result = lambda_handler(event, None)
-#     print(json.dumps(result, indent=2))
+    result = lambda_handler(event, None)
+    print(json.dumps(result, indent=2))
