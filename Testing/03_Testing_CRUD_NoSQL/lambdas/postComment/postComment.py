@@ -16,7 +16,6 @@ s3 = boto3.client(
 )
 
 TABLE_NAME = "crud-nosql-app-comments-table"
-
 table = dynamodb.Table(TABLE_NAME)
 
 HEADERS = {
@@ -28,6 +27,7 @@ HEADERS = {
 }
 
 def lambda_handler(event, context):
+    print('event:',event)
     try:
         if not event.get("body"):
             return _response(400, {"message": "Missing request body"})
@@ -36,7 +36,7 @@ def lambda_handler(event, context):
         claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {})
 
         # Validate required fields
-        required_fields = ["message", "request_id"]
+        required_fields = ["comment", "request_id"]
         for field in required_fields:
             if field not in data:
                 return _response(400, {"message": f"Missing field: {field}"})
@@ -60,6 +60,8 @@ def lambda_handler(event, context):
         }
 
         table.put_item(Item=item)
+
+        return _response(200, {"message": "comment sucessfully created"})
 
     except Exception as exc:
         print("Error:", exc)

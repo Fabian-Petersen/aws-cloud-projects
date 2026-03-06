@@ -1,0 +1,20 @@
+{
+  "claims": {
+    "sub": "a11c22d8-8001-7090-d4ce-4889da07dd0b",
+    "cognito:groups": "admin",
+    "email_verified": "true",
+    "iss": "https://cognito-idp.af-south-1.amazonaws.com/af-south-1_J651TfCsW",
+    "cognito:username": "a11c22d8-8001-7090-d4ce-4889da07dd0b",
+    "origin_jti": "f638d883-a459-4279-8b7b-598947b373e0",
+    "aud": "tavdi4dfs1ufjvpumdb48d3r7",
+    "event_id": "97ddbcf1-b4de-4c26-a0b3-f7e2f2e5324d",
+    "token_use": "id",
+    "auth_time": "1772619206",
+    "name": "deon",
+    "exp": "Wed Mar 04 11:13:26 UTC 2026",
+    "iat": "Wed Mar 04 10:13:26 UTC 2026",
+    "family_name": "williams",
+    "jti": "3169c44f-0796-4f13-994e-ddd9ed868613",
+    "email": "fpetersen2@gmail.com"
+  }
+}

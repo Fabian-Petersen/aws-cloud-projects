@@ -49,3 +49,11 @@ def _response(status_code, body):
         "headers": HEADERS,
         "body": json.dumps(body),
     }
+
+    # Run the lambda locally with the events.json file to test
+if __name__ == "__main__":
+    with open("event.json") as f:
+        event = json.load(f)
+
+    result = lambda_handler(event, None)
+    print(json.dumps(result, indent=2))

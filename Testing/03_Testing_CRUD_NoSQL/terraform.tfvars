@@ -534,7 +534,7 @@ lambda_functions = {
     handler             = "getCommentById.lambda_handler"
     runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+    dynamodb_table_name = "crud-nosql-app-comments-table"
   }
 
   # $ // ================================= SES lambdas ==================================== // 
@@ -587,7 +587,7 @@ test_user_name         = "fabian"
 users = {
   fabian = {
     username = "fpetersen2tech@gmail.com"
-    group    = "admin"
+    group    = "manager"
     attributes = {
       email          = "fpetersen2tech@gmail.com"
       email_verified = "true"
@@ -607,7 +607,7 @@ users = {
   }
   deon = {
     username = "fpetersen2@gmail.com"
-    group    = "manager"
+    group    = "admin"
     attributes = {
       email          = "fpetersen2@gmail.com"
       email_verified = "true"
@@ -634,11 +634,14 @@ user_groups = {
   "user" = {
     precedence = 2
   }
-  "mmanager" = {
+  "manager" = {
     precedence = 3
   }
   "technician" = {
     precedence = 4
+  }
+  "contractor" = {
+    precedence = 5
   }
 }
 

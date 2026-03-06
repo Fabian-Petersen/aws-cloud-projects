@@ -237,6 +237,14 @@ variable "users" {
     group      = string
     attributes = map(string) # extra attributes like surname, given_name, etc.
   }))
+  validation {
+    condition = alltrue([
+      for user in values(var.users) :
+      contains(keys(var.user_groups), user.group)
+    ])
+    error_message = "Every user's group must exist in var.user_groups."
+  }
+
 }
 
 variable "user_groups" {

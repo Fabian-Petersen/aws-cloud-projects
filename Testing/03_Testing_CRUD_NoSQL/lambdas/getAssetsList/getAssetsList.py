@@ -65,7 +65,6 @@ def lambda_handler(event, context):
             if "createdAt" in item:
               item["createdAt"] = to_human_date(item["createdAt"])
 
-
         return _response(200, response.get("Items", []), HEADERS)
 
     except Exception as exc:

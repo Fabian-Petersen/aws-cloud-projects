@@ -81,10 +81,25 @@ resource "aws_cognito_user" "users" {
   # }
 }
 
-# $  Add the users to their groups
-# resource "aws_cognito_user_group" "groups" {
-#   for_each     = var.users
-#   user_pool_id = aws_cognito_user_pool.pool.id
-#   username     = aws_cognito_user[each.key].username
-#   group_name   = aws_cognito_user_group.groups[each.value.group]
-#   }
+# $  Create User Groups
+resource "aws_cognito_user_group" "groups" {
+  for_each = var.user_groups
+
+  name         = each.key
+  user_pool_id = aws_cognito_user_pool.pool.id
+  precedence   = each.value.precedence
+}
+
+# $  Add each user to their groups
+resource "aws_cognito_user_in_group" "memberships" {
+  for_each = var.users
+
+  user_pool_id = aws_cognito_user_pool.pool.id
+  username     = aws_cognito_user.users[each.key].username
+  group_name   = each.value.group
+
+  depends_on = [
+    aws_cognito_user.users,
+    aws_cognito_user_group.groups
+  ]
+}

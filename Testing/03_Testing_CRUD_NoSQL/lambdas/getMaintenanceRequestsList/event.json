@@ -1,8 +1,1 @@
-{
-  "description": "Testing the Get Request Lambda",
-  "store": "Maitland",
-  "type": "Corrective",
-  "priority": "Critical",
-  "equipment": "Mixer",
-  "impact": "Production"
-}
+{}

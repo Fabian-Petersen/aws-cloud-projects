@@ -1,19 +1,59 @@
 import json
 import boto3
-from boto3.dynamodb.conditions import Key
+# from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Attr
 from datetime import datetime
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table("crud-nosql-app-maintenance-request-table")
 
-# Change the date format in the database to readible for humans
+# $ Change the date format in the database to readible for humans
 def to_human_date(iso_string: str) -> str:
     dt = datetime.fromisoformat(iso_string)
     return dt.strftime("%d %b %Y, %H:%M")
+
+# $ Get the User Groups from the claims
+def parse_groups(groups_claim):
+    if not groups_claim:
+        return []
+
+    if isinstance(groups_claim, list):
+        return [str(group).lower() for group in groups_claim]
+
+    if isinstance(groups_claim, str):
+        # Handle JSON array string or simple comma-separated/string values
+        try:
+            parsed = json.loads(groups_claim)
+            if isinstance(parsed, list):
+                return [str(group).lower() for group in parsed]
+        except Exception:
+            pass
+
+        return [group.strip().lower() for group in groups_claim.split(",")]
+
+    return []
+
+
+def scan_all(**kwargs):
+    items = []
+    response = table.scan(**kwargs)
+    items.extend(response.get("Items", []))
+
+    while "LastEvaluatedKey" in response:
+        response = table.scan(
+            ExclusiveStartKey=response["LastEvaluatedKey"],
+            **kwargs
+        )
+        items.extend(response.get("Items", []))
+
+    return items
     
 def lambda_handler(event, context):
+    claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {})
+    groups = parse_groups(claims.get("cognito:groups"))
+    user_sub = claims.get("sub")
 
-    #Grab the Origin header from the incoming request
+    # $ Grab the Origin header from the incoming request
     headers = event.get("headers") or {}
     origin = headers.get("origin") or headers.get("Origin") or ""
 
@@ -23,7 +63,7 @@ def lambda_handler(event, context):
     'http://localhost:5173'
     ]
 
-    # Only allow known origins
+    # $ Only allow known origins
     allowedOrigin = origin if origin in allowedOrigins else ""
     
     HEADERS = {
@@ -42,15 +82,25 @@ def lambda_handler(event, context):
     if method == "OPTIONS":
         print("OPTIONS request...")
         return _response(200, {"message": "Success"}, HEADERS)
-
+        
+    # $ Admin can see all completed actions and technician what he submitted 
     try:
-        response = table.scan()  # TEMP: returns all items
-        items = response.get("Items", [])
-        for item in items:
-            if "createdAt" in item:
-                item["createdAt"] = to_human_date(item["createdAt"])
+        is_admin_or_technician = any(group in ["admin", "technician"] for group in groups)
 
-        return _response(200, response.get("Items", []), HEADERS)
+        if is_admin_or_technician:
+            items = scan_all()
+        else:
+            if not user_sub:
+                return _response(403, {"message": "User sub not found in token"}, HEADERS)
+
+            # Assumes each item stores the creator's sub in a field called "request_sub"
+            items = scan_all(FilterExpression=Attr("request_sub").eq(user_sub))
+
+        for item in items:
+            if "jobCreated" in item:
+                item["jobCreated"] = to_human_date(item["jobCreated"])
+
+        return _response(200, items, HEADERS)
 
     except Exception as exc:
         print("Error:", exc)

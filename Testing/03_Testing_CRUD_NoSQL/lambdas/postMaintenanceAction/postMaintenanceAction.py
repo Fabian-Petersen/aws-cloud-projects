@@ -30,6 +30,31 @@ HEADERS = {
     "Access-Control-Allow-Credentials": "true"
 }
 
+# $ Function to get the location and requested_by from requests table
+def get_request_fields_by_id(table, request_id: str) -> dict:
+    """
+    Get only 'location', 'jobcardNumber', 'requested_by' for a single item by its id (PK).
+
+    Assumes the table primary key attribute name is 'id'.
+    Returns {} if not found.
+    """
+    res = table.get_item(
+        Key={"id": request_id},
+        ProjectionExpression="#loc, #rb, #job",
+        ExpressionAttributeNames={
+            "#loc": "location",
+            "#rb": "requested_by",
+            "#job": "jobcardNumber",
+        },
+    )
+
+    item = res.get("Item") or {}
+    return {
+        "location": item.get("location"),
+        "requested_by": item.get("requested_by"),
+        "jobcardNumber": item.get("jobcardNumber"),
+    } if item else {}
+
 def lambda_handler(event, context):
     try:
         if not event.get("body"):
@@ -44,9 +69,17 @@ def lambda_handler(event, context):
             if field not in data:
                 return _response(400, {"message": f"Missing field: {field}"})
 
-        # Create backend meta data
+        # $ Create backend meta data
         item_id = str(uuid.uuid4())
         created_at = datetime.now(timezone.utc).isoformat()
+
+        # $ Get the location and requested_by from the requests-table
+        request_id = data['selectedRowId']
+        print('request_id:', request_id)
+        request_info = get_request_fields_by_id(table_requests, request_id)
+        location = request_info.get("location", "")
+        requested_by = request_info.get("requested_by", "")
+        jobcardNumber = request_info.get("jobcardNumber", "")
         
         # data from the cognito user sign-in
         user_id = claims.get("sub")
@@ -93,6 +126,9 @@ def lambda_handler(event, context):
             "action_sub": user_id,  #$ created on backend
             "actioned_by": actioned_by, #$ created on backend
             "completed_at": completed_at, #$ created on backend
+            "requested_by": requested_by,#% from requests-table
+            "location": location,#% from requests-table
+            "jobcardNumber": jobcardNumber, #% from requests-table
             "start_time": data["start_time"],
             "end_time": data["end_time"],
             "total_km": data["total_km"],
