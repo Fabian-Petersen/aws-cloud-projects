@@ -111,7 +111,39 @@ ordered_cache_items = [
     path_pattern    = "/maintenance-jobcard/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
+  # $ Reject Maintenance Request
+  {
+    path_pattern    = "/job-request-rejected"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    }, {
+    path_pattern    = "/job-request-rejected/*"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
+  # $ Approve Maintenance Request
+  {
+    path_pattern    = "/job-request-approved"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    }, {
+    path_pattern    = "/job-request-approved/*"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
 
+  # $ Technicians
+  {
+    path_pattern    = "/technician-list"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    }, {
+    path_pattern    = "/technician-list/*"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
+  # $ Contractors
+  {
+    path_pattern    = "/contractor-list"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    }, {
+    path_pattern    = "/contractor-list/*"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
 ]
 
 #$ api gateway variables
@@ -156,6 +188,30 @@ api_parent_routes = {
     methods = {
       GET = {
         lambda        = "getCommentsList"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  technician-list = {
+    methods = {
+      GET = {
+        lambda        = "getTechnicianList"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  contractor-list = {
+    methods = {
+      GET = {
+        lambda        = "getContractorList"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -212,6 +268,41 @@ api_parent_routes = {
       }
     }
   }
+
+  job-request-rejected = {
+    methods = {
+      POST = {
+        lambda        = "postRejectRequest"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+  job-request-approved = {
+    methods = {
+      POST = {
+        lambda        = "postApproveRequest"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+  contractor = {
+    methods = {
+      POST = {
+        lambda        = "postCreateContractor"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
 
   maintenance-jobcard = {}
 }
@@ -299,6 +390,28 @@ api_child_routes = {
     methods = {
       GET = {
         lambda        = "getMaintenanceJobcardById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+  contractor-id = {
+    # path       = "/asset/{id}"
+    parent_key = "contractor"
+    path_part  = "{id}"
+    methods = {
+      GET = {
+        lambda        = "getContractorById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      PUT = {
+        lambda        = "updateContractorById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      DELETE = {
+        lambda        = "deleteContractorById"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -537,8 +650,94 @@ lambda_functions = {
     dynamodb_table_name = "crud-nosql-app-comments-table"
   }
 
+  # $ // ============================= Approve/Reject Requests ================================ // 
+  postRejectRequest = {
+    file_name           = "postRejectRequest.py"
+    handler             = "postRejectRequest.lambda_handler"
+    runtime             = "python3.12"
+    action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+  }
+
+  postApproveRequest = {
+    file_name           = "postApproveRequest.py"
+    handler             = "postApproveRequest.lambda_handler"
+    runtime             = "python3.12"
+    action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+  }
+
+  # $ // ================================= Contractor ==================================== // 
+
+  getContractorList = {
+    file_name           = "getContractorList.py"
+    handler             = "getContractorList.lambda_handler"
+    runtime             = "python3.12"
+    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-contractor-table"
+  }
+  getContractorById = {
+    file_name           = "getContractorById.py"
+    handler             = "getContractorById.lambda_handler"
+    runtime             = "python3.12"
+    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-contractor-table"
+  }
+  postCreateContractor = {
+    file_name           = "postCreateContractor.py"
+    handler             = "postCreateContractor.lambda_handler"
+    runtime             = "python3.12"
+    action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-contractor-table"
+  }
+  deleteContractorById = {
+    file_name           = "deleteContractorById.py"
+    handler             = "deleteContractorById.lambda_handler"
+    runtime             = "python3.12"
+    action              = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:GetItem"]
+    dynamodb_table_name = "crud-nosql-app-contractor-table"
+  }
+  updateContractorById = {
+    file_name           = "updateContractorById.py"
+    handler             = "updateContractorById.lambda_handler"
+    runtime             = "python3.12"
+    action              = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-contractor-table"
+  }
+
   # $ // ================================= SES lambdas ==================================== // 
   # $ This lambda handles the email to be send to admin
+}
+
+lambda_functions_custom = {
+  # $ // ================================= Technicians ==================================== // 
+  # Get the technicians list from Cognito which is not a route with dynamoDB Policy 
+  getTechnicianList = {
+    file_name = "getTechnicianList.py"
+    handler   = "getTechnicianList.lambda_handler"
+    runtime   = "python3.12"
+    timeout   = 15
+
+    environment_variables = {
+      USER_POOL_ID = "af-south-1_J651TfCsW"
+      GROUP_NAME   = "technician"
+    }
+
+    inline_policy_statements = [
+      {
+        sid = "ListTechniciansFromCognitoGroup"
+        actions = [
+          "cognito-idp:ListUsersInGroup"
+        ]
+        resources = [
+          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
+        ]
+      }
+    ]
+
+
+    managed_policy_arns = []
+  }
 }
 
 #$ dynamoDB variables
@@ -573,6 +772,12 @@ dynamodb_tables = {
   crud-nosql-app-comments = {
     pk            = "request_id"
     sk            = "createdAt"
+    enable_gsi    = false
+    enable_stream = false
+  }
+  crud-nosql-app-contractor = {
+    pk            = "id"
+    sk            = "name"
     enable_gsi    = false
     enable_stream = false
   }

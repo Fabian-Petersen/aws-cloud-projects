@@ -93,16 +93,17 @@ module "cloudfront" {
 #$  // =================================== api gateway =================================== //
 
 module "apigateway" {
-  source            = "../../modules/apigateway"
-  api_parent_routes = var.api_parent_routes
-  api_child_routes  = var.api_child_routes
-  lambda_arns       = module.lambda.lambda_invoke_arns
-  lambda_functions  = var.lambda_functions
-  api_name          = var.api_name
-  env               = var.env
-  project_name      = var.project_name
-  cognito_arn       = module.cognito.cognito_userpool_arn
-  subdomain_name    = var.subdomain_name
+  source                  = "../../modules/apigateway"
+  api_parent_routes       = var.api_parent_routes
+  api_child_routes        = var.api_child_routes
+  lambda_arns             = merge(module.lambda.lambda_invoke_arns, module.cognito_lambda.custom_lambda_invoke_arns)
+  lambda_functions        = var.lambda_functions
+  lambda_functions_custom = var.lambda_functions_custom
+  api_name                = var.api_name
+  env                     = var.env
+  project_name            = var.project_name
+  cognito_arn             = module.cognito.cognito_userpool_arn
+  subdomain_name          = var.subdomain_name
 }
 
 #$ // =========================== API Method lambda functions ========================== //
@@ -126,6 +127,12 @@ module "s3_event_lambda" {
   handler     = var.handler
 
   depends_on = [module.dynamodb_tables]
+}
+
+#$ // =========================== Technicians Lamnda with Cognito ============================== //
+module "cognito_lambda" {
+  source                  = "../../modules/lambda/modules/lambda"
+  lambda_functions_custom = var.lambda_functions_custom
 }
 
 #$  // =================================== dynamoDB =================================== //

@@ -1,0 +1,12 @@
+{
+  "body": "{\"selectedRowId\":\"570d4261-62a5-451b-9e3e-f88c2992bb7d\",\"message\":\"Request rejected because the description is incomplete.\",\"status\":\"Rejected\"}",
+  "requestContext": {
+    "authorizer": {
+      "claims": {
+        "sub": "a11c22d8-8001-7090-d4ce-4889da07dd0b",
+        "name": "deon",
+        "family_name": "williams"
+      }
+    }
+  }
+}
