@@ -1,16 +1,17 @@
 import json
 import boto3
 from datetime import datetime
+from boto3.dynamodb.conditions import Key
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table("crud-nosql-app-maintenance-request-table")
 
 HEADERS = {
-"Content-Type": "application/json",
-"Access-Control-Allow-Origin": "http://localhost:5173",
-"Access-Control-Allow-Methods": "GET,OPTIONS",
-"Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
-"Access-Control-Allow-Credentials": "true"
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "http://localhost:5173",
+    "Access-Control-Allow-Methods": "GET,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+    "Access-Control-Allow-Credentials": "true"
 }
 
 def to_human_date(iso_string: str) -> str:
@@ -18,30 +19,34 @@ def to_human_date(iso_string: str) -> str:
     return dt.strftime("%d %b %Y, %H:%M")
 
 def lambda_handler(event, context):
+    # print("Event:", event)
     try:
-        # Path param from API Gateway
         request_id = event.get("pathParameters", {}).get("id")
+        print(f"Request ID: {request_id}")
 
         if not request_id:
             return _response(400, {"message": "Missing request id"})
 
-        # Use GetItem (fast, exact match)
-        result = table.get_item(
-            Key={"id": request_id}
+        result = table.query(
+            KeyConditionExpression=Key("id").eq(request_id)
         )
 
-        item = result.get("Item")
+        # print("result:", result)
 
-        if not item:
+        items = result.get("Items", [])
+
+        if not items:
             return _response(404, {"message": "Maintenance request not found"})
 
-        if "createdAt" in item:
-            item["createdAt"] = to_human_date(item["createdAt"])
+        item = items[0]
+
+        if "jobCreated" in item:
+            item["jobCreated"] = to_human_date(item["jobCreated"])
 
         return _response(200, item)
 
     except Exception as exc:
-        print("Error:", exc)
+        print("Error:", str(exc))
         return _response(500, {"message": "Internal server error"})
 
 def _response(status_code, body):

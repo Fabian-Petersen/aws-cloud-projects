@@ -33,9 +33,14 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = each.value.action
-        Resource = "arn:aws:dynamodb:${var.region}:${var.profile_2_account_id}:table/${each.value.dynamodb_table_name}"
+        Effect = "Allow"
+        Action = each.value.action
+        Resource = each.value.allow_index_access ? [
+          "arn:aws:dynamodb:${var.region}:${var.profile_2_account_id}:table/${each.value.dynamodb_table_name}",
+          "arn:aws:dynamodb:${var.region}:${var.profile_2_account_id}:table/${each.value.dynamodb_table_name}/index/*"
+          ] : [
+          "arn:aws:dynamodb:${var.region}:${var.profile_2_account_id}:table/${each.value.dynamodb_table_name}"
+        ]
       }
     ]
   })

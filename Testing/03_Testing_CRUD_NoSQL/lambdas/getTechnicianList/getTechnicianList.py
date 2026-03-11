@@ -5,9 +5,8 @@ from botocore.exceptions import ClientError
 
 cognito = boto3.client("cognito-idp")
 
-USER_POOL_ID = os.environ["COGNITO_USER_POOL_ID"]
+USER_POOL_ID = os.environ["USER_POOL_ID"]
 GROUP_NAME = "technician"
-
 
 def get_attr(user, name):
     for attr in user.get("Attributes", []):

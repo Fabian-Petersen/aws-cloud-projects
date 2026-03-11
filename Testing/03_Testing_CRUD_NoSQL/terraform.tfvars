@@ -38,11 +38,27 @@ ordered_cache_items = [
   # The order below will give the precedence in the distribution config
   # $ Requests
   {
-    path_pattern    = "/maintenance-requests-list" # exact match
+    path_pattern    = "/jobs-list" # exact match
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
   {
-    path_pattern    = "/maintenance-requests-list/*" # matches trailing slash or subpaths
+    path_pattern    = "/jobs-list/*" # matches trailing slash or subpaths
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
+  {
+    path_pattern    = "/jobs-list-pending" # exact match
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
+  {
+    path_pattern    = "/jobs-list-pending/*" # matches trailing slash or subpaths
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
+  {
+    path_pattern    = "/jobs-list-approved" # exact match
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
+  {
+    path_pattern    = "/jobs-list-approved/*" # matches trailing slash or subpaths
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
   {
@@ -150,10 +166,10 @@ ordered_cache_items = [
 api_name = "crud-nosql-app-apigateway"
 api_parent_routes = {
   # $ GET: All Items from the backend"
-  maintenance-requests-list = {
+  jobs-list = {
     methods = {
       GET = {
-        lambda        = "getMaintenanceRequestsList"
+        lambda        = "getJobsList"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -161,6 +177,31 @@ api_parent_routes = {
       }
     }
   }
+
+  jobs-list-pending = {
+    methods = {
+      GET = {
+        lambda        = "getJobsPendingList"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  jobs-list-approved = {
+    methods = {
+      GET = {
+        lambda        = "getJobsApprovedList"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
   assets-list = {
     methods = {
       GET = {
@@ -303,7 +344,6 @@ api_parent_routes = {
     }
   }
 
-
   maintenance-jobcard = {}
 }
 
@@ -315,7 +355,7 @@ api_child_routes = {
     path_part  = "{id}"
     methods = {
       GET = {
-        lambda        = "getMaintenanceRequestById"
+        lambda        = "getJobsPendingById"
         authorization = "COGNITO_USER_POOLS"
       }
       DELETE = {
@@ -327,6 +367,21 @@ api_child_routes = {
       }
     }
   }
+
+  jobs-list-pending-id = {
+    parent_key = "jobs-list-pending"
+    path_part  = "{id}"
+    methods = {
+      GET = {
+        lambda        = "getJobsPendingById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
   maintenance-action-id = {
     # path       = "/maintenance-action/{id}"
     parent_key = "maintenance-action"
@@ -426,7 +481,7 @@ api_child_routes = {
 extra_policies = {
   postMaintenanceRequest       = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   postMaintenanceAction        = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  getMaintenanceRequestById    = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  getJobsPendingById           = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   getMaintenanceActionById     = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   deleteMaintenanceRequestById = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   deleteMaintenanceActionById  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
@@ -515,13 +570,31 @@ lambda_policies = {
 
 #$ lambda variables
 lambda_functions = {
-  getMaintenanceRequestsList = {
-    file_name = "getMaintenanceRequestsList.py"
-    handler   = "getMaintenanceRequestsList.lambda_handler"
-    runtime   = "python3.12"
-    action    = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    # permissions         = ["dynamodb_read"]
+  getJobsList = {
+    file_name           = "getJobsList.py"
+    handler             = "getJobsList.lambda_handler"
+    runtime             = "python3.12"
+    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+    allow_index_access  = false
+
+  }
+  getJobsApprovedList = {
+    file_name           = "getJobsApprovedList.py"
+    handler             = "getJobsApprovedList.lambda_handler"
+    runtime             = "python3.12"
+    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+    allow_index_access  = true
+
+  }
+  getJobsPendingList = {
+    file_name           = "getJobsPendingList.py"
+    handler             = "getJobsPendingList.lambda_handler"
+    runtime             = "python3.12"
+    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+    allow_index_access  = true
 
   }
   postMaintenanceRequest = {
@@ -530,13 +603,15 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+    allow_index_access  = false
   }
-  getMaintenanceRequestById = {
-    file_name           = "getMaintenanceRequestById.py"
-    handler             = "getMaintenanceRequestById.lambda_handler"
+  getJobsPendingById = {
+    file_name           = "getJobsPendingById.py"
+    handler             = "getJobsPendingById.lambda_handler"
     runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+    allow_index_access  = false
   }
 
   # $ Lambda's handling Delete Methods
@@ -546,6 +621,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:DeleteItem", "dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+    allow_index_access  = false
   }
 
   # $ // ================================= Maintenance Actions ======================= //
@@ -555,6 +631,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-maintenance-action-table"
+    allow_index_access  = false
   }
 
   getMaintenanceActionById = {
@@ -563,6 +640,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-maintenance-action-table"
+    allow_index_access  = false
   }
 
   postMaintenanceAction = {
@@ -571,6 +649,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-maintenance-action-table"
+    allow_index_access  = false
   }
 
   deleteMaintenanceActionById = {
@@ -579,6 +658,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:DeleteItem", "dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-maintenance-action-table"
+    allow_index_access  = false
   }
   # $ // ================================= Assets ==================================== // 
 
@@ -588,6 +668,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-assets-table"
+    allow_index_access  = false
   }
   getAssetById = {
     file_name           = "getAssetById.py"
@@ -595,6 +676,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-assets-table"
+    allow_index_access  = false
   }
   postCreateAsset = {
     file_name           = "postCreateAsset.py"
@@ -602,6 +684,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-assets-table"
+    allow_index_access  = false
   }
   deleteAssetById = {
     file_name           = "deleteAssetById.py"
@@ -609,6 +692,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:GetItem"]
     dynamodb_table_name = "crud-nosql-app-assets-table"
+    allow_index_access  = false
   }
   updateAssetById = {
     file_name           = "updateAssetById.py"
@@ -616,6 +700,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-assets-table"
+    allow_index_access  = false
   }
 
   # $ // ================================= Jobcard lambdas ==================================== // 
@@ -625,6 +710,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+    allow_index_access  = false
   }
 
   # $ // ================================= Comments ==================================== // 
@@ -634,6 +720,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-comments-table"
+    allow_index_access  = false
   }
   postComment = {
     file_name           = "postComment.py"
@@ -641,6 +728,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-comments-table"
+    allow_index_access  = false
   }
   getCommentById = {
     file_name           = "getCommentById.py"
@@ -648,6 +736,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-comments-table"
+    allow_index_access  = false
   }
 
   # $ // ============================= Approve/Reject Requests ================================ // 
@@ -657,6 +746,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+    allow_index_access  = false
   }
 
   postApproveRequest = {
@@ -665,6 +755,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+    allow_index_access  = false
   }
 
   # $ // ================================= Contractor ==================================== // 
@@ -675,6 +766,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-contractor-table"
+    allow_index_access  = false
   }
   getContractorById = {
     file_name           = "getContractorById.py"
@@ -682,6 +774,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-contractor-table"
+    allow_index_access  = false
   }
   postCreateContractor = {
     file_name           = "postCreateContractor.py"
@@ -689,6 +782,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-contractor-table"
+    allow_index_access  = false
   }
   deleteContractorById = {
     file_name           = "deleteContractorById.py"
@@ -696,6 +790,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:GetItem"]
     dynamodb_table_name = "crud-nosql-app-contractor-table"
+    allow_index_access  = false
   }
   updateContractorById = {
     file_name           = "updateContractorById.py"
@@ -703,6 +798,7 @@ lambda_functions = {
     runtime             = "python3.12"
     action              = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-contractor-table"
+    allow_index_access  = false
   }
 
   # $ // ================================= SES lambdas ==================================== // 
@@ -744,8 +840,15 @@ lambda_functions_custom = {
 dynamodb_tables = {
   crud-nosql-app-maintenance-request = {
     pk            = "id"
-    enable_gsi    = false
+    sk            = "jobCreated"
+    enable_gsi    = true
     enable_stream = true
+
+    gsi = {
+      name       = "StatusIndex"
+      hash_key   = "status"
+      projection = "ALL"
+    }
   }
   crud-nosql-app-images = {
     pk            = "id"

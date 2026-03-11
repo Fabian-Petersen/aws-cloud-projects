@@ -146,6 +146,7 @@ variable "lambda_functions" {
     runtime             = string
     action              = list(string)
     dynamodb_table_name = string
+    allow_index_access  = bool
     # permissions         = set(string) # Add permission with dynamic IAM Roles
   }))
 }
