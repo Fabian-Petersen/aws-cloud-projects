@@ -367,7 +367,7 @@ api_child_routes = {
       }
     }
   }
-
+  # $ Lambda get the request which have been created
   jobs-list-pending-id = {
     parent_key = "jobs-list-pending"
     path_part  = "{id}"
@@ -381,6 +381,22 @@ api_child_routes = {
       }
     }
   }
+
+  # $ Lambda get the request which have been approved
+  jobs-list-approved-id = {
+    parent_key = "jobs-list-approved"
+    path_part  = "{id}"
+    methods = {
+      GET = {
+        lambda        = "getJobsApprovedById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
 
   maintenance-action-id = {
     # path       = "/maintenance-action/{id}"
@@ -608,6 +624,15 @@ lambda_functions = {
   getJobsPendingById = {
     file_name           = "getJobsPendingById.py"
     handler             = "getJobsPendingById.lambda_handler"
+    runtime             = "python3.12"
+    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+    allow_index_access  = false
+  }
+
+  getJobsApprovedById = {
+    file_name           = "getJobsApprovedById.py"
+    handler             = "getJobsApprovedById.lambda_handler"
     runtime             = "python3.12"
     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"

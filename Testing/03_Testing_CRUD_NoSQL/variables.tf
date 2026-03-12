@@ -147,7 +147,6 @@ variable "lambda_functions" {
     action              = list(string)
     dynamodb_table_name = string
     allow_index_access  = bool
-    # permissions         = set(string) # Add permission with dynamic IAM Roles
   }))
 }
 # $ Lambdas not tied to the dynamoDB routes, these lambdas use custom policies as needed
