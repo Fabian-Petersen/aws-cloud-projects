@@ -895,7 +895,7 @@ lambda_functions = {
       maintenance_request_table = {
         table_name         = "crud-nosql-app-maintenance-request-table"
         actions            = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
-        allow_index_access = false
+        allow_index_access = true
       }
     }
   }
@@ -973,8 +973,6 @@ lambda_functions = {
   # $ // ============================ SES lambdas ============================== //
   # $ This lambda handles the email to be send to admin
 }
-
-
 
 # lambda_functions = {
 #   getJobsList = {
@@ -1283,12 +1281,19 @@ dynamodb_tables = {
     enable_gsi    = true
     enable_stream = true
 
-    gsi = {
-      name       = "StatusIndex"
-      hash_key   = "status"
-      projection = "ALL"
+    gsis = {
+      "StatusIndex" = {
+        hash_key   = "status"
+        projection = "ALL"
+      }
+      "LocationIndex" = {
+        hash_key   = "location"
+        range_key  = "jobCreated"
+        projection = "ALL"
+      }
     }
   }
+
   crud-nosql-app-images = {
     pk            = "id"
     enable_gsi    = false
@@ -1298,10 +1303,12 @@ dynamodb_tables = {
     pk            = "id"
     enable_gsi    = true
     enable_stream = false
-    gsi = {
-      name       = "AssetIDIndex"
-      hash_key   = "assetID"
-      projection = "ALL"
+    gsis = {
+      "AssetIDIndex" = {
+        hash_key   = "assetID"
+        projection = "ALL"
+
+      }
     }
   }
   crud-nosql-app-maintenance-action = {

@@ -1,6 +1,6 @@
 import json
 import boto3
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
 
@@ -24,6 +24,87 @@ def get_request_by_id(request_id: str):
     )
     items = response.get("Items", [])
     return items[0] if items else None
+
+locations = {
+  'Phillipi': 'PHP',
+  'Bellville': 'BTX',
+  'Khayelitsha': 'IKH',
+  'Wynberg': 'WBG',
+  'Maitland': 'VTR',
+  'Golden Acre': 'GAC',
+  'Distribution Centre': 'DCN',
+  'Central Services': 'CTS'
+}
+
+def get_cape_town_now():
+    utc_now = datetime.now(timezone.utc)
+    return utc_now.astimezone(timezone(timedelta(hours=2)))
+
+def get_month_bounds():
+    now_ct = get_cape_town_now()
+    start_of_month = now_ct.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if now_ct.month == 12:
+        next_month = now_ct.replace(
+        year=now_ct.year + 1,
+        month=1,
+        day=1,
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0
+        )
+    else:
+        next_month = now_ct.replace(
+        month=now_ct.month + 1,
+        day=1,
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0
+    )
+
+    return start_of_month.isoformat(), next_month.isoformat(), now_ct.strftime("%Y%m")
+
+def get_monthly_jobcard_count(location: str) -> int:
+    start_date, end_date, _ = get_month_bounds()
+
+    total_count = 0
+    last_evaluated_key = None
+
+    while True:
+        params = {
+            "IndexName": "LocationJobCreatedIndex",
+            "KeyConditionExpression": (
+                Key("location").eq(location) &
+                Key("jobCreated").between(start_date, end_date)
+            ),
+            "Select": "COUNT"
+        }
+
+        if last_evaluated_key:
+            params["ExclusiveStartKey"] = last_evaluated_key
+
+        response = table_requests.query(**params)
+        total_count += response.get("Count", 0)
+
+        last_evaluated_key = response.get("LastEvaluatedKey")
+        if not last_evaluated_key:
+            break
+
+    return total_count
+
+def generate_jobcard_no(location: str) -> str:
+    location_id = locations.get(location)
+    if not location_id:
+        raise ValueError(f"Unknown location: {location}")
+
+    count = get_monthly_jobcard_count(location)
+    next_number = count + 1
+
+    _, _, job_date = get_month_bounds()
+    formatted_count = f"{next_number:04d}"
+
+    return f"Job-{location_id}-{job_date}-{formatted_count}"
 
 def lambda_handler(event, context):
     try:
@@ -60,6 +141,16 @@ def lambda_handler(event, context):
         job_created = existing_item.get("jobCreated")
         if not job_created:
             return _response(500, {"message": "Existing item missing jobCreated"})
+        
+        # $ Get the location of the request to build the jobcard
+        location = existing_item.get("location")
+        jobcardNumber = generate_jobcard_no(location)
+
+        if not location:
+            return _response(500, {"message": "Location not found"})
+        
+        # Build the jobcard
+
 
         # Frontend action -> DB status
         db_status = "In Progress" if action_status == "Approved" else action_status
@@ -69,7 +160,7 @@ def lambda_handler(event, context):
                 #td = :targetDate,
                 #an = :assign_to_name,
                 #as = :assign_to_sub,
-                #ag = :assign_to_group
+                #ag = :assign_to_group,
         """
 
         expression_attribute_names = {
@@ -93,10 +184,11 @@ def lambda_handler(event, context):
             approved_by = f'{claims.get("name", "").strip()} {claims.get("family_name", "").strip()}'.strip()
             approved_by_sub = claims.get("sub", "")
 
-            update_expression += ", approved_at = :approved_at, approved_by = :approved_by, approved_by_sub = :approved_by_sub"
+            update_expression += ", approved_at = :approved_at, approved_by = :approved_by, approved_by_sub = :approved_by_sub, jobcardNumber = :jobcardNumber"
             expression_attribute_values[":approved_at"] = approved_at
             expression_attribute_values[":approved_by"] = approved_by
             expression_attribute_values[":approved_by_sub"] = approved_by_sub
+            expression_attribute_values[":jobcardNumber"] = jobcardNumber
 
         response = table_requests.update_item(
             Key={

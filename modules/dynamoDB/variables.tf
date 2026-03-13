@@ -13,11 +13,11 @@ variable "dynamodb_tables" {
     pk = optional(string) # default "id" if not set
     sk = optional(string) # only set if you want a sort key
 
-    gsi = optional(object({
-      name       = string
+    gsis = optional(map(object({
       hash_key   = string
+      range_key  = optional(string)
       projection = string
-    }))
+    })))
   }))
 }
 

@@ -39,16 +39,16 @@ locations = {
   'Central Services': 'CTS'
 }
 
-def generateJobCardNo(location:str) -> str:
-    locationID = locations.get(location)
-    utc_now = datetime.now(timezone.utc)
-    capeTownTime = str(utc_now + timedelta(hours=2))
-    jobDate = datetime.fromisoformat(capeTownTime).strftime("%Y%m")
-    count = 15
-    counter = count + 1
-    formattedCount=f"{counter:04d}"
-    jobcardNumber=f"Job-{locationID}-{jobDate}-{formattedCount}"
-    return jobcardNumber
+# def generateJobCardNo(location:str) -> str:
+#     locationID = locations.get(location)
+#     utc_now = datetime.now(timezone.utc)
+#     capeTownTime = str(utc_now + timedelta(hours=2))
+#     jobDate = datetime.fromisoformat(capeTownTime).strftime("%Y%m")
+#     count = 15
+#     counter = count + 1
+#     formattedCount=f"{counter:04d}"
+#     jobcardNumber=f"Job-{locationID}-{jobDate}-{formattedCount}"
+#     return jobcardNumber
 
 def lambda_handler(event, context):
     print("Event:", json.dumps(event))
@@ -78,8 +78,8 @@ def lambda_handler(event, context):
         user_email = claims.get("email")
         
         #$ Build the jobcardNumber
-        location = data["location"]
-        jobcardNumber = generateJobCardNo(location)
+        # location = data["location"]
+        # jobcardNumber = generateJobCardNo(location)
 
         presigned_urls = []
 
@@ -114,7 +114,7 @@ def lambda_handler(event, context):
             "jobCreated": created_at, #$ created on backend
             "status": status, #$ created on backend
             "requested_by": requested_by, #$ created on backend for Jobcard
-            "jobcardNumber" : jobcardNumber, #$ created on backend
+            # "jobcardNumber" : jobcardNumber, #$ created on backend
             "request_sub" : user_id, #$ created on backend
             "user_email" : user_email, #$ created on backend
             "user_name" : user_name, #$ created on backend
