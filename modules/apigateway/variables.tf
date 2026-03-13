@@ -44,16 +44,31 @@ variable "subdomain_name" {}
 
 
 #$ ============== Add the lambda functions to integrate with the api ===================
+# variable "lambda_functions" {
+#   description = "lambda functions required for backend"
+#   type = map(object({
+#     file_name           = string
+#     handler             = string
+#     runtime             = string
+#     action              = list(string)
+#     dynamodb_table_name = string
+#   }))
+# }
+
 variable "lambda_functions" {
-  description = "lambda functions required for backend"
   type = map(object({
-    file_name           = string
-    handler             = string
-    runtime             = string
-    action              = list(string)
-    dynamodb_table_name = string
+    file_name = string
+    handler   = string
+    runtime   = string
+
+    dynamodb_permissions = map(object({
+      table_name         = string
+      actions            = list(string)
+      allow_index_access = bool
+    }))
   }))
 }
+
 
 variable "cognito_arn" {}
 

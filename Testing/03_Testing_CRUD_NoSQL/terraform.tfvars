@@ -587,248 +587,662 @@ lambda_policies = {
 #$ lambda variables
 lambda_functions = {
   getJobsList = {
-    file_name           = "getJobsList.py"
-    handler             = "getJobsList.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
-    allow_index_access  = false
+    file_name = "getJobsList.py"
+    handler   = "getJobsList.lambda_handler"
+    runtime   = "python3.12"
 
+    dynamodb_permissions = {
+      maintenance_request_table = {
+        table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
   }
+
   getJobsApprovedList = {
-    file_name           = "getJobsApprovedList.py"
-    handler             = "getJobsApprovedList.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
-    allow_index_access  = true
+    file_name = "getJobsApprovedList.py"
+    handler   = "getJobsApprovedList.lambda_handler"
+    runtime   = "python3.12"
 
+    dynamodb_permissions = {
+      maintenance_request_table = {
+        table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+    }
   }
+
   getJobsPendingList = {
-    file_name           = "getJobsPendingList.py"
-    handler             = "getJobsPendingList.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
-    allow_index_access  = true
+    file_name = "getJobsPendingList.py"
+    handler   = "getJobsPendingList.lambda_handler"
+    runtime   = "python3.12"
 
+    dynamodb_permissions = {
+      maintenance_request_table = {
+        table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+    }
   }
+
   postMaintenanceRequest = {
-    file_name           = "postMaintenanceRequest.py"
-    handler             = "postMaintenanceRequest.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
-    allow_index_access  = false
+    file_name = "postMaintenanceRequest.py"
+    handler   = "postMaintenanceRequest.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      maintenance_request_table = {
+        table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
   }
+
   getJobsPendingById = {
-    file_name           = "getJobsPendingById.py"
-    handler             = "getJobsPendingById.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
-    allow_index_access  = false
+    file_name = "getJobsPendingById.py"
+    handler   = "getJobsPendingById.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      maintenance_request_table = {
+        table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
   }
 
   getJobsApprovedById = {
-    file_name           = "getJobsApprovedById.py"
-    handler             = "getJobsApprovedById.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
-    allow_index_access  = false
+    file_name = "getJobsApprovedById.py"
+    handler   = "getJobsApprovedById.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      maintenance_request_table = {
+        table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
   }
 
-  # $ Lambda's handling Delete Methods
   deleteMaintenanceRequestById = {
-    file_name           = "deleteMaintenanceRequestById.py"
-    handler             = "deleteMaintenanceRequestById.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:DeleteItem", "dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
-    allow_index_access  = false
+    file_name = "deleteMaintenanceRequestById.py"
+    handler   = "deleteMaintenanceRequestById.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      maintenance_request_table = {
+        table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:DeleteItem", "dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
   }
 
-  # $ // ================================= Maintenance Actions ======================= //
   getMaintenanceActionsList = {
-    file_name           = "getMaintenanceActionsList.py"
-    handler             = "getMaintenanceActionsList.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-maintenance-action-table"
-    allow_index_access  = false
+    file_name = "getMaintenanceActionsList.py"
+    handler   = "getMaintenanceActionsList.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      maintenance_action_table = {
+        table_name         = "crud-nosql-app-maintenance-action-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
   }
 
   getMaintenanceActionById = {
-    file_name           = "getMaintenanceActionById.py"
-    handler             = "getMaintenanceActionById.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-maintenance-action-table"
-    allow_index_access  = false
+    file_name = "getMaintenanceActionById.py"
+    handler   = "getMaintenanceActionById.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      maintenance_action_table = {
+        table_name         = "crud-nosql-app-maintenance-action-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
   }
 
   postMaintenanceAction = {
-    file_name           = "postMaintenanceAction.py"
-    handler             = "postMaintenanceAction.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-maintenance-action-table"
-    allow_index_access  = false
+    file_name = "postMaintenanceAction.py"
+    handler   = "postMaintenanceAction.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      maintenance_action_table = {
+        table_name         = "crud-nosql-app-maintenance-action-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem"]
+        allow_index_access = false
+      }
+
+      maintenance_request_table = {
+        table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query"]
+        allow_index_access = false
+      }
+    }
   }
 
   deleteMaintenanceActionById = {
-    file_name           = "deleteMaintenanceActionById.py"
-    handler             = "deleteMaintenanceActionById.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:DeleteItem", "dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-maintenance-action-table"
-    allow_index_access  = false
+    file_name = "deleteMaintenanceActionById.py"
+    handler   = "deleteMaintenanceActionById.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      maintenance_action_table = {
+        table_name         = "crud-nosql-app-maintenance-action-table"
+        actions            = ["dynamodb:DeleteItem", "dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
   }
-  # $ // ================================= Assets ==================================== // 
 
   getAssetsList = {
-    file_name           = "getAssetsList.py"
-    handler             = "getAssetsList.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-assets-table"
-    allow_index_access  = false
+    file_name = "getAssetsList.py"
+    handler   = "getAssetsList.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      assets_table = {
+        table_name         = "crud-nosql-app-assets-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
   }
+
   getAssetById = {
-    file_name           = "getAssetById.py"
-    handler             = "getAssetById.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-assets-table"
-    allow_index_access  = false
+    file_name = "getAssetById.py"
+    handler   = "getAssetById.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      assets_table = {
+        table_name         = "crud-nosql-app-assets-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
   }
+
   postCreateAsset = {
-    file_name           = "postCreateAsset.py"
-    handler             = "postCreateAsset.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-assets-table"
-    allow_index_access  = false
+    file_name = "postCreateAsset.py"
+    handler   = "postCreateAsset.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      assets_table = {
+        table_name         = "crud-nosql-app-assets-table"
+        actions            = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
   }
+
   deleteAssetById = {
-    file_name           = "deleteAssetById.py"
-    handler             = "deleteAssetById.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:GetItem"]
-    dynamodb_table_name = "crud-nosql-app-assets-table"
-    allow_index_access  = false
+    file_name = "deleteAssetById.py"
+    handler   = "deleteAssetById.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      assets_table = {
+        table_name         = "crud-nosql-app-assets-table"
+        actions            = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:GetItem"]
+        allow_index_access = false
+      }
+    }
   }
+
   updateAssetById = {
-    file_name           = "updateAssetById.py"
-    handler             = "updateAssetById.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-assets-table"
-    allow_index_access  = false
+    file_name = "updateAssetById.py"
+    handler   = "updateAssetById.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      assets_table = {
+        table_name         = "crud-nosql-app-assets-table"
+        actions            = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
   }
 
-  # $ // ================================= Jobcard lambdas ==================================== // 
   getMaintenanceJobcardById = {
-    file_name           = "getMaintenanceJobcardById.py"
-    handler             = "getMaintenanceJobcardById.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
-    allow_index_access  = false
+    file_name = "getMaintenanceJobcardById.py"
+    handler   = "getMaintenanceJobcardById.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      maintenance_request_table = {
+        table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
   }
 
-  # $ // ================================= Comments ==================================== // 
   getCommentsList = {
-    file_name           = "getCommentsList.py"
-    handler             = "getCommentsList.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-comments-table"
-    allow_index_access  = false
-  }
-  postComment = {
-    file_name           = "postComment.py"
-    handler             = "postComment.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-comments-table"
-    allow_index_access  = false
-  }
-  getCommentById = {
-    file_name           = "getCommentById.py"
-    handler             = "getCommentById.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-comments-table"
-    allow_index_access  = false
+    file_name = "getCommentsList.py"
+    handler   = "getCommentsList.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      comments_table = {
+        table_name         = "crud-nosql-app-comments-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
   }
 
-  # $ // ============================= Approve/Reject Requests ================================ // 
+  postComment = {
+    file_name = "postComment.py"
+    handler   = "postComment.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      comments_table = {
+        table_name         = "crud-nosql-app-comments-table"
+        actions            = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  getCommentById = {
+    file_name = "getCommentById.py"
+    handler   = "getCommentById.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      comments_table = {
+        table_name         = "crud-nosql-app-comments-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
   postRejectRequest = {
-    file_name           = "postRejectRequest.py"
-    handler             = "postRejectRequest.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
-    allow_index_access  = false
+    file_name = "postRejectRequest.py"
+    handler   = "postRejectRequest.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      maintenance_request_table = {
+        table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
   }
 
   postApproveRequest = {
-    file_name           = "postApproveRequest.py"
-    handler             = "postApproveRequest.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
-    allow_index_access  = false
-  }
+    file_name = "postApproveRequest.py"
+    handler   = "postApproveRequest.lambda_handler"
+    runtime   = "python3.12"
 
-  # $ // ================================= Contractor ==================================== // 
+    dynamodb_permissions = {
+      maintenance_request_table = {
+        table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
 
   getContractorList = {
-    file_name           = "getContractorList.py"
-    handler             = "getContractorList.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-contractor-table"
-    allow_index_access  = false
-  }
-  getContractorById = {
-    file_name           = "getContractorById.py"
-    handler             = "getContractorById.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-contractor-table"
-    allow_index_access  = false
-  }
-  postCreateContractor = {
-    file_name           = "postCreateContractor.py"
-    handler             = "postCreateContractor.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-contractor-table"
-    allow_index_access  = false
-  }
-  deleteContractorById = {
-    file_name           = "deleteContractorById.py"
-    handler             = "deleteContractorById.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:GetItem"]
-    dynamodb_table_name = "crud-nosql-app-contractor-table"
-    allow_index_access  = false
-  }
-  updateContractorById = {
-    file_name           = "updateContractorById.py"
-    handler             = "updateContractorById.lambda_handler"
-    runtime             = "python3.12"
-    action              = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
-    dynamodb_table_name = "crud-nosql-app-contractor-table"
-    allow_index_access  = false
+    file_name = "getContractorList.py"
+    handler   = "getContractorList.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      contractor_table = {
+        table_name         = "crud-nosql-app-contractor-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
   }
 
-  # $ // ================================= SES lambdas ==================================== // 
+  getContractorById = {
+    file_name = "getContractorById.py"
+    handler   = "getContractorById.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      contractor_table = {
+        table_name         = "crud-nosql-app-contractor-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  postCreateContractor = {
+    file_name = "postCreateContractor.py"
+    handler   = "postCreateContractor.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      contractor_table = {
+        table_name         = "crud-nosql-app-contractor-table"
+        actions            = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  deleteContractorById = {
+    file_name = "deleteContractorById.py"
+    handler   = "deleteContractorById.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      contractor_table = {
+        table_name         = "crud-nosql-app-contractor-table"
+        actions            = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:GetItem"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  updateContractorById = {
+    file_name = "updateContractorById.py"
+    handler   = "updateContractorById.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      contractor_table = {
+        table_name         = "crud-nosql-app-contractor-table"
+        actions            = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  # $ // ============================ SES lambdas ============================== //
   # $ This lambda handles the email to be send to admin
 }
+
+
+
+# lambda_functions = {
+#   getJobsList = {
+#     file_name           = "getJobsList.py"
+#     handler             = "getJobsList.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+#     allow_index_access  = false
+
+#   }
+#   getJobsApprovedList = {
+#     file_name           = "getJobsApprovedList.py"
+#     handler             = "getJobsApprovedList.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+#     allow_index_access  = true
+
+#   }
+#   getJobsPendingList = {
+#     file_name           = "getJobsPendingList.py"
+#     handler             = "getJobsPendingList.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+#     allow_index_access  = true
+
+#   }
+#   postMaintenanceRequest = {
+#     file_name           = "postMaintenanceRequest.py"
+#     handler             = "postMaintenanceRequest.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+#     allow_index_access  = false
+#   }
+#   getJobsPendingById = {
+#     file_name           = "getJobsPendingById.py"
+#     handler             = "getJobsPendingById.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+#     allow_index_access  = false
+#   }
+
+#   getJobsApprovedById = {
+#     file_name           = "getJobsApprovedById.py"
+#     handler             = "getJobsApprovedById.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+#     allow_index_access  = false
+#   }
+
+#   # $ Lambda's handling Delete Methods
+#   deleteMaintenanceRequestById = {
+#     file_name           = "deleteMaintenanceRequestById.py"
+#     handler             = "deleteMaintenanceRequestById.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:DeleteItem", "dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+#     allow_index_access  = false
+#   }
+
+#   # $ // ================================= Maintenance Actions ======================= //
+#   getMaintenanceActionsList = {
+#     file_name           = "getMaintenanceActionsList.py"
+#     handler             = "getMaintenanceActionsList.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-maintenance-action-table"
+#     allow_index_access  = false
+#   }
+
+#   getMaintenanceActionById = {
+#     file_name = "getMaintenanceActionById.py"
+#     handler   = "getMaintenanceActionById.lambda_handler"
+#     runtime   = "python3.12"
+#     dynamodb_permissions = {
+#       maintenance_action_table = {
+#         table_name         = "crud-nosql-app-maintenance-action-table"
+#         actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+#         allow_index_access = false
+#       }
+#     }
+#   }
+#   postMaintenanceAction = {
+#     file_name = "postMaintenanceAction.py"
+#     handler   = "postMaintenanceAction.lambda_handler"
+#     runtime   = "python3.12"
+
+#     dynamodb_permissions = {
+#       maintenance_action_table = {
+#         table_name         = "crud-nosql-app-maintenance-action-table"
+#         actions            = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem"]
+#         allow_index_access = false
+#       }
+
+#       maintenance_request_table = {
+#         table_name         = "crud-nosql-app-maintenance-request-table"
+#         actions            = ["dynamodb:GetItem", "dynamodb:Query"]
+#         allow_index_access = false
+#       }
+#     }
+#   }
+
+#  postMaintenanceAction = {
+#    file_name           = "postMaintenanceAction.py"
+#    handler             = "postMaintenanceAction.lambda_handler"
+#    runtime             = "python3.12"
+#    action              = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+#    dynamodb_table_name = "crud-nosql-app-maintenance-action-table"
+#    allow_index_access  = false
+#  }
+
+#   deleteMaintenanceActionById = {
+#     file_name           = "deleteMaintenanceActionById.py"
+#     handler             = "deleteMaintenanceActionById.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:DeleteItem", "dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-maintenance-action-table"
+#     allow_index_access  = false
+#   }
+#   # $ // ================================= Assets ==================================== // 
+
+#   getAssetsList = {
+#     file_name           = "getAssetsList.py"
+#     handler             = "getAssetsList.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-assets-table"
+#     allow_index_access  = false
+#   }
+#   getAssetById = {
+#     file_name           = "getAssetById.py"
+#     handler             = "getAssetById.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-assets-table"
+#     allow_index_access  = false
+#   }
+#   postCreateAsset = {
+#     file_name           = "postCreateAsset.py"
+#     handler             = "postCreateAsset.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-assets-table"
+#     allow_index_access  = false
+#   }
+#   deleteAssetById = {
+#     file_name           = "deleteAssetById.py"
+#     handler             = "deleteAssetById.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:GetItem"]
+#     dynamodb_table_name = "crud-nosql-app-assets-table"
+#     allow_index_access  = false
+#   }
+#   updateAssetById = {
+#     file_name           = "updateAssetById.py"
+#     handler             = "updateAssetById.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-assets-table"
+#     allow_index_access  = false
+#   }
+
+#   # $ // ================================= Jobcard lambdas ==================================== // 
+#   getMaintenanceJobcardById = {
+#     file_name           = "getMaintenanceJobcardById.py"
+#     handler             = "getMaintenanceJobcardById.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+#     allow_index_access  = false
+#   }
+
+#   # $ // ================================= Comments ==================================== // 
+#   getCommentsList = {
+#     file_name           = "getCommentsList.py"
+#     handler             = "getCommentsList.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-comments-table"
+#     allow_index_access  = false
+#   }
+#   postComment = {
+#     file_name           = "postComment.py"
+#     handler             = "postComment.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-comments-table"
+#     allow_index_access  = false
+#   }
+#   getCommentById = {
+#     file_name           = "getCommentById.py"
+#     handler             = "getCommentById.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-comments-table"
+#     allow_index_access  = false
+#   }
+
+#   # $ // ============================= Approve/Reject Requests ================================ // 
+#   postRejectRequest = {
+#     file_name           = "postRejectRequest.py"
+#     handler             = "postRejectRequest.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+#     allow_index_access  = false
+#   }
+
+#   postApproveRequest = {
+#     file_name           = "postApproveRequest.py"
+#     handler             = "postApproveRequest.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+#     allow_index_access  = false
+#   }
+
+#   # $ // ================================= Contractor ==================================== // 
+
+#   getContractorList = {
+#     file_name           = "getContractorList.py"
+#     handler             = "getContractorList.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-contractor-table"
+#     allow_index_access  = false
+#   }
+#   getContractorById = {
+#     file_name           = "getContractorById.py"
+#     handler             = "getContractorById.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-contractor-table"
+#     allow_index_access  = false
+#   }
+#   postCreateContractor = {
+#     file_name           = "postCreateContractor.py"
+#     handler             = "postCreateContractor.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-contractor-table"
+#     allow_index_access  = false
+#   }
+#   deleteContractorById = {
+#     file_name           = "deleteContractorById.py"
+#     handler             = "deleteContractorById.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:GetItem"]
+#     dynamodb_table_name = "crud-nosql-app-contractor-table"
+#     allow_index_access  = false
+#   }
+#   updateContractorById = {
+#     file_name           = "updateContractorById.py"
+#     handler             = "updateContractorById.lambda_handler"
+#     runtime             = "python3.12"
+#     action              = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
+#     dynamodb_table_name = "crud-nosql-app-contractor-table"
+#     allow_index_access  = false
+#   }
+
+#   # $ // ================================= SES lambdas ==================================== // 
+#   # $ This lambda handles the email to be send to admin
+# }
 
 lambda_functions_custom = {
   # $ // ================================= Technicians ==================================== // 

@@ -31,29 +31,37 @@ HEADERS = {
 }
 
 # $ Function to get the location and requested_by from requests table
+from boto3.dynamodb.conditions import Key
+
 def get_request_fields_by_id(table, request_id: str) -> dict:
     """
-    Get only 'location', 'jobcardNumber', 'requested_by' for a single item by its id (PK).
-
-    Assumes the table primary key attribute name is 'id'.
+    Get request fields by partition key id.
+    Assumes table PK is 'id' and SK is 'jobCreated'.
     Returns {} if not found.
     """
-    res = table.get_item(
-        Key={"id": request_id},
-        ProjectionExpression="#loc, #rb, #job",
+    res = table.query(
+        KeyConditionExpression=Key("id").eq(request_id),
+        ProjectionExpression="id, jobCreated, #loc, #rb, #job",
         ExpressionAttributeNames={
             "#loc": "location",
             "#rb": "requested_by",
             "#job": "jobcardNumber",
         },
+        Limit=1
     )
 
-    item = res.get("Item") or {}
+    items = res.get("Items", [])
+    if not items:
+        return {}
+
+    item = items[0]
     return {
+        "id": item.get("id"),
+        "jobCreated": item.get("jobCreated"),
         "location": item.get("location"),
         "requested_by": item.get("requested_by"),
         "jobcardNumber": item.get("jobcardNumber"),
-    } if item else {}
+    }
 
 def lambda_handler(event, context):
     try:
@@ -75,11 +83,15 @@ def lambda_handler(event, context):
 
         # $ Get the location and requested_by from the requests-table
         request_id = data['selectedRowId']
-        print('request_id:', request_id)
+        # print('request_id:', request_id)
         request_info = get_request_fields_by_id(table_requests, request_id)
+        if not request_info:
+            return _response(404, {"message": "Request not found"})
+
         location = request_info.get("location", "")
         requested_by = request_info.get("requested_by", "")
         jobcardNumber = request_info.get("jobcardNumber", "")
+        job_created = request_info.get("jobCreated")
         
         # data from the cognito user sign-in
         user_id = claims.get("sub")
@@ -143,14 +155,15 @@ def lambda_handler(event, context):
 
         # $ Upddate the status of the request created status
         table_requests.update_item(
-            Key={"id": data["selectedRowId"]},
+            Key={"id": data["selectedRowId"], 
+                "jobCreated": job_created},
             UpdateExpression="SET #s = :status, action_id = :action_id",
             ExpressionAttributeNames={"#s": "status"},
             ExpressionAttributeValues={
                 ":status": data["status"],
                 ":action_id": item_id # $ id passed to the request table to link the 'request made & action taken'
             },
-            ConditionExpression="attribute_exists(id)"
+            ConditionExpression="attribute_exists(id) AND attribute_exists(jobCreated)"
         )
 
         table.put_item(Item=item)

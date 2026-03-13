@@ -21,14 +21,6 @@ def build_job_info(jobcard, usable_width, meta_style):
         [Paragraph(f"<b>Location:</b> {jobcard['location']}", meta_style)],
     ], colWidths=[usable_width * 0.48])
 
-    
-    left_table.setStyle(TableStyle([
-        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-    ]))
-
     right_table = Table([
         [Paragraph(f"<b>Work Order No:</b> {jobcard.get('work_order_number', '')}", meta_style)],
         [Paragraph(f"<b>Actioned By:</b> {jobcard.get('actioned_by', '')}", meta_style)],

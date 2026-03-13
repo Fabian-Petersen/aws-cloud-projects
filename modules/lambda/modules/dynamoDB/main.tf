@@ -26,25 +26,48 @@ resource "aws_iam_role" "lambda_exec_role" {
 #$ [Step 2] : Create the policy that define scope of lambda access to dynamoDB table
 resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
   for_each = var.lambda_functions
-  name     = "${each.key}_dynamodb_policy"
-  role     = aws_iam_role.lambda_exec_role[each.key].id
+
+  name = "${each.key}_dynamodb_policy"
+  role = aws_iam_role.lambda_exec_role[each.key].id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      {
+      for permission in values(each.value.dynamodb_permissions) : {
         Effect = "Allow"
-        Action = each.value.action
-        Resource = each.value.allow_index_access ? [
-          "arn:aws:dynamodb:${var.region}:${var.profile_2_account_id}:table/${each.value.dynamodb_table_name}",
-          "arn:aws:dynamodb:${var.region}:${var.profile_2_account_id}:table/${each.value.dynamodb_table_name}/index/*"
+        Action = permission.actions
+        Resource = permission.allow_index_access ? [
+          "arn:aws:dynamodb:${var.region}:${var.profile_2_account_id}:table/${permission.table_name}",
+          "arn:aws:dynamodb:${var.region}:${var.profile_2_account_id}:table/${permission.table_name}/index/*"
           ] : [
-          "arn:aws:dynamodb:${var.region}:${var.profile_2_account_id}:table/${each.value.dynamodb_table_name}"
+          "arn:aws:dynamodb:${var.region}:${var.profile_2_account_id}:table/${permission.table_name}"
         ]
       }
     ]
   })
 }
+
+# resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
+#   for_each = var.lambda_functions
+#   name     = "${each.key}_dynamodb_policy"
+#   role     = aws_iam_role.lambda_exec_role[each.key].id
+
+#   policy = jsonencode({
+#     Version = "2012-10-17"
+#     Statement = [
+#       {
+#         Effect = "Allow"
+#         Action = each.value.action
+#         Resource = each.value.allow_index_access ? [
+#           "arn:aws:dynamodb:${var.region}:${var.profile_2_account_id}:table/${each.value.dynamodb_table_name}",
+#           "arn:aws:dynamodb:${var.region}:${var.profile_2_account_id}:table/${each.value.dynamodb_table_name}/index/*"
+#           ] : [
+#           "arn:aws:dynamodb:${var.region}:${var.profile_2_account_id}:table/${each.value.dynamodb_table_name}"
+#         ]
+#       }
+#     ]
+#   })
+# }
 
 #$ [Step 2.1] : Add additional policies a lambda needs over and above dynamoDB
 resource "aws_iam_role_policy_attachment" "extra_policies" {

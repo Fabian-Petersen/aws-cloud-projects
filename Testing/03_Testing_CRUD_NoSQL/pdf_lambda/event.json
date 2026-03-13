@@ -9,10 +9,10 @@
       "dynamodb": {
         "ApproximateCreationDateTime": 1739638369,
         "Keys": {
-          "id": { "S": "4ee53546-aaea-4296-981d-e49c7ffa1159" }
+          "id": { "S": "053173f2-9cf5-48bd-94ef-bfdbef15ccd5" }
         },
         "OldImage": {
-          "id": { "S": "4ee53546-aaea-4296-981d-e49c7ffa1159" },
+          "id": { "S": "053173f2-9cf5-48bd-94ef-bfdbef15ccd5" },
           "area": { "S": "Processing Room" },
           "impact": { "S": "production" },
           "description": { "S": "Testing the pdf creation from the frontend" },
@@ -28,7 +28,7 @@
           "status": { "S": "Pending" }
         },
         "NewImage": {
-          "id": { "S": "4ee53546-aaea-4296-981d-e49c7ffa1159" },
+          "id": { "S": "053173f2-9cf5-48bd-94ef-bfdbef15ccd5" },
           "area": { "S": "Processing Room" },
           "impact": { "S": "production" },
           "description": { "S": "Testing the pdf creation from the frontend" },
@@ -37,7 +37,7 @@
           "type": { "S": "corrective" },
           "jobcardNumber": { "S": "job-VTR-202602-0013" },
           "requested_by": { "S": "Fabian" },
-          "action_id": { "S": "f92b6d65-58e5-4792-ba03-0dd1c3069fd2" },
+          "action_id": { "S": "47507d56-cb34-4b2d-ace3-541bbd598c64" },
           "assetID": { "S": "RT-0009" },
           "location": { "S": "Maitland" },
           "jobComments": { "S": "Tetsting the pdf creation,..." },

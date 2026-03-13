@@ -138,17 +138,33 @@ variable "lambda_policies" {
 }
 
 #$ ======================== lambda functions ====================
+# variable "lambda_functions" {
+#   description = "lambda functions required for backend"
+#   type = map(object({
+#     file_name           = string
+#     handler             = string
+#     runtime             = string
+#     action              = list(string)
+#     dynamodb_table_name = string
+#     allow_index_access  = bool
+#   }))
+# }
+
 variable "lambda_functions" {
-  description = "lambda functions required for backend"
   type = map(object({
-    file_name           = string
-    handler             = string
-    runtime             = string
-    action              = list(string)
-    dynamodb_table_name = string
-    allow_index_access  = bool
+    file_name = string
+    handler   = string
+    runtime   = string
+
+    dynamodb_permissions = map(object({
+      table_name         = string
+      actions            = list(string)
+      allow_index_access = bool
+    }))
   }))
 }
+
+
 # $ Lambdas not tied to the dynamoDB routes, these lambdas use custom policies as needed
 variable "lambda_functions_custom" {
   type = map(object({
