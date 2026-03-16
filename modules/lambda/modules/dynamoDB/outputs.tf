@@ -20,6 +20,14 @@ output "lambda_invoke_arns" {
   }
 }
 
+output "lambda_role_names" {
+  description = "a list of the execution roles per lambda"
+  value = {
+    for k, v in aws_iam_role.lambda_exec_role :
+    k => v.name
+  }
+}
+
 # output "lambda_invoke_arns" {
 #   value = { for name, lambda in aws_lambda_function.this : name => lambda.arn }
 # }

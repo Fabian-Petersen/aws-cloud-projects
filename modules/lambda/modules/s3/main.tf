@@ -44,11 +44,16 @@ resource "aws_iam_policy" "lambda_policy" {
         Effect = "Allow"
         Action = [
           "dynamodb:PutItem",
-          "dynamodb:UpdateItem"
+          "dynamodb:UpdateItem",
+          "dynamodb:Query",
+          "dynamodb:GetItem"
         ]
-        Resource = [
-          for t in values(data.aws_dynamodb_table.tables) : t.arn
-        ]
+        Resource = flatten([
+          for t in values(data.aws_dynamodb_table.tables) : [
+            t.arn,
+            "${t.arn}/index/*"
+          ]
+        ])
       },
       # S3
       {

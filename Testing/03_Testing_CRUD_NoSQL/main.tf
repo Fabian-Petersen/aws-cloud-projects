@@ -106,6 +106,15 @@ module "apigateway" {
   subdomain_name          = var.subdomain_name
 }
 
+#$ // =========================== IAM Policy ========================== //
+# $ Create additional IAM policies per lambda (Optional)
+
+module "iam_lambda" {
+  source            = "../../modules/iam"
+  lambda_functions  = var.lambda_functions
+  lambda_role_names = module.lambda.lambda_role_names
+}
+
 #$ // =========================== API Method lambda functions ========================== //
 
 module "lambda" {

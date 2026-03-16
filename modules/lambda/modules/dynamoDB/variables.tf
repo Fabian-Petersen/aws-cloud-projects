@@ -22,9 +22,20 @@ variable "lambda_functions" {
       actions            = list(string)
       allow_index_access = bool
     }))
+
+    statements = optional(list(object({
+      effect    = optional(string, "Allow")
+      actions   = list(string)
+      resources = list(string)
+
+      conditions = optional(list(object({
+        test     = string
+        variable = string
+        values   = list(string)
+      })), [])
+    })), [])
   }))
 }
-
 
 
 variable "region" {

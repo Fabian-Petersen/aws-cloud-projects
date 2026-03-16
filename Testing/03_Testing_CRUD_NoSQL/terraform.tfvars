@@ -824,10 +824,28 @@ lambda_functions = {
     dynamodb_permissions = {
       maintenance_request_table = {
         table_name         = "crud-nosql-app-maintenance-request-table"
-        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
-        allow_index_access = false
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
       }
     }
+
+    statements = [
+      {
+        actions   = ["s3:GetObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/jobcards/*"]
+      },
+      {
+        actions   = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images"]
+        conditions = [
+          {
+            test     = "StringLike"
+            variable = "s3:prefix"
+            values   = ["jobcards/*"]
+          }
+        ]
+      }
+    ]
   }
 
   getCommentsList = {
@@ -1140,7 +1158,7 @@ lambda_functions = {
 #     allow_index_access  = false
 #   }
 
-#   # $ // ================================= Jobcard lambdas ==================================== // 
+#   # $ // ============================ Jobcard lambdas ============================= // 
 #   getMaintenanceJobcardById = {
 #     file_name           = "getMaintenanceJobcardById.py"
 #     handler             = "getMaintenanceJobcardById.lambda_handler"
@@ -1150,7 +1168,7 @@ lambda_functions = {
 #     allow_index_access  = false
 #   }
 
-#   # $ // ================================= Comments ==================================== // 
+#   # $ // ============================ Comments ==================================== // 
 #   getCommentsList = {
 #     file_name           = "getCommentsList.py"
 #     handler             = "getCommentsList.lambda_handler"
@@ -1176,7 +1194,7 @@ lambda_functions = {
 #     allow_index_access  = false
 #   }
 
-#   # $ // ============================= Approve/Reject Requests ================================ // 
+#   # $ // ======================== Approve/Reject Requests =========================== // 
 #   postRejectRequest = {
 #     file_name           = "postRejectRequest.py"
 #     handler             = "postRejectRequest.lambda_handler"
@@ -1289,6 +1307,10 @@ dynamodb_tables = {
       "LocationIndex" = {
         hash_key   = "location"
         range_key  = "jobCreated"
+        projection = "ALL"
+      }
+      "ActionIdIndex" = {
+        hash_key   = "action_id"
         projection = "ALL"
       }
     }
@@ -1414,7 +1436,7 @@ packageType         = "Image"
 s3_bucket           = "crud-nosql.app.fabian-portfolio.net"
 runtime             = "python3.12"
 lambda_handler      = "handler.lambda_handler"
-image_uri           = "157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v1"
+image_uri           = "157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v2"
 
 # $ ECR Repository
 repository_name      = "crud-nosql-pdf-generator"
