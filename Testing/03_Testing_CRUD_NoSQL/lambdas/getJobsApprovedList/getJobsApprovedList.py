@@ -39,17 +39,19 @@ def parse_groups(groups_claim):
 def query_all_approved(**kwargs):
     items = []
     response = table.query(
-        IndexName="StatusIndex",
+        IndexName="StatusJobCreatedIndex",
         KeyConditionExpression=Key("status").eq("In Progress"),
+        ScanIndexForward=False,  # newest first
         **kwargs
     )
     items.extend(response.get("Items", []))
 
     while "LastEvaluatedKey" in response:
         response = table.query(
-            IndexName="StatusIndex",
+            IndexName="StatusJobCreatedIndex",
             KeyConditionExpression=Key("status").eq("In Progress"),
             ExclusiveStartKey=response["LastEvaluatedKey"],
+            ScanIndexForward=False, # use to sort by jobCreated last -> first
             **kwargs
         )
         items.extend(response.get("Items", []))

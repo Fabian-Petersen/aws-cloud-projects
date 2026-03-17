@@ -71,8 +71,6 @@ def add_presigned_urls(item: dict) -> dict:
     item["images"] = new_images
     return item
 
-
-
 def lambda_handler(event, context):
     try:
         # Path param from API Gateway

@@ -1,5 +1,5 @@
 {
-  "body": "{\"selectedRowId\":\"570d4261-62a5-451b-9e3e-f88c2992bb7d\",\"message\":\"Request rejected because the description is incomplete.\",\"status\":\"Rejected\"}",
+  "body": "{\"selectedRowId\":\"570d4261-62a5-451b-9e3e-f88c2992bb7d\",\"reject_message\":\"Request rejected because the description is incomplete.\",\"status\":\"Rejected\"}",
   "requestContext": {
     "authorizer": {
       "claims": {

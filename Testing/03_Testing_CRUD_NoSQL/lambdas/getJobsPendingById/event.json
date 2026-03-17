@@ -1,5 +1,17 @@
 {
   "pathParameters": {
-    "id": "4e9a8b44-f9e2-4fc0-ad8e-640fd23c7211"
+    "id": "e1b25cf7-d3d1-4558-a7eb-cebf245c807a"
+  },
+  "headers": {
+    "Authorization": "Bearer test-token"
+  },
+  "requestContext": {
+    "authorizer": {
+      "claims": {
+        "sub": "a11c22d8-8001-7090-d4ce-4889da07dd0b",
+        "email": "fpetersen2@gmail.com",
+        "cognito:groups": "admin"
+      }
+    }
   }
 }

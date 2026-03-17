@@ -9,6 +9,9 @@ dynamodb = boto3.resource("dynamodb")
 TABLE_NAME_REQUESTS = "crud-nosql-app-maintenance-request-table"
 table_requests = dynamodb.Table(TABLE_NAME_REQUESTS)
 
+TABLE_NAME_JOBCARD_SEQUENCE = "crud-nosql-app-jobcard-sequences-table"
+table_jobcard_sequence = dynamodb.Table(TABLE_NAME_JOBCARD_SEQUENCE)
+
 HEADERS = {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "http://localhost:5173",
@@ -150,46 +153,54 @@ def get_monthly_jobcard_count(location: str) -> int:
 
     return total_count
 
-def generate_jobcard_no(location: str) -> str:
+def generate_jobcard_no(location: str, request_id: str) -> str:
     """
-    Generate the next jobcard number for a given location.
+    Generate the next jobcard number for a given location using an atomic
+    counter stored in a separate DynamoDB table.
 
-    The jobcard number is built using the location code, the current year and
-    month in YYYYMM format, and the next sequential number for that location
-    within the current month.
+    The counter is partitioned by location code and month (YYYYMM), so each
+    location has its own monthly sequence.
 
-    Format: Job-<LOCATION_CODE>-<YYYYMM>-<SEQUENCE>
+    Counter item example:
+        {
+            "id": "JOBCARD#PHP#202603",
+            "lastSequence": 7,
+            "lastRequestId": "<request_id>",
+            "updatedAt": "<iso timestamp>"
+        }
 
-    Example: Job-PHP-202603-0007
+    Format:
+        Job-<LOCATION_CODE>-<YYYYMM>-<SEQUENCE>
 
-    Args:
-        location: The full location name used to look up the location code and count existing jobcards for the current month.
-
-    Returns:
-        A formatted jobcard number string for the next request at the specified location.
-
-    Raises:
-        ValueError: If the provided location does not exist in the `locations` mapping.
-
-    Notes:
-        This function assumes:
-        - `locations` contains a valid code for each supported location.
-        - `get_monthly_jobcard_count()` returns the current number of jobcards for the given location in the current month.
-        - `get_month_bounds()` returns the current month in YYYYMM format as
-        its third value.
-        - the generated sequence is based on the current count plus one.
+    Example:
+        Job-PHP-202603-0008
     """
     location_id = locations.get(location)
     if not location_id:
         raise ValueError(f"Unknown location: {location}")
 
-    count = get_monthly_jobcard_count(location)
-    next_number = count + 1
-
     _, _, job_date = get_month_bounds()
-    formatted_count = f"{next_number:04d}"
+    counter_id = f"JOBCARD#{location_id}#{job_date}"
+    now_iso = datetime.now(timezone.utc).isoformat()
 
-    return f"Job-{location_id}-{job_date}-{formatted_count}"
+    response = table_jobcard_sequence.update_item(
+        Key={"id": counter_id},
+        UpdateExpression="""
+            SET lastSequence = if_not_exists(lastSequence, :zero) + :inc,
+                lastRequestId = :request_id,
+                updatedAt = :updated_at
+        """,
+        ExpressionAttributeValues={
+            ":zero": 0,
+            ":inc": 1,
+            ":request_id": request_id,
+            ":updated_at": now_iso
+        },
+        ReturnValues="UPDATED_NEW"
+    )
+
+    next_number = int(response["Attributes"]["lastSequence"])
+    return f"Job-{location_id}-{job_date}-{next_number:04d}"
 
 def lambda_handler(event, context):
     """
@@ -277,13 +288,10 @@ def lambda_handler(event, context):
         if not job_created:
             return _response(500, {"message": "Existing item missing jobCreated"})
         
-        # $ Get the location of the request to build the jobcard
+        # $ Get the location when we need to build the jobcard
         location = existing_item.get("location")
-        if not location:
+        if action_status == "Approved" and not location:
             return _response(500, {"message": "Location not found"})
-
-        # Build the jobcard
-        jobcardNumber = generate_jobcard_no(location)
 
         # Frontend action -> DB status
         db_status = "In Progress" if action_status == "Approved" else action_status
@@ -313,6 +321,7 @@ def lambda_handler(event, context):
         }
 
         if action_status == "Approved":
+            jobcardNumber = generate_jobcard_no(location, request_id)
             approved_at = datetime.now(timezone.utc).isoformat()
             approved_by = f'{claims.get("name", "").strip()} {claims.get("family_name", "").strip()}'.strip()
             approved_by_sub = claims.get("sub", "")
@@ -328,17 +337,22 @@ def lambda_handler(event, context):
             expression_attribute_values[":approved_by_sub"] = approved_by_sub
             expression_attribute_values[":jobcardNumber"] = jobcardNumber
 
-        response = table_requests.update_item(
-            Key={
-                "id": request_id,
-                "jobCreated": job_created
-            },
-            UpdateExpression=update_expression,
-            ExpressionAttributeNames=expression_attribute_names,
-            ExpressionAttributeValues=expression_attribute_values,
-            ConditionExpression="attribute_exists(id) AND attribute_exists(jobCreated)",
-            ReturnValues="ALL_NEW"
-        )
+            condition_expression = "attribute_exists(id) AND attribute_exists(jobCreated)"
+
+            if action_status == "Approved":
+                condition_expression += " AND attribute_not_exists(jobcardNumber)"
+
+            response = table_requests.update_item(
+                Key={
+                    "id": request_id,
+                    "jobCreated": job_created
+                },
+                UpdateExpression=update_expression,
+                ExpressionAttributeNames=expression_attribute_names,
+                ExpressionAttributeValues=expression_attribute_values,
+                ConditionExpression=condition_expression,
+                ReturnValues="ALL_NEW"
+            )
 
         return _response(200, {
             "message": "Request updated successfully...",
