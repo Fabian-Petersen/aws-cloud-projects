@@ -25,6 +25,7 @@ cloudfront_policies = {
   caching_disabled                       = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
   allViewerExceptHostHeader              = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
   CORSwithPreflightSecurityHeadersPolicy = "eaab4381-ed33-4a86-88ca-d9558dc6cd63"
+  AllViewer                              = "216adef6-5c7f-47e4-b989-5492eafa07d3"
 
   caching_optimized = "658327ea-f89d-4fab-a63d-7e88639e58f6" # Managed-CachingOptimized - Recommended for S3
   cors_s3_origin    = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf" # All Viewer (forwards everything)
@@ -65,10 +66,10 @@ ordered_cache_items = [
     path_pattern    = "/maintenance-request"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
-  {
-    path_pattern    = "/maintenance-request/*"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
+  # {
+  #   path_pattern    = "/maintenance-request/*"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
 
   # $ Actions
   {
@@ -349,24 +350,24 @@ api_parent_routes = {
 
 api_child_routes = {
   # Child of maintenance-request
-  maintenance-request-id = {
-    # path       = "/maintenance-request/{id}"
-    parent_key = "maintenance-request"
-    path_part  = "{id}"
-    methods = {
-      GET = {
-        lambda        = "getJobsPendingById"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      DELETE = {
-        lambda        = "deleteMaintenanceRequestById"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
+  # maintenance-request-id = {
+  #   # path       = "/maintenance-request/{id}"
+  #   parent_key = "maintenance-request"
+  #   path_part  = "{id}"
+  #   methods = {
+  #     GET = {
+  #       lambda        = "getJobsPendingById"
+  #       authorization = "COGNITO_USER_POOLS"
+  #     }
+  #     DELETE = {
+  #       lambda        = "deleteMaintenanceRequestById"
+  #       authorization = "COGNITO_USER_POOLS"
+  #     }
+  #     OPTIONS = {
+  #       authorization = "NONE"
+  #     }
+  #   }
+  # }
   # $ Lambda get the request which have been created
   jobs-list-pending-id = {
     parent_key = "jobs-list-pending"
@@ -374,6 +375,14 @@ api_child_routes = {
     methods = {
       GET = {
         lambda        = "getJobsPendingById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      PUT = {
+        lambda        = "updateJobRequestById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      DELETE = {
+        lambda        = "deleteJobRequestById"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -495,15 +504,15 @@ api_child_routes = {
 // $ Must create a dynamic resource to add actions
 
 extra_policies = {
-  postMaintenanceRequest       = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  postMaintenanceAction        = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  getJobsPendingById           = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  getMaintenanceActionById     = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  deleteMaintenanceRequestById = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  deleteMaintenanceActionById  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  postCreateAsset              = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  deleteAssetById              = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  getMaintenanceJobcardById    = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  postMaintenanceRequest      = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  postMaintenanceAction       = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  getJobsPendingById          = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  getMaintenanceActionById    = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  deleteJobRequestById        = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  deleteMaintenanceActionById = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  postCreateAsset             = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  deleteAssetById             = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  getMaintenanceJobcardById   = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   // existing policy created for s3EventLambda to allow putObject on s3 bucket 
 }
 
@@ -705,9 +714,23 @@ lambda_functions = {
     ]
   }
 
-  deleteMaintenanceRequestById = {
-    file_name = "deleteMaintenanceRequestById.py"
-    handler   = "deleteMaintenanceRequestById.lambda_handler"
+  updateJobRequestById = {
+    file_name = "updateJobRequestById.py"
+    handler   = "updateJobRequestById.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      assets_table = {
+        table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  deleteJobRequestById = {
+    file_name = "deleteJobRequestById.py"
+    handler   = "deleteJobRequestById.lambda_handler"
     runtime   = "python3.12"
 
     dynamodb_permissions = {
@@ -933,10 +956,28 @@ lambda_functions = {
     dynamodb_permissions = {
       maintenance_request_table = {
         table_name         = "crud-nosql-app-maintenance-request-table"
-        actions            = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        actions            = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = false
       }
     }
+
+    statements = [
+      {
+        actions   = ["s3:DeleteObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/maintenance/*"]
+      }
+      # {
+      #   actions   = ["s3:ListBucket"]
+      #   resources = ["arn:aws:s3:::crud-nosql-app-images"]
+      #   conditions = [
+      #     {
+      #       test     = "StringLike"
+      #       variable = "s3:prefix"
+      #       values   = ["maintenance/*"]
+      #     }
+      #   ]
+      # }
+    ]
   }
 
   postApproveRequest = {

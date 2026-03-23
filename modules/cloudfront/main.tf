@@ -91,8 +91,6 @@ resource "aws_cloudfront_distribution" "distribution" {
       ]
     }
   }
-
-
   dynamic "ordered_cache_behavior" {
     for_each = var.ordered_cache_items
     content {
@@ -110,8 +108,9 @@ resource "aws_cloudfront_distribution" "distribution" {
       viewer_protocol_policy = "redirect-to-https"
 
       #% Managed policies
-      cache_policy_id            = var.cloudfront_policies.caching_disabled
-      origin_request_policy_id   = var.cloudfront_policies.allViewerExceptHostHeader
+      cache_policy_id          = var.cloudfront_policies.caching_disabled
+      origin_request_policy_id = var.cloudfront_policies.allViewerExceptHostHeader
+      # origin_request_policy_id   = var.cloudfront_policies.AllViewer
       response_headers_policy_id = var.cloudfront_policies.CORSwithPreflightSecurityHeadersPolicy
     }
   }
