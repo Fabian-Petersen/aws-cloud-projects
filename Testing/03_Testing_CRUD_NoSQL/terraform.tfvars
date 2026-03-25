@@ -161,6 +161,14 @@ ordered_cache_items = [
     path_pattern    = "/contractor-list/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
+  # $ Users
+  {
+    path_pattern    = "/admin"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    }, {
+    path_pattern    = "/admin/*"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
 ]
 
 #$ api gateway variables
@@ -345,6 +353,26 @@ api_parent_routes = {
     }
   }
 
+  admin = {
+    methods = {
+      POST = {
+        lambda        = "postUser"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      GET = {
+        lambda        = "getUserList"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      PUT = {
+        lambda        = "updateUserById" # Update user attributes / groups / password
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
   maintenance-jobcard = {}
 }
 
@@ -492,6 +520,27 @@ api_child_routes = {
       }
       DELETE = {
         lambda        = "deleteContractorById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+  admin-id = {
+    parent_key = "admin"
+    path_part  = "{id}"
+    methods = {
+      GET = {
+        lambda        = "getUserById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      PUT = {
+        lambda        = "updateUserById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      DELETE = {
+        lambda        = "deleteUserById"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -1069,7 +1118,6 @@ lambda_functions = {
       }
     }
   }
-
   # $ // ============================ SES lambdas ============================== //
   # $ This lambda handles the email to be send to admin
 }
@@ -1104,6 +1152,199 @@ lambda_functions_custom = {
       }
     ]
 
+
+    managed_policy_arns = []
+  }
+
+  # $ // ============================ Users ==================================== //
+  postUser = {
+    file_name = "postUser.py"
+    handler   = "postUser.lambda_handler"
+    runtime   = "python3.12"
+    timeout   = 15
+
+    environment_variables = {
+      # SSM parameter storing the User Pool ID
+      USER_POOL_PARAM = "/crud-nosql/cognito/cognito_user_pool_id"
+    }
+
+    # Inline policies required for Lambda
+    inline_policy_statements = [
+      {
+        sid = "CognitoAdminActions"
+        actions = [
+          "cognito-idp:AdminCreateUser",
+          "cognito-idp:AdminAddUserToGroup",
+          "cognito-idp:AdminSetUserPassword"
+        ]
+        resources = [
+          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
+        ]
+      },
+      {
+        sid = "ReadUserPoolFromSSM"
+        actions = [
+          "ssm:GetParameter"
+        ]
+        resources = [
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/cognito/*"
+        ]
+      }
+    ]
+
+    managed_policy_arns = []
+  }
+
+  getUserList = {
+    file_name = "getUserList.py"
+    handler   = "getUserList.lambda_handler"
+    runtime   = "python3.12"
+    timeout   = 15
+
+    environment_variables = {
+      # SSM parameter storing the User Pool ID
+      USER_POOL_PARAM = "/crud-nosql/cognito/cognito_user_pool_id"
+    }
+
+    # Inline policies required for Lambda
+    inline_policy_statements = [
+      {
+        sid = "CognitoAdminFullRead"
+        actions = [
+          "cognito-idp:ListUsers",
+          "cognito-idp:AdminGetUser",
+          "cognito-idp:AdminListGroupsForUser"
+        ]
+        resources = [
+          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
+        ]
+      },
+      {
+        sid = "ReadUserPoolFromSSM"
+        actions = [
+          "ssm:GetParameter"
+        ]
+        resources = [
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/cognito/*"
+        ]
+      }
+    ]
+
+    managed_policy_arns = []
+  }
+
+  updateUserById = {
+    file_name = "updateUserById.py"
+    handler   = "updateUserById.lambda_handler"
+    runtime   = "python3.12"
+    timeout   = 15
+
+    environment_variables = {
+      # SSM parameter storing the User Pool ID
+      USER_POOL_PARAM = "/crud-nosql/cognito/cognito_user_pool_id"
+    }
+
+    # Inline policies required for Lambda
+    inline_policy_statements = [
+      {
+        sid = "CognitoAdminUpdateUser"
+        actions = [
+          "cognito-idp:AdminUpdateUserAttributes",
+          "cognito-idp:AdminSetUserPassword",
+          "cognito-idp:AdminAddUserToGroup",
+          "cognito-idp:AdminRemoveUserFromGroup",
+          "cognito-idp:AdminGetUser"
+        ]
+        resources = [
+          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
+        ]
+      },
+      {
+        sid = "ReadUserPoolFromSSM"
+        actions = [
+          "ssm:GetParameter"
+        ]
+        resources = [
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/cognito/*"
+        ]
+      }
+    ]
+
+    managed_policy_arns = []
+  }
+  getUserById = {
+    file_name = "getUserById.py"
+    handler   = "getUserById.lambda_handler"
+    runtime   = "python3.12"
+    timeout   = 15
+
+    environment_variables = {
+      # SSM parameter storing the User Pool ID
+      USER_POOL_PARAM = "/crud-nosql/cognito/cognito_user_pool_id"
+    }
+
+    # Inline policies required for Lambda
+    inline_policy_statements = [
+      {
+        sid = "CognitoAdminUpdateUser"
+        actions = [
+          "cognito-idp:AdminUpdateUserAttributes",
+          "cognito-idp:AdminSetUserPassword",
+          "cognito-idp:AdminAddUserToGroup",
+          "cognito-idp:AdminRemoveUserFromGroup",
+          "cognito-idp:AdminGetUser"
+        ]
+        resources = [
+          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
+        ]
+      },
+      {
+        sid = "ReadUserPoolFromSSM"
+        actions = [
+          "ssm:GetParameter"
+        ]
+        resources = [
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/cognito/*"
+        ]
+      }
+    ]
+
+    managed_policy_arns = []
+  }
+
+  deleteUserById = {
+    file_name = "deleteUserById.py"
+    handler   = "deleteUserById.lambda_handler"
+    runtime   = "python3.12"
+    timeout   = 15
+
+    environment_variables = {
+      # SSM parameter storing the User Pool ID
+      USER_POOL_PARAM = "/crud-nosql/cognito/cognito_user_pool_id"
+    }
+
+    # Inline policies required for Lambda
+    inline_policy_statements = [
+      {
+        sid = "CognitoAdminUpdateUser"
+        actions = [
+          "cognito-idp:AdminDeleteUser",
+          "cognito-idp:AdminGetUser"
+        ]
+        resources = [
+          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
+        ]
+      },
+      {
+        sid = "ReadUserPoolFromSSM"
+        actions = [
+          "ssm:GetParameter"
+        ]
+        resources = [
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/cognito/*"
+        ]
+      }
+    ]
 
     managed_policy_arns = []
   }
@@ -1276,14 +1517,23 @@ scan_on_push         = true
 
 # $ SSM Parameters
 parameters = {
-  from_email = { value = "no-reply@crud-nosql.app.fabian-portfolio.net" }
+  from_email = {
+    value  = "no-reply@crud-nosql.app.fabian-portfolio.net"
+    prefix = "/crud-nosql/jobs/ses"
+  }
   admin_email = {
     value       = "admin@crud-nosql.app.fabian-portfolio.net"
     description = "Maintenance request notifications"
+    prefix      = "/crud-nosql/jobs/ses"
+  }
+  cognito_user_pool_id = {
+    value       = "af-south-1_J651TfCsW"
+    description = "Cognito User Pool ID for the app"
+    prefix      = "/crud-nosql/cognito"
   }
 }
 
-ssm_prefix = "/crud-nosql/jobs/ses"
+# ssm_prefix = "/crud-nosql/jobs/ses"
 
 # $ SES
 ses_function_name  = "jobs-notify-admin"

@@ -207,7 +207,6 @@ module "ssm" {
   env          = var.env
   project_name = var.project_name
   parameters   = var.parameters
-  ssm_prefix   = var.ssm_prefix
 }
 
 #$ // ========================= SES Lambda ======================== //
