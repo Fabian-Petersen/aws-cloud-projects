@@ -355,18 +355,6 @@ api_parent_routes = {
 
   admin = {
     methods = {
-      POST = {
-        lambda        = "postUser"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      GET = {
-        lambda        = "getUserList"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      PUT = {
-        lambda        = "updateUserById" # Update user attributes / groups / password
-        authorization = "COGNITO_USER_POOLS"
-      }
       OPTIONS = {
         authorization = "NONE"
       }
@@ -527,8 +515,27 @@ api_child_routes = {
       }
     }
   }
-  admin-id = {
+
+  admin-users = {
     parent_key = "admin"
+    path_part  = "users"
+    methods = {
+      POST = {
+        lambda        = "postUserTrigger"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      GET = {
+        lambda        = "getUserList"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  admin-users-id = {
+    parent_key = "admin-users"
     path_part  = "{id}"
     methods = {
       GET = {
@@ -1118,13 +1125,39 @@ lambda_functions = {
       }
     }
   }
-  # $ // ============================ SES lambdas ============================== //
-  # $ This lambda handles the email to be send to admin
+  # $ // ============================ USers lambdas ============================== //
+  getUserList = {
+    file_name = "getUserList.py"
+    handler   = "getUserList.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      users_table = {
+        table_name         = "crud-nosql-app-users-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  getUserById = {
+    file_name = "getUserById.py"
+    handler   = "getUserById.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      users_table = {
+        table_name         = "crud-nosql-app-users-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
 }
 
-#   # $ // ================================= SES lambdas ==================================== // 
-#   # $ This lambda handles the email to be send to admin
-# }
+# $ // ================================================================================ // 
+# $ //                            Custom lambda Functions                               // 
+# $ // ================================================================================ // 
 
 lambda_functions_custom = {
   # $ // ================================= Technicians ==================================== // 
@@ -1157,9 +1190,9 @@ lambda_functions_custom = {
   }
 
   # $ // ============================ Users ==================================== //
-  postUser = {
-    file_name = "postUser.py"
-    handler   = "postUser.lambda_handler"
+  postUserTrigger = {
+    file_name = "postUserTrigger.py"
+    handler   = "postUserTrigger.lambda_handler"
     runtime   = "python3.12"
     timeout   = 15
 
@@ -1171,52 +1204,37 @@ lambda_functions_custom = {
     # Inline policies required for Lambda
     inline_policy_statements = [
       {
+        sid = "CognitoPostConfirmationInvoke"
+        actions = [
+          "lambda:InvokeFunction"
+        ]
+        resources = [
+          "arn:aws:lambda:af-south-1:157489943321:function:postUserTrigger"
+        ]
+      },
+      {
         sid = "CognitoAdminActions"
         actions = [
           "cognito-idp:AdminCreateUser",
           "cognito-idp:AdminAddUserToGroup",
-          "cognito-idp:AdminSetUserPassword"
+          "cognito-idp:AdminSetUserPassword",
+          "cognito-idp:AdminListGroupsForUser",
+          "cognito-idp:AdminGetUser"
         ]
         resources = [
           "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
         ]
       },
       {
-        sid = "ReadUserPoolFromSSM"
+        sid = "DynamoDBUserTableAccess"
         actions = [
-          "ssm:GetParameter"
+          "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
         ]
         resources = [
-          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/cognito/*"
-        ]
-      }
-    ]
-
-    managed_policy_arns = []
-  }
-
-  getUserList = {
-    file_name = "getUserList.py"
-    handler   = "getUserList.lambda_handler"
-    runtime   = "python3.12"
-    timeout   = 15
-
-    environment_variables = {
-      # SSM parameter storing the User Pool ID
-      USER_POOL_PARAM = "/crud-nosql/cognito/cognito_user_pool_id"
-    }
-
-    # Inline policies required for Lambda
-    inline_policy_statements = [
-      {
-        sid = "CognitoAdminFullRead"
-        actions = [
-          "cognito-idp:ListUsers",
-          "cognito-idp:AdminGetUser",
-          "cognito-idp:AdminListGroupsForUser"
-        ]
-        resources = [
-          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table"
         ]
       },
       {
@@ -1249,14 +1267,23 @@ lambda_functions_custom = {
       {
         sid = "CognitoAdminUpdateUser"
         actions = [
-          "cognito-idp:AdminUpdateUserAttributes",
-          "cognito-idp:AdminSetUserPassword",
-          "cognito-idp:AdminAddUserToGroup",
-          "cognito-idp:AdminRemoveUserFromGroup",
+          "cognito-idp:AdminUpdateUser",
           "cognito-idp:AdminGetUser"
         ]
         resources = [
           "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
+        ]
+      },
+      {
+        sid = "DynamoDBUserTableAccess"
+        actions = [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table"
         ]
       },
       {
@@ -1272,46 +1299,7 @@ lambda_functions_custom = {
 
     managed_policy_arns = []
   }
-  getUserById = {
-    file_name = "getUserById.py"
-    handler   = "getUserById.lambda_handler"
-    runtime   = "python3.12"
-    timeout   = 15
-
-    environment_variables = {
-      # SSM parameter storing the User Pool ID
-      USER_POOL_PARAM = "/crud-nosql/cognito/cognito_user_pool_id"
-    }
-
-    # Inline policies required for Lambda
-    inline_policy_statements = [
-      {
-        sid = "CognitoAdminUpdateUser"
-        actions = [
-          "cognito-idp:AdminUpdateUserAttributes",
-          "cognito-idp:AdminSetUserPassword",
-          "cognito-idp:AdminAddUserToGroup",
-          "cognito-idp:AdminRemoveUserFromGroup",
-          "cognito-idp:AdminGetUser"
-        ]
-        resources = [
-          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
-        ]
-      },
-      {
-        sid = "ReadUserPoolFromSSM"
-        actions = [
-          "ssm:GetParameter"
-        ]
-        resources = [
-          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/cognito/*"
-        ]
-      }
-    ]
-
-    managed_policy_arns = []
-  }
-
+  # $ Delete User By ID
   deleteUserById = {
     file_name = "deleteUserById.py"
     handler   = "deleteUserById.lambda_handler"
@@ -1333,6 +1321,18 @@ lambda_functions_custom = {
         ]
         resources = [
           "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
+        ]
+      },
+      {
+        sid = "DynamoDBUserTableAccess"
+        actions = [
+          "dynamodb:DeleteItem",
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table"
         ]
       },
       {
@@ -1419,6 +1419,12 @@ dynamodb_tables = {
   crud-nosql-app-contractor = {
     pk            = "id"
     sk            = "name"
+    enable_gsi    = false
+    enable_stream = false
+  }
+
+  crud-nosql-app-users = {
+    pk            = "id"
     enable_gsi    = false
     enable_stream = false
   }

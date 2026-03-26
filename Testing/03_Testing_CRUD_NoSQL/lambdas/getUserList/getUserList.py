@@ -1,57 +1,70 @@
 import boto3
-import os
 import json
 
 # Clients
-cognito = boto3.client("cognito-idp")
+dynamodb = boto3.resource("dynamodb")
 ssm = boto3.client("ssm")
 
-# Fetch user pool id from SSM parameter
-USER_POOL_PARAM = os.getenv("USER_POOL_PARAM", "/crud-nosql/cognito")
+TABLE_NAME = "crud-nosql-app-users-table"
 
-def get_user_pool_id():
-    """Fetch the Cognito User Pool ID from SSM"""
-    response = ssm.get_parameter(Name=USER_POOL_PARAM)
-    return response["Parameter"]["Value"]
+table = dynamodb.Table(TABLE_NAME)
 
 def lambda_handler(event, context):
     """
-    Lambda to fetch all users from the Cognito User Pool.
+    Lambda to fetch all users from DynamoDB.
     Can be hooked up to a GET /admin/users route.
     """
-    user_pool_id = get_user_pool_id()
-    print('userpool:', user_pool_id)
+    print('event:', event)
     users = []
-    pagination_token = None
 
-    while True:
-        if pagination_token:
-            response = cognito.list_users(
-                UserPoolId=user_pool_id,
-                PaginationToken=pagination_token,
-                Limit=60  # max allowed per request
-            )
-        else:
-            response = cognito.list_users(
-                UserPoolId=user_pool_id,
-                Limit=60
-            )
+    # $ Grab the Origin header from the incoming request
+    headers = event.get("headers") or {}
+    origin = headers.get("origin") or headers.get("Origin") or ""
 
-        for user in response.get("Users", []):
-            user_info = {
-                "username": user.get("Username"),
-                "attributes": {attr["Name"]: attr["Value"] for attr in user.get("Attributes", [])},
-                "status": user.get("UserStatus")
-            }
-            users.append(user_info)
+    allowedOrigins = [
+        'https://www.crud-nosql.app.fabian-portfolio.net',
+        'https://crud-nosql.app.fabian-portfolio.net',
+        'http://localhost:5173'
+    ]
 
-        pagination_token = response.get("PaginationToken")
-        if not pagination_token:
-            break
+    # $ Only allow known origins
+    allowedOrigin = origin if origin in allowedOrigins else ""
+    
+    HEADERS = {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": allowedOrigin,
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+        "Access-Control-Allow-Credentials": "true"
+    }
 
+    method = (
+        event.get("httpMethod")
+        or event.get("requestContext", {}).get("http", {}).get("method")
+    )
+
+    if method == "OPTIONS":
+        print("OPTIONS request...")
+        return _response(200, {"message": "Success"}, HEADERS)
+
+    # Scan DynamoDB table to fetch all users
+    response = table.scan()
+    for item in response.get("Items", []):
+        users.append(item)
+
+    # Handle pagination if there are more items
+    while "LastEvaluatedKey" in response:
+        response = table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+        for item in response.get("Items", []):
+            users.append(item)
+
+    return _response(200, users, HEADERS)
+
+def _response(status_code, body, headers):
     return {
-        "statusCode": 200,
-        "body": json.dumps(users, indent=2)
+        "statusCode": status_code,
+        "headers": headers,
+        "body": json.dumps(body),
     }
 
 # --- Local testing using event.json ---

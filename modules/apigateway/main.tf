@@ -1,3 +1,10 @@
+locals {
+  all_resources = merge(
+    aws_api_gateway_resource.parents,
+    aws_api_gateway_resource.children_level_1,
+    aws_api_gateway_resource.children_level_2
+  )
+}
 
 #$ [Step 1] : Define the API for the project
 resource "aws_api_gateway_rest_api" "project_apigateway" {
@@ -15,10 +22,26 @@ resource "aws_api_gateway_resource" "parents" {
 
 
 #$ [Step 3] : Child Resources
-resource "aws_api_gateway_resource" "children" {
-  for_each    = var.api_child_routes
+# $ Children with parents as parent
+resource "aws_api_gateway_resource" "children_level_1" {
+  for_each = {
+    for k, v in var.api_child_routes :
+    k => v if contains(keys(var.api_parent_routes), v.parent_key)
+  }
+
   rest_api_id = aws_api_gateway_rest_api.project_apigateway.id
   parent_id   = aws_api_gateway_resource.parents[each.value.parent_key].id
+  path_part   = each.value.path_part
+}
+# $ Children with another child route as parent to create nested routes
+resource "aws_api_gateway_resource" "children_level_2" {
+  for_each = {
+    for k, v in var.api_child_routes :
+    k => v if !contains(keys(var.api_parent_routes), v.parent_key)
+  }
+
+  rest_api_id = aws_api_gateway_rest_api.project_apigateway.id
+  parent_id   = aws_api_gateway_resource.children_level_1[each.value.parent_key].id
   path_part   = each.value.path_part
 }
 
@@ -52,7 +75,7 @@ resource "aws_api_gateway_method" "methods" {
   }
 
   rest_api_id   = aws_api_gateway_rest_api.project_apigateway.id
-  resource_id   = lookup(aws_api_gateway_resource.parents, each.value.resource_name, null) != null ? aws_api_gateway_resource.parents[each.value.resource_name].id : aws_api_gateway_resource.children[each.value.resource_name].id
+  resource_id   = local.all_resources[each.value.resource_name].id
   http_method   = each.value.http_method
   authorization = each.value.authorization == "NONE" ? "NONE" : "COGNITO_USER_POOLS" # use authorization from locals
   # authorizer_id = aws_api_gateway_authorizer.cognito.id
@@ -67,7 +90,7 @@ resource "aws_api_gateway_integration" "integrations" {
   }
 
   rest_api_id             = aws_api_gateway_rest_api.project_apigateway.id
-  resource_id             = lookup(aws_api_gateway_resource.parents, each.value.resource_name, null) != null ? aws_api_gateway_resource.parents[each.value.resource_name].id : aws_api_gateway_resource.children[each.value.resource_name].id
+  resource_id             = local.all_resources[each.value.resource_name].id
   http_method             = each.value.http_method
   integration_http_method = each.value.http_method == "OPTIONS" ? null : "POST"
   type                    = each.value.http_method == "OPTIONS" ? "MOCK" : "AWS_PROXY"
@@ -90,7 +113,7 @@ resource "aws_api_gateway_method_response" "options_response" {
     if m.http_method == "OPTIONS" # $ <-- Only executed on the OPTIONS methods defined here
   }
   rest_api_id = aws_api_gateway_rest_api.project_apigateway.id
-  resource_id = lookup(aws_api_gateway_resource.parents, each.value.resource_name, null) != null ? aws_api_gateway_resource.parents[each.value.resource_name].id : aws_api_gateway_resource.children[each.value.resource_name].id
+  resource_id = local.all_resources[each.value.resource_name].id
   http_method = each.value.http_method
   status_code = "200"
   response_parameters = {
@@ -111,7 +134,7 @@ resource "aws_api_gateway_integration_response" "options_integration_response" {
   }
 
   rest_api_id = aws_api_gateway_rest_api.project_apigateway.id
-  resource_id = lookup(aws_api_gateway_resource.parents, each.value.resource_name, null) != null ? aws_api_gateway_resource.parents[each.value.resource_name].id : aws_api_gateway_resource.children[each.value.resource_name].id
+  resource_id = local.all_resources[each.value.resource_name].id
   http_method = each.value.http_method
   status_code = aws_api_gateway_method_response.options_response[each.key].status_code
 
@@ -170,8 +193,7 @@ resource "aws_api_gateway_deployment" "deploy_api" {
   triggers = {
     redeployment = sha1(jsonencode([
       aws_api_gateway_rest_api.project_apigateway.id,
-      values(aws_api_gateway_resource.parents)[*].id,
-      values(aws_api_gateway_resource.children)[*].id,
+      values(local.all_resources)[*].id,
       values(aws_api_gateway_method.methods)[*].id,
       values(aws_api_gateway_integration.integrations)[*].id,
     ]))
