@@ -1219,7 +1219,8 @@ lambda_functions_custom = {
           "cognito-idp:AdminAddUserToGroup",
           "cognito-idp:AdminSetUserPassword",
           "cognito-idp:AdminListGroupsForUser",
-          "cognito-idp:AdminGetUser"
+          "cognito-idp:AdminGetUser",
+          "cognito-idp:ListUsers"
         ]
         resources = [
           "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"

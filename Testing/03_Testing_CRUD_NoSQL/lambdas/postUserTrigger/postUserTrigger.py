@@ -6,8 +6,15 @@ import os
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table("crud-nosql-app-users-table")
 cognito = boto3.client("cognito-idp")
+ssm = boto3.client("ssm")
 
-USER_POOL_ID = os.environ.get("USER_POOL_ID")
+# Fetch user pool id from SSM parameter
+USER_POOL_PARAM = os.getenv("USER_POOL_PARAM", "/crud-nosql/cognito")
+
+def get_user_pool_id():
+    """Fetch the Cognito User Pool ID from SSM"""
+    response = ssm.get_parameter(Name=USER_POOL_PARAM)
+    return response["Parameter"]["Value"]
 
 def to_human_date(iso_string: str) -> str:
     dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
@@ -21,25 +28,51 @@ HEADERS = {
     "Access-Control-Allow-Credentials": "true"
 }
 
+def get_cognito_user_by_email(email: str, user_pool_id: str) -> dict | None:
+    """
+    Returns the Cognito user dict if a user with the given email exists,
+    otherwise returns None.
+    Uses list_users with an email filter instead of admin_get_user,
+    because the username may not match the email.
+    """
+    result = cognito.list_users(
+        UserPoolId=user_pool_id,
+        Filter=f'email = "{email}"',
+        Limit=1,
+    )
+    users = result.get("Users", [])
+    return users[0] if users else None
+
+
 def lambda_handler(event, context):
     try:
         # --- 1. Parse and validate input ---
         body = json.loads(event.get("body", "{}"))
 
-        required_fields = ["email", "group", "family_name", "name", "location"]
+        required_fields = ["email", "group", "family_name", "name", "location", "mobile"]
         missing = [f for f in required_fields if not body.get(f)]
         if missing:
-            return response(400, {"error": f"Missing required fields: {', '.join(missing)}"})
+            return _response(400, {"error": f"Missing required fields: {', '.join(missing)}"})
 
         email       = body["email"]
         group       = body["group"]
         family_name = body["family_name"]
         name        = body["name"]
         location    = body["location"]
+        mobile      = body["mobile"]
 
-        # --- 2. Create user in Cognito ---
+        #  Get the userpool id
+        user_pool_id = get_user_pool_id()
+
+        # --- 2. Check if user already exists in Cognito by email ---
+        existing_user = get_cognito_user_by_email(email, user_pool_id)
+        if existing_user:
+            return _response(409, {"error": "User already exists."})
+        
+
+        # --- 3. Create user in Cognito ---
         cognito_response = cognito.admin_create_user(
-            UserPoolId=USER_POOL_ID,
+            UserPoolId=user_pool_id,
             Username=email,
             UserAttributes=[
                 {"Name": "email",           "Value": email},
@@ -47,12 +80,11 @@ def lambda_handler(event, context):
                 {"Name": "family_name",     "Value": family_name},
                 {"Name": "email_verified",  "Value": "true"},
             ],
-            DesiredDeliveryMediums=["EMAIL"],  # Sends temporary password via email
+            DesiredDeliveryMediums=["EMAIL"],
         )
 
         user = cognito_response["User"]
 
-        # Extract the Cognito sub from the returned attributes
         sub = next(
             attr["Value"]
             for attr in user["Attributes"]
@@ -60,14 +92,14 @@ def lambda_handler(event, context):
         )
         username = user["Username"]
 
-        # --- 3. Add user to Cognito group ---
+        # --- 4. Add user to Cognito group ---
         cognito.admin_add_user_to_group(
-            UserPoolId=USER_POOL_ID,
+            UserPoolId=user_pool_id,
             Username=username,
             GroupName=group,
         )
 
-        # --- 4. Store user in DynamoDB ---
+        # --- 5. Store user in DynamoDB ---
         now = datetime.now(timezone.utc).isoformat()
 
         item = {
@@ -77,38 +109,38 @@ def lambda_handler(event, context):
             "family_name":    family_name,
             "username":       username,
             "email_verified": True,
-            "status":         "FORCE_CHANGE_PASSWORD",  # Default Cognito status for new admin-created users
+            "status":         "FORCE_CHANGE_PASSWORD",
             "groups":         [group],
             "location":       location,
+            "mobile":         mobile,
             "userCreated":    to_human_date(now),
             "updatedAt":      to_human_date(now),
         }
 
         table.put_item(Item=item)
 
-        return response(201, {"message": "User created successfully", "user": item})
+        return _response(201, {"message": "User created successfully", "user": item})
 
     except cognito.exceptions.UsernameExistsException:
-        return response(409, {"error": "A user with this email already exists."})
+        return _response(409, {"error": "User already exists."})
 
     except cognito.exceptions.InvalidParameterException as e:
-        return response(400, {"error": f"Invalid parameter: {str(e)}"})
+        return _response(400, {"error": f"Invalid parameter: {str(e)}"})
 
     except cognito.exceptions.ResourceNotFoundException as e:
-        return response(404, {"error": f"Cognito group or user pool not found: {str(e)}"})
+        return _response(404, {"error": f"Cognito group or user pool not found: {str(e)}"})
 
     except Exception as e:
         print(f"Unexpected error: {str(e)}")
-        return response(500, {"error": "Internal server error."})
+        return _response(500, {"error": "Internal server error."})
 
 
-def response(status_code: int, body: dict) -> dict:
+def _response(status_code: int, body: dict) -> dict:
     return {
         "statusCode": status_code,
         "headers": HEADERS,
         "body": json.dumps(body, default=str),
     }
-
 
 # --- Local testing ---
 if __name__ == "__main__":

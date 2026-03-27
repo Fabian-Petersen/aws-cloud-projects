@@ -1,10 +1,8 @@
 {
-  "username": "fpetersen2tech@gmail.com",
   "group": "manager",
-  "attributes": {
-    "email": "fpetersen2tech@gmail.com",
-    "email_verified": "true",
-    "family_name": "petersen",
-    "name": "fabian"
-  }
+  "email": "fpetersen2tech@gmail.com",
+  "location": "bellville",
+  "family_name": "petersen",
+  "name": "fabian",
+  "mobile": "0713860263"
 }

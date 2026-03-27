@@ -196,10 +196,6 @@ module "ecr_pdf" {
   project_name    = var.project_name
 }
 
-output "cognito_userpool_arn" {
-  value = module.cognito.cognito_userpool_arn
-}
-
 #$ // ========================= SSM Params ======================== //
 # % This module create paramters for the SES module
 module "ssm" {

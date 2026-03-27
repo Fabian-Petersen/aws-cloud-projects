@@ -93,22 +93,44 @@ resource "aws_ses_email_identity" "from" {
   email = var.from_email
 }
 
-resource "aws_sesv2_email_identity" "domain" {
-  email_identity = var.subdomain_name
+# [INFO] defines domain
+resource "aws_ses_domain_identity" "domain" {
+  domain = var.subdomain_name
 }
 
+# [INFO] Generate tokens
+resource "aws_ses_domain_dkim" "dkim" {
+  domain = aws_ses_domain_identity.domain.domain
+}
 # % DKIM records (3 CNAMEs) - SES provides these tokens after identity creation
 resource "aws_route53_record" "ses_dkim" {
   count = 3
 
   zone_id = var.zone_id
-  name    = "${aws_sesv2_email_identity.domain.dkim_signing_attributes[0].tokens[count.index]}._domainkey.${var.subdomain_name}"
+  name    = "${aws_ses_domain_dkim.dkim.dkim_tokens[count.index]}._domainkey.${var.subdomain_name}"
   type    = "CNAME"
   ttl     = 300
+
   records = [
-    "${aws_sesv2_email_identity.domain.dkim_signing_attributes[0].tokens[count.index]}.dkim.amazonses.com"
+    "${aws_ses_domain_dkim.dkim.dkim_tokens[count.index]}.dkim.amazonses.com"
   ]
+
+  # lifecycle {
+  #   create_before_destroy = true
+  # }
 }
+
+# resource "aws_route53_record" "ses_dkim" {
+#   count = 3
+
+#   zone_id = var.zone_id
+#   name    = "${aws_sesv2_email_identity.domain.dkim_signing_attributes[0].tokens[count.index]}._domainkey.${var.subdomain_name}"
+#   type    = "CNAME"
+#   ttl     = 300
+#   records = [
+#     "${aws_sesv2_email_identity.domain.dkim_signing_attributes[0].tokens[count.index]}.dkim.amazonses.com"
+#   ]
+# }
 
 resource "aws_route53_record" "ses_spf" {
   zone_id = var.zone_id
@@ -118,7 +140,6 @@ resource "aws_route53_record" "ses_spf" {
 
   records = ["v=spf1 include:amazonses.com -all"]
 }
-
 resource "aws_route53_record" "dmarc" {
   zone_id = var.zone_id
   name    = "_dmarc.${var.subdomain_name}"
