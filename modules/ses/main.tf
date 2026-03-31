@@ -1,11 +1,11 @@
-#$ Zip the existing Lambda functions from /lambdas/<function_directory>
+# $ Zip the existing Lambda functions from /lambdas/<function_directory>
 data "archive_file" "lambda_zip" {
   type        = "zip"
   source_file = "${path.root}/lambdas/jobs-notify-admin/jobs-notify-admin.py"
   output_path = "${path.root}/lambdas/jobs-notify-admin/${replace("jobs-notify-admin.py", ".py", ".zip")}"
 }
 
-#$ [Step 1] : Create an IAM role for the Lambda function to execute operations on dynamoDB
+# $ [Step 1] : Create an IAM role for the Lambda function to execute operations on dynamoDB
 resource "aws_iam_role" "lambda_exec_role" {
   name = "${var.ses_function_name}_exec_role"
 
@@ -21,7 +21,7 @@ resource "aws_iam_role" "lambda_exec_role" {
   })
 }
 
-#$ [Step 2] : Create the policy : Get SSM Parameters, GetItem from DynamoDB & send email templete to SES
+# $ [Step 2] : Create the policy : Get SSM Parameters, GetItem from DynamoDB & send email templete to SES
 
 data "aws_iam_policy_document" "lambda_policy" {
   statement {
@@ -61,7 +61,7 @@ resource "aws_iam_role_policy_attachment" "attach" {
   policy_arn = aws_iam_policy.lambda_ses_notify.arn
 }
 
-#$ [Step 3] : Create the lambda function
+# $ [Step 3] : Create the lambda function
 resource "aws_lambda_function" "lambda_function" {
   function_name    = var.ses_function_name
   role             = aws_iam_role.lambda_exec_role.arn
@@ -89,9 +89,9 @@ resource "aws_lambda_event_source_mapping" "dynamoDB_to_lambda" {
 
 # $ =========================== Email Verification & Records ============================== //
 
-resource "aws_ses_email_identity" "from" {
-  email = var.from_email
-}
+# resource "aws_ses_email_identity" "from" {
+#   email = var.from_email
+# }
 
 # [INFO] defines domain
 resource "aws_ses_domain_identity" "domain" {
@@ -102,6 +102,12 @@ resource "aws_ses_domain_identity" "domain" {
 resource "aws_ses_domain_dkim" "dkim" {
   domain = aws_ses_domain_identity.domain.domain
 }
+# $ Allow the tokens to propagate to prevent possible failure of dkim
+resource "time_sleep" "dkim_propagation" {
+  depends_on      = [aws_ses_domain_dkim.dkim]
+  create_duration = "10s"
+}
+
 # % DKIM records (3 CNAMEs) - SES provides these tokens after identity creation
 resource "aws_route53_record" "ses_dkim" {
   count = 3
@@ -112,25 +118,16 @@ resource "aws_route53_record" "ses_dkim" {
   ttl     = 300
 
   records = [
-    "${aws_ses_domain_dkim.dkim.dkim_tokens[count.index]}.dkim.amazonses.com"
+    "${aws_ses_domain_dkim.dkim.dkim_tokens[count.index]}.dkim.amazonses.com."
   ]
 
-  # lifecycle {
-  #   create_before_destroy = true
-  # }
+  # KEY FIX: explicit depends_on prevents race condition
+  depends_on = [time_sleep.dkim_propagation]
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
-
-# resource "aws_route53_record" "ses_dkim" {
-#   count = 3
-
-#   zone_id = var.zone_id
-#   name    = "${aws_sesv2_email_identity.domain.dkim_signing_attributes[0].tokens[count.index]}._domainkey.${var.subdomain_name}"
-#   type    = "CNAME"
-#   ttl     = 300
-#   records = [
-#     "${aws_sesv2_email_identity.domain.dkim_signing_attributes[0].tokens[count.index]}.dkim.amazonses.com"
-#   ]
-# }
 
 resource "aws_route53_record" "ses_spf" {
   zone_id = var.zone_id
@@ -148,4 +145,47 @@ resource "aws_route53_record" "dmarc" {
 
   # Start with p=none while testing, then move to quarantine/reject later
   records = ["v=DMARC1; p=none; rua=mailto:dmarc@${var.subdomain_name}; fo=1"]
+}
+
+# $ Verify everything works to prevent a silent fail later
+resource "aws_ses_domain_identity_verification" "dkim_verification" {
+  domain     = aws_ses_domain_identity.domain.id
+  depends_on = [aws_route53_record.ses_dkim]
+
+  timeouts {
+    create = "5m"
+  }
+}
+
+# $ SES Domain Verification
+resource "aws_route53_record" "ses_domain_verification" {
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = "_amazonses.${var.subdomain_name}"
+  type    = "TXT"
+  ttl     = 300
+  records = [aws_ses_domain_identity.domain.verification_token]
+
+  depends_on = [aws_ses_domain_identity.domain]
+}
+
+#$ Console commands to re-create the expired tokens
+# Force Terraform to re-create the DKIM resource and re-issue tokens
+# - terraform taint aws_ses_domain_dkim.dkim
+
+# Then re-apply — this recreates the tokens and rewrites the CNAMEs
+# - terraform apply
+
+
+# When SES sends you another expiry warning, just change reverify_trigger to "v2" and run terraform apply — it re-issues fresh tokens without destroying and recreating everything.
+resource "null_resource" "ses_dkim_reverify" {
+  triggers = {
+    # Change this value to force re-verification on next apply
+    reverify_trigger = "v1"
+  }
+
+  provisioner "local-exec" {
+    command = "aws ses verify-domain-dkim --domain ${var.subdomain_name} --region ${var.region}"
+  }
+
+  depends_on = [aws_route53_record.ses_dkim]
 }

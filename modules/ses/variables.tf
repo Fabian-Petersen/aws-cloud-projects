@@ -37,3 +37,7 @@ variable "subdomain_name" {
 variable "zone_id" {
   type = string
 }
+
+variable "region" {
+  type = string
+}

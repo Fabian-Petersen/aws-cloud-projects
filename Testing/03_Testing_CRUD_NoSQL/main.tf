@@ -5,8 +5,17 @@ terraform {
       source  = "hashicorp/aws"
       version = ">= 6.0"
     }
+
+    # Add time to delay the dkim token to propagate for 10s
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.9"
+    }
   }
 }
+
+
+# In your terraform required_providers block:
 
 # $ // ================================= route 53 ================================ //
 
@@ -217,6 +226,7 @@ module "ssm" {
 module "ses" {
   source              = "../../modules/ses"
   env                 = var.env
+  region              = var.region
   project_name        = var.project_name
   from_email          = var.from_email
   dynamodb_stream_arn = module.dynamodb_tables.dynamodb_stream_arns["crud-nosql-app-maintenance-request"]
