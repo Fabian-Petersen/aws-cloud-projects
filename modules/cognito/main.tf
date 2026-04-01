@@ -12,4 +12,5 @@ module "cognito" {
   prevent_user_existence = var.prevent_user_existence
   user_groups            = var.user_groups
   users                  = var.users
+  lambda_triggers        = var.lambda_triggers
 }

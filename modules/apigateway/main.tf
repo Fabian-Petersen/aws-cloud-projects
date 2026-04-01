@@ -2,7 +2,8 @@ locals {
   all_resources = merge(
     aws_api_gateway_resource.parents,
     aws_api_gateway_resource.children_level_1,
-    aws_api_gateway_resource.children_level_2
+    aws_api_gateway_resource.children_level_2,
+    aws_api_gateway_resource.children_level_3
   )
 }
 
@@ -34,14 +35,27 @@ resource "aws_api_gateway_resource" "children_level_1" {
   path_part   = each.value.path_part
 }
 # $ Children with another child route as parent to create nested routes
+# $ Children of level 1
 resource "aws_api_gateway_resource" "children_level_2" {
   for_each = {
     for k, v in var.api_child_routes :
-    k => v if !contains(keys(var.api_parent_routes), v.parent_key)
+    k => v if contains(keys(aws_api_gateway_resource.children_level_1), v.parent_key)
   }
 
   rest_api_id = aws_api_gateway_rest_api.project_apigateway.id
   parent_id   = aws_api_gateway_resource.children_level_1[each.value.parent_key].id
+  path_part   = each.value.path_part
+}
+
+# $ Children of level 2
+resource "aws_api_gateway_resource" "children_level_3" {
+  for_each = {
+    for k, v in var.api_child_routes :
+    k => v if contains(keys(aws_api_gateway_resource.children_level_2), v.parent_key)
+  }
+
+  rest_api_id = aws_api_gateway_rest_api.project_apigateway.id
+  parent_id   = aws_api_gateway_resource.children_level_2[each.value.parent_key].id
   path_part   = each.value.path_part
 }
 

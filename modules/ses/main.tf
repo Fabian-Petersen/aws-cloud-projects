@@ -159,7 +159,7 @@ resource "aws_ses_domain_identity_verification" "dkim_verification" {
 
 # $ SES Domain Verification
 resource "aws_route53_record" "ses_domain_verification" {
-  zone_id = data.aws_route53_zone.main.zone_id
+  zone_id = var.zone_id
   name    = "_amazonses.${var.subdomain_name}"
   type    = "TXT"
   ttl     = 300

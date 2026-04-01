@@ -31,13 +31,13 @@ HEADERS = {
 
 def lambda_handler(event, context):
     try:
-        user_id = event.get("pathParameters", {}).get("userId")
+        user_id = event.get("pathParameters", {}).get("id")
         if not user_id:
             return _response(400, {"message": "userId is required"})
 
         # 1. Check user exists in DynamoDB
         response = table.get_item(
-            Key={"pk": f"USER#{user_id}"}
+            Key={"id": user_id}
         )
         #  Get the userpool id
         user_pool_id = get_user_pool_id()
@@ -62,7 +62,7 @@ def lambda_handler(event, context):
 
         # 3. Delete from DynamoDB
         table.delete_item(
-            Key={"pk": f"USER#{user_id}"}
+            Key={"id": user_id}
         )
 
         return _response(200, {"message": "User deleted successfully"})

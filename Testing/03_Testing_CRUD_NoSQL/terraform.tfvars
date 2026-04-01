@@ -163,12 +163,13 @@ ordered_cache_items = [
   },
   # $ Users
   {
-    path_pattern    = "/admin"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    }, {
     path_pattern    = "/admin/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
+  {
+    path_pattern    = "/admin"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  }
 ]
 
 #$ api gateway variables
@@ -517,11 +518,11 @@ api_child_routes = {
   }
 
   admin-users = {
-    parent_key = "admin"
+    parent_key = "admin" // path: admin/users/
     path_part  = "users"
     methods = {
       POST = {
-        lambda        = "postUserTrigger"
+        lambda        = "postUser"
         authorization = "COGNITO_USER_POOLS"
       }
       GET = {
@@ -535,7 +536,7 @@ api_child_routes = {
   }
 
   admin-users-id = {
-    parent_key = "admin-users"
+    parent_key = "admin-users" // path: admin/users/id
     path_part  = "{id}"
     methods = {
       GET = {
@@ -548,6 +549,28 @@ api_child_routes = {
       }
       DELETE = {
         lambda        = "deleteUserById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+  admin-users-resend-temp-pwd = {
+    parent_key = "admin-users" // path: admin/users/resend-temp-password
+    path_part  = "resend-temp-password"
+    methods = {
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+  admin-users-resend-temp-pwd-id = {
+    parent_key = "admin-users-resend-temp-pwd" // path: admin/users/resend-temp-password/id
+    path_part  = "{id}"
+    methods = {
+      POST = {
+        lambda        = "postResendTempPassword"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -571,26 +594,6 @@ extra_policies = {
   getMaintenanceJobcardById   = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   // existing policy created for s3EventLambda to allow putObject on s3 bucket 
 }
-
-# lambda_policies = {
-#   dynamodb_write = {
-#     actions = [
-#       "dynamodb:PutItem",
-#       "dynamodb:UpdateItem"
-#     ]
-#     resources = ["arn:aws:dynamodb:eu-west-1:123456789012:table/jobs"]
-#   }
-
-#   s3_write_assets = {
-#     actions   = ["s3:PutObject"]
-#     resources = ["arn:aws:s3:::my-bucket/assets/*"]
-#   }
-
-#   s3_list_bucket = {
-#     actions   = ["s3:ListBucket"]
-#     resources = ["arn:aws:s3:::my-bucket"]
-#   }
-# }
 
 lambda_policies = {
   dynamodb_read = {
@@ -648,6 +651,10 @@ lambda_policies = {
     resources = ["arn:aws:s3:::my-bucket"]
   }
 }
+
+# $ // ================================================================================ // 
+# $ //                            lambda Functions                                      // 
+# $ // ================================================================================ //
 
 #$ lambda variables
 lambda_functions = {
@@ -1190,9 +1197,9 @@ lambda_functions_custom = {
   }
 
   # $ // ============================ Users ==================================== //
-  postUserTrigger = {
-    file_name = "postUserTrigger.py"
-    handler   = "postUserTrigger.lambda_handler"
+  postUser = {
+    file_name = "postUser.py"
+    handler   = "postUser.lambda_handler"
     runtime   = "python3.12"
     timeout   = 15
 
@@ -1209,7 +1216,7 @@ lambda_functions_custom = {
           "lambda:InvokeFunction"
         ]
         resources = [
-          "arn:aws:lambda:af-south-1:157489943321:function:postUserTrigger"
+          "arn:aws:lambda:af-south-1:157489943321:function:postUser"
         ]
       },
       {
@@ -1251,6 +1258,69 @@ lambda_functions_custom = {
 
     managed_policy_arns = []
   }
+
+  postConfirmationTrigger = {
+    file_name = "postConfirmationTrigger.py"
+    handler   = "postConfirmationTrigger.lambda_handler"
+    runtime   = "python3.12"
+    timeout   = 15
+
+    environment_variables = {
+      # SSM parameter storing the User Pool ID
+      USER_POOL_PARAM = "/crud-nosql/cognito/cognito_user_pool_id"
+    }
+
+    # Inline policies required for Lambda
+    inline_policy_statements = [
+      {
+        sid = "CognitoPostConfirmationInvoke"
+        actions = [
+          "lambda:InvokeFunction"
+        ]
+        resources = [
+          "arn:aws:lambda:af-south-1:157489943321:function:postConfirmationTrigger"
+        ]
+      },
+      {
+        sid = "CognitoAdminActions"
+        actions = [
+          "cognito-idp:AdminCreateUser",
+          "cognito-idp:AdminAddUserToGroup",
+          "cognito-idp:AdminSetUserPassword",
+          "cognito-idp:AdminListGroupsForUser",
+          "cognito-idp:AdminGetUser",
+          "cognito-idp:ListUsers"
+        ]
+        resources = [
+          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
+        ]
+      },
+      {
+        sid = "DynamoDBUserTableAccess"
+        actions = [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table"
+        ]
+      },
+      {
+        sid = "ReadUserPoolFromSSM"
+        actions = [
+          "ssm:GetParameter"
+        ]
+        resources = [
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/cognito/*"
+        ]
+      }
+    ]
+
+    managed_policy_arns = []
+  }
+
 
   updateUserById = {
     file_name = "updateUserById.py"
@@ -1349,7 +1419,60 @@ lambda_functions_custom = {
 
     managed_policy_arns = []
   }
+
+  postResendTempPassword = {
+    file_name = "postResendTempPassword.py"
+    handler   = "postResendTempPassword.lambda_handler"
+    runtime   = "python3.12"
+    timeout   = 15
+
+    environment_variables = {
+      # SSM parameter storing the User Pool ID
+      USER_POOL_PARAM = "/crud-nosql/cognito/cognito_user_pool_id"
+    }
+
+    # Inline policies required for Lambda
+    inline_policy_statements = [
+      {
+        sid = "CognitoAdminActions"
+        actions = [
+          "cognito-idp:AdminCreateUser",
+          "cognito-idp:AdminSetUserPassword",
+          "cognito-idp:AdminGetUser",
+        ]
+        resources = [
+          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
+        ]
+      },
+      {
+        sid = "DynamoDBUserTableAccess"
+        actions = [
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table"
+        ]
+      },
+      {
+        sid = "ReadUserPoolFromSSM"
+        actions = [
+          "ssm:GetParameter"
+        ]
+        resources = [
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/cognito/*"
+        ]
+      }
+    ]
+
+    managed_policy_arns = []
+  }
 }
+
+# $ // ================================================================================ // 
+# $ //                            DynamoDB Tables                                       // 
+# $ // ================================================================================ // 
 
 #$ dynamoDB variables
 dynamodb_tables = {
@@ -1430,6 +1553,10 @@ dynamodb_tables = {
     enable_stream = false
   }
 }
+
+# $ // ================================================================================ // 
+# $ //                            Cognito                                               // 
+# $ // ================================================================================ // 
 
 #$ cognito
 prevent_user_existence = "ENABLED" # use in production environment

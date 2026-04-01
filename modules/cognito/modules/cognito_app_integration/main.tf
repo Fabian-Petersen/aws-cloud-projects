@@ -41,6 +41,10 @@ resource "aws_cognito_user_pool" "pool" {
       alias_attributes
     ]
   }
+
+  lambda_config {
+    post_confirmation = lookup(var.lambda_triggers, "postConfirmationTrigger", null)
+  }
 }
 
 #$ [Step 2] : Create an App Client (no hosted UI)

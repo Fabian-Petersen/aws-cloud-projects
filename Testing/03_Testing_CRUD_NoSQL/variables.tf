@@ -290,8 +290,10 @@ variable "users" {
     ])
     error_message = "Every user's group must exist in var.user_groups."
   }
-
 }
+# variable "lambda_triggers" {
+#   type = map(string)
+# }
 
 variable "user_groups" {
   type = map(object({

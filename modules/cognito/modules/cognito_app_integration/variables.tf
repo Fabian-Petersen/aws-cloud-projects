@@ -58,3 +58,6 @@ variable "user_groups" {
     )
   )
 }
+variable "lambda_triggers" {
+  type = map(string)
+}

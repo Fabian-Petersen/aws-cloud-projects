@@ -147,7 +147,7 @@ module "s3_event_lambda" {
   depends_on = [module.dynamodb_tables]
 }
 
-#$ // =========================== Technicians Lamnda with Cognito ============================== //
+#$ // =========================== Technicians Lambda with Cognito ============================== //
 module "cognito_lambda" {
   source                  = "../../modules/lambda/modules/lambda"
   lambda_functions_custom = var.lambda_functions_custom
@@ -175,6 +175,7 @@ module "cognito" {
   prevent_user_existence = var.prevent_user_existence
   users                  = var.users
   user_groups            = var.user_groups
+  lambda_triggers        = module.cognito_lambda.custom_lambda_arns
 }
 
 #$ // ========================= pdf Lambda ======================== //

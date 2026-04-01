@@ -5,3 +5,10 @@ output "custom_lambda_invoke_arns" {
     k => v.invoke_arn
   }
 }
+
+output "custom_lambda_arns" {
+  value = {
+    for k, v in aws_lambda_function.lambda_function :
+    k => v.arn
+  }
+}

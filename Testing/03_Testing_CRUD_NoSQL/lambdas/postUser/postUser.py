@@ -23,7 +23,7 @@ def to_human_date(iso_string: str) -> str:
 HEADERS = {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "http://localhost:5173",
-    "Access-Control-Allow-Methods": "DELETE,OPTIONS",
+    "Access-Control-Allow-Methods": "DELETE,OPTIONS, POST",
     "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Requested-With",
     "Access-Control-Allow-Credentials": "true"
 }
