@@ -59,6 +59,6 @@ variable "user_groups" {
   )
 }
 
-variable "lambda_triggers" {
-  type = map(string)
-}
+# variable "lambda_triggers" {
+#   type = map(string)
+# }

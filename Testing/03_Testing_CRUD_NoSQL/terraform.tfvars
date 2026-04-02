@@ -169,7 +169,7 @@ ordered_cache_items = [
   {
     path_pattern    = "/admin"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  }
+  },
 ]
 
 #$ api gateway variables
@@ -571,6 +571,19 @@ api_child_routes = {
     methods = {
       POST = {
         lambda        = "postResendTempPassword"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+  admin-users-confirm_user_signup = {
+    parent_key = "admin-users" // path: admin/users/confirm_user_signup
+    path_part  = "confirm_user_signup"
+    methods = {
+      POST = {
+        lambda        = "postConfirmationTrigger"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -1176,7 +1189,7 @@ lambda_functions_custom = {
     timeout   = 15
 
     environment_variables = {
-      USER_POOL_ID = "af-south-1_J651TfCsW"
+      USER_POOL_ID = "af-south-1_A4wjuHPlq"
       GROUP_NAME   = "technician"
     }
 
@@ -1187,7 +1200,7 @@ lambda_functions_custom = {
           "cognito-idp:ListUsersInGroup"
         ]
         resources = [
-          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
+          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_A4wjuHPlq"
         ]
       }
     ]
@@ -1230,7 +1243,7 @@ lambda_functions_custom = {
           "cognito-idp:ListUsers"
         ]
         resources = [
-          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
+          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_A4wjuHPlq"
         ]
       },
       {
@@ -1273,15 +1286,6 @@ lambda_functions_custom = {
     # Inline policies required for Lambda
     inline_policy_statements = [
       {
-        sid = "CognitoPostConfirmationInvoke"
-        actions = [
-          "lambda:InvokeFunction"
-        ]
-        resources = [
-          "arn:aws:lambda:af-south-1:157489943321:function:postConfirmationTrigger"
-        ]
-      },
-      {
         sid = "CognitoAdminActions"
         actions = [
           "cognito-idp:AdminCreateUser",
@@ -1292,7 +1296,7 @@ lambda_functions_custom = {
           "cognito-idp:ListUsers"
         ]
         resources = [
-          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
+          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_A4wjuHPlq"
         ]
       },
       {
@@ -1300,6 +1304,7 @@ lambda_functions_custom = {
         actions = [
           "dynamodb:PutItem",
           "dynamodb:GetItem",
+          "dynamodb:UpdateItem",
           "dynamodb:Scan",
           "dynamodb:Query",
         ]
@@ -1342,7 +1347,7 @@ lambda_functions_custom = {
           "cognito-idp:AdminGetUser"
         ]
         resources = [
-          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
+          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_A4wjuHPlq"
         ]
       },
       {
@@ -1391,7 +1396,7 @@ lambda_functions_custom = {
           "cognito-idp:AdminGetUser"
         ]
         resources = [
-          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
+          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_A4wjuHPlq"
         ]
       },
       {
@@ -1441,7 +1446,7 @@ lambda_functions_custom = {
           "cognito-idp:AdminGetUser",
         ]
         resources = [
-          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_J651TfCsW"
+          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_A4wjuHPlq"
         ]
       },
       {
@@ -1565,46 +1570,47 @@ test_user_username     = "fpetersen2tech@gmail.com"
 test_user_name         = "fabian"
 
 users = {
+  # $ Only create the admin user to login to account, all other users will be managed through the frontend and Cognito
   fabian = {
-    username = "fpetersen2tech@gmail.com"
-    group    = "manager"
-    attributes = {
-      email          = "fpetersen2tech@gmail.com"
-      email_verified = "true"
-      family_name    = "petersen"
-      "name"         = "fabian"
-    }
-  }
-  leon = {
-    username = "c2ktech100@gmail.com"
-    group    = "technician"
-    attributes = {
-      email          = "c2ktech100@gmail.com"
-      email_verified = "true"
-      family_name    = "matalay"
-      "name"         = "leon"
-    }
-  }
-  deon = {
     username = "fpetersen2@gmail.com"
     group    = "admin"
     attributes = {
       email          = "fpetersen2@gmail.com"
       email_verified = "true"
-      family_name    = "williams"
-      "name"         = "deon"
-    }
-  }
-  chrystal = {
-    username = "cristalfk@gmail.com"
-    group    = "user"
-    attributes = {
-      email          = "cristalfk@gmail.com"
-      email_verified = "true"
       family_name    = "petersen"
-      "name"         = "chrystal"
+      "name"         = "fabian"
     }
   }
+  # leon = {
+  #   username = "c2ktech100@gmail.com"
+  #   group    = "technician"
+  #   attributes = {
+  #     email          = "c2ktech100@gmail.com"
+  #     email_verified = "true"
+  #     family_name    = "matalay"
+  #     "name"         = "leon"
+  #   }
+  # }
+  # deon = {
+  #   username = "fpetersen2@gmail.com"
+  #   group    = "admin"
+  #   attributes = {
+  #     email          = "fpetersen2@gmail.com"
+  #     email_verified = "true"
+  #     family_name    = "williams"
+  #     "name"         = "deon"
+  #   }
+  # }
+  # chrystal = {
+  #   username = "cristalfk@gmail.com"
+  #   group    = "user"
+  #   attributes = {
+  #     email          = "cristalfk@gmail.com"
+  #     email_verified = "true"
+  #     family_name    = "petersen"
+  #   "name"         = "chrystal"
+  # }
+  # }
 }
 
 user_groups = {
@@ -1661,7 +1667,7 @@ parameters = {
     prefix      = "/crud-nosql/jobs/ses"
   }
   cognito_user_pool_id = {
-    value       = "af-south-1_J651TfCsW"
+    value       = "af-south-1_A4wjuHPlq"
     description = "Cognito User Pool ID for the app"
     prefix      = "/crud-nosql/cognito"
   }

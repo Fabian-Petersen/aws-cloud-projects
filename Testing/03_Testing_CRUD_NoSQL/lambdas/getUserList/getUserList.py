@@ -1,5 +1,6 @@
 import boto3
 import json
+from datetime import datetime, timezone, timedelta
 
 # Clients
 dynamodb = boto3.resource("dynamodb")
@@ -8,6 +9,11 @@ ssm = boto3.client("ssm")
 TABLE_NAME = "crud-nosql-app-users-table"
 
 table = dynamodb.Table(TABLE_NAME)
+
+def to_human_date(iso_string: str) -> str:
+    SAST = timezone(timedelta(hours=2))
+    dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
+    return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
 
 def lambda_handler(event, context):
     """

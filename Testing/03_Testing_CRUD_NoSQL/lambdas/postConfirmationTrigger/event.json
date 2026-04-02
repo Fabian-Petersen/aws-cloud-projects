@@ -1,8 +1,22 @@
 {
-  "group": "manager",
-  "email": "fpetersen2tech@gmail.com",
-  "location": "bellville",
-  "family_name": "petersen",
-  "name": "fabian",
-  "mobile": "0713860263"
+  "event": {
+    "version": "1",
+    "region": "af-south-1",
+    "userPoolId": "af-south-1_A4wjuHPlq",
+    "userName": "816c02d8-7071-7085-f3cb-9728c03fb304",
+    "callerContext": {
+      "awsSdkVersion": "aws-sdk-unknown-unknown",
+      "clientId": "None"
+    },
+    "triggerSource": "PostConfirmation_ConfirmSignUp",
+    "request": {
+      "userAttributes": {
+        "sub": "816c02d8-7071-7085-f3cb-9728c03fb304",
+        "email_verified": "false",
+        "cognito:user_status": "CONFIRMED",
+        "email": "cristalfk@gmail.com"
+      }
+    },
+    "response": {}
+  }
 }

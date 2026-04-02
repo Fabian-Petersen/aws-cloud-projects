@@ -1,6 +1,6 @@
 import json
 import boto3
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import os
 
 dynamodb = boto3.resource("dynamodb")
@@ -17,8 +17,9 @@ def get_user_pool_id():
     return response["Parameter"]["Value"]
 
 def to_human_date(iso_string: str) -> str:
+    SAST = timezone(timedelta(hours=2))
     dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
-    return dt.strftime("%d %b %Y, %H:%M")
+    return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
 
 HEADERS = {
     "Content-Type": "application/json",

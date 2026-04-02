@@ -207,6 +207,8 @@ resource "aws_api_gateway_deployment" "deploy_api" {
   triggers = {
     redeployment = sha1(jsonencode([
       aws_api_gateway_rest_api.project_apigateway.id,
+      aws_api_gateway_authorizer.cognito.id,
+      aws_api_gateway_authorizer.cognito.provider_arns,
       values(local.all_resources)[*].id,
       values(aws_api_gateway_method.methods)[*].id,
       values(aws_api_gateway_integration.integrations)[*].id,

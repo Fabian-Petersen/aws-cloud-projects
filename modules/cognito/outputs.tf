@@ -1,15 +1,24 @@
-# output "user_pool_id" {
-#   value = aws_cognito_user_pool.pool.id
-# }
+#$ Outputs for your frontend/backend
+output "user_pool_id" {
+  value = aws_cognito_user_pool.pool.id
+}
 
-# output "client_id" {
-#   value = aws_cognito_user_pool_client.app_client.id
-# }
+output "client_id" {
+  value = aws_cognito_user_pool_client.app_client.id
+}
 
-# output "cognito_api_endpoint" {
-#   value = "https://cognito-idp.${var.region}.amazonaws.com/${aws_cognito_user_pool.pool.id}"
-# }
+output "cognito_api_endpoint" {
+  value = "https://cognito-idp.${var.region}.amazonaws.com/${aws_cognito_user_pool.pool.id}"
+}
 
 output "cognito_userpool_arn" {
-  value = module.cognito.cognito_userpool_arn
+  value = aws_cognito_user_pool.pool.arn
 }
+
+# output "lambda_source_arn" {
+#   value = aws_lambda_permission.cognito_invoke.source_arn
+# }
+
+# output "lambda_triggers" {
+#   value = lookup(var.lambda_triggers, "postConfirmationTrigger", null)
+# }
