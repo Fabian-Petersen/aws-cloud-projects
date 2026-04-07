@@ -19,7 +19,7 @@ HEADERS = {
 
 def lambda_handler(event, context):
     try:
-        user_id = event.get("pathParameters", {}).get("userId")
+        user_id = event.get("pathParameters", {}).get("id")
         if not user_id:
             return _response(400, {"message": "userId is required"})
 
@@ -28,7 +28,7 @@ def lambda_handler(event, context):
         # id, email, name, family_name, username, email_verified,
         # status, group, location, userCreated, updatedAt
         result = table.get_item(
-            Key={"pk": f"USER#{user_id}"}
+            Key={"id": user_id}
         )
 
         item = result.get("Item")

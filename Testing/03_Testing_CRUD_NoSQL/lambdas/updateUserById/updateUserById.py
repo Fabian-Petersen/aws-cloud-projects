@@ -1,7 +1,7 @@
 import json
 import boto3
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from botocore.exceptions import ClientError
 
 # Clients
@@ -29,13 +29,13 @@ HEADERS = {
 COGNITO_ATTRIBUTES = {"email", "name", "family_name"}
 
 # Stored in DynamoDB only — not in Cognito
-DYNAMO_ONLY_FIELDS = {"location"}
+DYNAMO_ONLY_FIELDS = {"location", "mobile"}
 
 # Read-only — never updatable via this endpoint
 READ_ONLY_FIELDS = {"id", "username", "email_verified", "status", "userCreated", "updatedAt"}
 
 # All fields the caller is allowed to send
-ALLOWED_FIELDS = {"email", "name", "family_name", "group", "location"}
+ALLOWED_FIELDS = {"email", "name", "family_name", "group", "location", "mobile"}
 
 
 def get_user_pool_id():
@@ -59,7 +59,6 @@ def update_cognito_attributes(user_pool_id, user_id, updates):
             UserAttributes=cognito_updates
         )
 
-
 def update_cognito_group(user_pool_id, user_id, new_group, current_group):
     """Move user to a new Cognito group, removing them from the current one"""
     if current_group and current_group != new_group:
@@ -75,13 +74,20 @@ def update_cognito_group(user_pool_id, user_id, new_group, current_group):
         GroupName=new_group
     )
 
+def to_human_date(iso_string: str) -> str:
+    SAST = timezone(timedelta(hours=2))
+    dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
+    return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
 
 def update_dynamo(user_id, updates):
     """
     Dynamically build and execute a DynamoDB UpdateItem expression.
     Always sets updatedAt to the current UTC timestamp.
     """
-    updates["updatedAt"] = datetime.now(timezone.utc).isoformat()
+
+    # Get the current time for the update
+    now = datetime.now(timezone.utc).isoformat()
+    updates["updatedAt"] = to_human_date(now)
 
     expression_parts = []
     expression_names = {}
@@ -97,7 +103,7 @@ def update_dynamo(user_id, updates):
     update_expression = "SET " + ", ".join(expression_parts)
 
     table.update_item(
-        Key={"pk": f"USER#{user_id}"},
+        Key={"id": user_id},
         UpdateExpression=update_expression,
         ExpressionAttributeNames=expression_names,
         ExpressionAttributeValues=expression_values,
@@ -106,7 +112,7 @@ def update_dynamo(user_id, updates):
 
 def lambda_handler(event, context):
     try:
-        user_id = event.get("pathParameters", {}).get("userId")
+        user_id = event.get("pathParameters", {}).get("id")
         if not user_id:
             return _response(400, {"message": "userId is required"})
 
@@ -132,7 +138,7 @@ def lambda_handler(event, context):
         user_pool_id = get_user_pool_id()
 
         # 2. Verify user exists in DynamoDB
-        existing = table.get_item(Key={"pk": f"USER#{user_id}"})
+        existing = table.get_item(Key={"id": user_id})
         if not existing.get("Item"):
             return _response(404, {"message": "User not found"})
 
@@ -143,6 +149,10 @@ def lambda_handler(event, context):
 
         # 4. Handle group change in Cognito (DynamoDB updated in step 5)
         new_group = body.get("group")
+
+        if isinstance(new_group, list):
+            new_group = new_group[0]  # take first value
+
         if new_group:
             current_group = current_item.get("group")
             update_cognito_group(user_pool_id, user_id, new_group, current_group)

@@ -111,7 +111,7 @@ def lambda_handler(event, context):
             "username":       username,
             "email_verified": True,
             "status":         "FORCE_CHANGE_PASSWORD",
-            "groups":         [group],
+            "groups":         group,
             "location":       location,
             "mobile":         mobile,
             "userCreated":    to_human_date(now),

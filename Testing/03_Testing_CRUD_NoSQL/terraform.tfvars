@@ -535,6 +535,20 @@ api_child_routes = {
     }
   }
 
+  admin-user = {
+    parent_key = "admin" // path: admin/user/
+    path_part  = "user"
+    methods = {
+      GET = {
+        lambda        = "getUser"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
   admin-users-id = {
     parent_key = "admin-users" // path: admin/users/id
     path_part  = "{id}"
@@ -1272,6 +1286,55 @@ lambda_functions_custom = {
     managed_policy_arns = []
   }
 
+  getUser = {
+    file_name = "getUser.py"
+    handler   = "getUser.lambda_handler"
+    runtime   = "python3.12"
+    timeout   = 15
+
+    environment_variables = {
+      # SSM parameter storing the User Pool ID
+      USER_POOL_PARAM = "/crud-nosql/cognito/cognito_user_pool_id"
+    }
+
+    # Inline policies required for Lambda
+    inline_policy_statements = [
+      {
+        sid = "CognitoAdminActions"
+        actions = [
+          "cognito-idp:AdminGetUser",
+          "cognito-idp:ListUsers"
+        ]
+        resources = [
+          "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_A4wjuHPlq"
+        ]
+      },
+      {
+        sid = "DynamoDBUserTableAccess"
+        actions = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table"
+        ]
+      },
+      {
+        sid = "ReadUserPoolFromSSM"
+        actions = [
+          "ssm:GetParameter"
+        ]
+        resources = [
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/cognito/*"
+        ]
+      }
+    ]
+
+    managed_policy_arns = []
+  }
+
   postConfirmationTrigger = {
     file_name = "postConfirmationTrigger.py"
     handler   = "postConfirmationTrigger.lambda_handler"
@@ -1343,8 +1406,10 @@ lambda_functions_custom = {
       {
         sid = "CognitoAdminUpdateUser"
         actions = [
-          "cognito-idp:AdminUpdateUser",
-          "cognito-idp:AdminGetUser"
+          "cognito-idp:AdminGetUser",
+          "cognito-idp:AdminUpdateUserAttributes",
+          "cognito-idp:AdminAddUserToGroup",
+          "cognito-idp:AdminRemoveUserFromGroup"
         ]
         resources = [
           "arn:aws:cognito-idp:af-south-1:157489943321:userpool/af-south-1_A4wjuHPlq"
@@ -1354,6 +1419,7 @@ lambda_functions_custom = {
         sid = "DynamoDBUserTableAccess"
         actions = [
           "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
           "dynamodb:GetItem",
           "dynamodb:Scan",
           "dynamodb:Query",
