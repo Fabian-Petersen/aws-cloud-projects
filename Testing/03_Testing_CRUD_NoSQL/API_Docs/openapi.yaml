@@ -1,0 +1,1254 @@
+openapi: 3.0.3
+info:
+  title: Atlantic Meat API 1.0
+  description: |-
+    This is a sample Maintenance and Asset Management API based on the OpenAPI 3.0 specification.
+    You can find out more about Swagger at [https://swagger.io](https://swagger.io). 
+    In this API, we've adopted a design-first approach to make it easier to manage users, projects, and assets.
+    You can help improve the API by updating the definition or the implementation. Over time, this will allow us to enhance features and expose new capabilities in OAS3.
+
+    _If you're looking for the Swagger 2.0/OAS 2.0 version of Petstore, then click [here](https://editor.swagger.io/?url=https://petstore.swagger.io/v2/swagger.yaml). Alternatively, you can load via the `Edit > Load Petstore OAS 2.0` menu option!_
+    
+    Some useful links:
+    - [The Pet Store repository](https://github.com/swagger-api/swagger-petstore)
+    - [The source API definition for the Pet Store](https://github.com/swagger-api/swagger- - -petstore/blob/master/src/main/resources/openapi.yaml)
+  termsOfService: http://swagger.io/terms/
+  contact:
+    email: apiteam@swagger.io
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+externalDocs:
+  description: Find out more about Swagger
+  url: http://swagger.io
+servers:
+  - url: https://petstore3.swagger.io/api/v3
+tags:
+  - name: Atlantic Meat
+    description: Maintenance and Asset Management
+    externalDocs:
+      description: Find out more
+      url: https://crud-nosql.app.fabian-portfolio.net
+  # - name: store
+    # description: Access to Petstore orders
+    # externalDocs:
+      # description: Find out more about our store
+      # url: http://swagger.io
+  # - name: user
+    # description: Operations about user
+paths:
+  /jobs:
+    get:
+      tags:
+        - jobs
+      summary: get all the jobs from database
+      description: Get all jobs from the database
+      x-lambda-runtime: python v3.12
+      x-lambda-function: getJobsList.py
+      operationId: getJobs
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'          
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '400':
+          description: Invalid ID supplied
+        '404':
+          description: Job not found
+        '405':
+          description: Validation exception
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+  /jobs/request:
+    post:
+      tags:
+        - jobs
+      summary: Add a new job request to the database
+      description: Add a new pet to the store
+      x-lambda-runtime: python v3.12
+      x-lambda-function: postJobRequest.py
+      operationId: addNewJob
+      requestBody:
+        description: Create a new pet in the store
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Pet'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/Pet'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Pet'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'          
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '405':
+          description: Invalid input
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+            
+  /jobs/request/approved: 
+    post:
+      tags:
+        - jobs
+      summary: Approve an existing pending job
+      description: Approve an existing pending job
+      x-lambda-runtime: python v3.12
+      x-lambda-function: postApproveRequest.py
+      operationId: addRequestApproved
+      requestBody:
+        description: Approve an existing pending job
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Pet'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/Pet'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Pet'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'          
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '405':
+          description: Invalid input
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+  
+  /jobs/requests/rejected: 
+    post:
+      tags:
+        - jobs
+      summary: Reject a pending job
+      description: Add a new pet to the store
+      x-lambda-runtime: python v3.12
+      x-lambda-function: postRejectRequest.py
+      operationId: addRejectJob
+      requestBody:
+        description: Reject a job request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Pet'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/Pet'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Pet'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'          
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '405':
+          description: Invalid input
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+  
+  /jobs/pending: 
+    get:
+      tags:
+        - jobs
+      summary: Get all the jobs with "status === pending"
+      description: Get all the jobs that are pending
+      x-lambda-runtime: python v3.12
+      x-lambda-function: getJobsPendingList.py
+      operationId: getJobsPendingList
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'          
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+        '400':
+          description: Invalid status value
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+            
+  /jobs/pending/{jobId}:
+    get:
+      tags:
+        - jobs
+      summary: Get a pending job by id with "status === pending"
+      description: Get all the jobs that are pending
+      x-lambda-runtime: python v3.12
+      x-lambda-function: getJobsPendingById.py
+      operationId: getJobsPendingById
+      parameters:
+        - name: jobId
+          in: path
+          description: ID of pet to return
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'          
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+        '400':
+          description: Invalid status value
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+  
+    put:
+      tags:
+        - jobs
+      summary: update a pending job by id with "status === pending"
+      description: Update a pending job request
+      x-lambda-runtime: python v3.12
+      x-lambda-function: updateJobRequestById.py
+      operationId: updateJobRequestById
+      parameters:
+        - name: jobId
+          in: path
+          description: ID of job to update
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'          
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+        '400':
+          description: Invalid status value
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+    delete:
+      tags:
+        - jobs
+      summary: delete a single job by id with "status === pending"
+      description: Delete the pending job by id
+      x-lambda-runtime: python v3.12
+      x-lambda-function: deleteJobRequestById.py
+      operationId: deleteJobRequestById
+      parameters:
+        - name: jobId
+          in: path
+          description: ID of job to be deleted
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'          
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+        '400':
+          description: Invalid status value
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+            
+  /jobs/approved: 
+    get:
+      tags:
+        - jobs
+      summary: Get all the jobs with "status === approved"
+      description: Get all the jobs that are approved
+      x-lambda-runtime: python v3.12
+      x-lambda-function: getJobsApprovedList.py
+      operationId: getJobsApprovedList
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'          
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+        '400':
+          description: Invalid tag value
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+            
+  /jobs/approved/{jobId}:
+    get:
+      tags:
+        - jobs
+      summary: Find single job by id with "status === approved"
+      description: Returns a single approved job
+      x-lambda-runtime: python v3.12
+      x-lambda-function: getJobsApprovedById.py
+      operationId: getJobsApprovedById
+      parameters:
+        - name: jobId
+          in: path
+          description: ID of job to return
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'          
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '400':
+          description: Invalid ID supplied
+        '404':
+          description: Pet not found
+      security:
+        - api_key: []
+        - petstore_auth:
+            - write:pets
+            - read:pets
+  
+  /jobs/execute: 
+    post:
+      tags:
+        - jobs
+      summary: Post a job action with "status === complete"
+      description: Post a job execute to complete a job request
+      x-lambda-runtime: python v3.12
+      x-lambda-function: postMaintenanceAction.py
+      operationId: postJobExecute
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'          
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+        '400':
+          description: Invalid tag value
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+            
+  /jobs/execute/{jobId}: 
+    get:
+      tags:
+        - jobs
+      summary: Get a job action with "status === complete"
+      description: Get a job with jobId and "status == complete"
+      x-lambda-runtime: python v3.12
+      x-lambda-function: getMaintenanceActionById.py
+      operationId: getMaintenanceActionById
+      parameters:
+        - name: jobId
+          in: path
+          description: ID of job to return
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'          
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+        '400':
+          description: Invalid tag value
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+    put:
+      tags:
+        - jobs
+      summary: This route must be added
+      description: Get a job with jobId and "status == complete"
+      x-lambda-runtime: python v3.12
+      x-lambda-function: updateJobExecuteById.py
+      operationId: updateJobExecuteById
+      parameters:
+        - name: jobId
+          in: path
+          description: ID of job to return
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'          
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+        '400':
+          description: Invalid tag value
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+            
+    delete:
+      tags:
+        - jobs
+      summary: This route must be reomved
+      description: Get a job with jobId and "status == complete"
+      x-lambda-runtime: python v3.12
+      x-lambda-function: updateJobExecuteById.py
+      operationId: deleteJobExecuteById
+      parameters:
+        - name: jobId
+          in: path
+          description: ID of job to return
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'          
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+        '400':
+          description: Invalid tag value
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+  
+  /jobs/jobcard:
+    options:
+      tags:
+        - jobs
+      summary: Preflight Options
+      description: Returns a single approved job
+      operationId: optionsJobcardById
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'          
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '400':
+          description: Invalid ID supplied
+        '404':
+          description: Pet not found
+      security:
+        - api_key: []
+        - petstore_auth:
+            - write:pets
+            - read:pets
+            
+  /jobs/jobcard/{jobId}:
+    get:
+      tags:
+        - jobs
+      summary: Return a jobcard for a single job
+      description: Returns a single approved job
+      x-lambda-runtime: python v3.12
+      x-lambda-function: getMaintenanceJobcardById.py
+      operationId: getMaintenanceJobcardById
+      parameters:
+        - name: jobId
+          in: path
+          description: ID of job to return
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'          
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '400':
+          description: Invalid ID supplied
+        '404':
+          description: Pet not found
+      security:
+        - api_key: []
+        - petstore_auth:
+            - write:pets
+            - read:pets
+            
+  /assets:
+    get:
+      tags:
+        - assets
+      summary: get list of all assets
+      description: get list of all assets
+      x-lambda-runtime: python v3.12
+      x-lambda-function: getAssetsList.py
+      operationId: getAssetsList
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+            
+    post:
+      tags:
+        - assets
+      summary: create a new asset
+      description: ''
+      x-lambda-runtime: python v3.12
+      x-lambda-function: postCreateAsset.py
+      operationId: postCreateAsset
+      requestBody:
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pet
+
+  /assets/{assetId}:
+    get:
+      tags:
+        - assets
+      summary: Get single asset by assetId
+      description: ''
+      x-lambda-runtime: python v3.12
+      x-lambda-function: getAssetById.py
+      operationId: getAssetById
+      parameters:
+        - name: assetId
+          in: path
+          description: ID of pet to update
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+  
+    put:
+      tags:
+        - assets
+      summary: Update single asset by assetId
+      description: ''
+      x-lambda-runtime: python v3.12
+      x-lambda-function: updateAssetById.py
+      operationId: updateAssetById
+      parameters:
+        - name: assetId
+          in: path
+          description: ID of pet to update
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+  
+    delete:
+      tags:
+        - assets
+      summary: Delete single asset by assetId
+      description: ''
+      x-lambda-runtime: python v3.12
+      x-lambda-function: deleteAssetById.py
+      operationId: deleteAssetById
+      parameters:
+        - name: assetId
+          in: path
+          description: ID of pet to update
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+            
+  /assets/{locationId}:
+    get:
+      tags:
+        - assets
+      summary: Get asset by locationId
+      description: ''
+      x-lambda-runtime: python v3.12
+      x-lambda-function: getAssetByLocation.py
+      operationId: getAssetByLocation
+      parameters:
+        - name: locationId
+          in: path
+          description: ID location to return assets
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+            
+            
+  /users/get-current-user: 
+    get:
+      tags:
+        - users
+      summary: Return the current signed in user
+      description: ''
+      x-lambda-runtime: python v3.12
+      x-lambda-function: getUser.py
+      operationId: getUser
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                schema:
+                $ref: '#/components/schemas/UserResponse'
+      security:
+        - api_key: []
+            
+  /users: 
+    get:
+      tags:
+        - users
+      summary: Returns list of all the users
+      description: ''
+      x-lambda-runtime: python v3.12
+      x-lambda-function: getUserList.py
+      operationId: getUserList
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserResponse'
+      security:
+        - api_key: []
+        
+    post:
+      tags:
+        - users
+      summary: Create a new user
+      description: ''
+      x-lambda-runtime: python v3.12
+      x-lambda-function: postUser.py
+      operationId: postUser
+      requestBody:
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pet
+            
+  /users/technicians:  
+    get:
+      tags:
+        - users
+      summary: Returns list of all technicians
+      description: ''
+      x-lambda-runtime: python v3.12
+      x-lambda-function: getTechnicianList.py
+      operationId: getTechnicianList
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: integer
+                  format: int32
+      security:
+        - api_key: []
+        
+  /users/contractors:  
+    get:
+      tags:
+        - users
+      summary: Returns list of all contractors
+      description: ''
+      x-lambda-runtime: python v3.12
+      x-lambda-function: getTechnicianList.py
+      operationId: getTechnicianList
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: integer
+                  format: int32
+      security:
+        - api_key: []
+        
+  /users/{userId}:
+    get:
+      tags:
+        - users
+      summary: Get user by userId
+      description: ''
+      x-lambda-runtime: python v3.12
+      x-lambda-function: getUserById.py
+      operationId: getUserById
+      parameters:
+        - name: userId
+          in: path
+          description: ID of user to return user data
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+            
+    put:
+      tags:
+        - users
+      summary: Update user by userId
+      description: ''
+      x-lambda-runtime: python v3.12
+      x-lambda-function: updateUserById.py
+      operationId: updateUserById
+      parameters:
+        - name: userId
+          in: path
+          description: ID of user to update
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+            
+    delete:
+      tags:
+        - users
+      summary: Delete user by userId
+      description: ''
+      x-lambda-runtime: python v3.12
+      x-lambda-function: deleteUserById.py
+      operationId: deleteUserById
+      parameters:
+        - name: userId
+          in: path
+          description: ID of user to update
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+            
+  /admin/confirm-user-signup:
+    post:
+      tags:
+        - admin
+      summary: Trigger lambda to update user after signup
+      description: Check if this route is still required
+      x-lambda-runtime: python v3.12
+      x-lambda-function: postConfirmationTrigger.py
+      operationId: postConfirmationTrigger
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+            
+  /admin/resend-temp-password:
+    options:
+      tags:
+        - admin
+      summary: Resend the temporary password
+      description: ''
+      x-lambda-runtime: python v3.12
+      x-lambda-function: postConfirmationTrigger.py
+      operationId: optionsResendTempPassword
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+            
+  /admin/resend-temp-password/{userId}:
+    post:
+      tags:
+        - admin
+      summary: Resend the temporary password
+      description: ''
+      x-lambda-runtime: python v3.12
+      x-lambda-function: postResendTempPassword.py
+      operationId: postResendTempPassword
+      parameters:
+        - name: userId
+          in: path
+          description: ID of user to update
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+      security:
+        - petstore_auth:
+            - write:pets
+            - read:pets
+        
+  /comments:
+    get:
+      tags:
+        - comments
+      summary: Get the list of comments
+      description: ''
+      x-lambda-runtime: python v3.12
+      x-lambda-function: getCommentsList.py
+      operationId: getCommentsList
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '405':
+          description: Invalid input
+          
+    post:
+      tags:
+        - comments
+      summary: Create a new comment
+      description: ''
+      x-lambda-runtime: python v3.12
+      x-lambda-function: postComment.py
+      operationId: postComment
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '405':
+          description: Invalid input
+          
+  /comments/{commentId}:
+    get:
+      tags:
+        - comments
+      summary: Get comment by ID
+      description: ''
+      operationId: getCommentById
+      parameters:
+        - name: commentId
+          in: path
+          description: ID of comment that needs to be fetched
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'          
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Invalid ID supplied
+        '404':
+          description: Comment not found
+          
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        
+        group:
+          type: string
+          description: User role/group
+          example: admin
+          enum:
+            - admin
+            - technician
+            - contractor
+            - manager
+            - user
+        
+        family_name:
+          type: string
+          description: User surname
+          example: "Petersen"
+
+        name:
+          type: string
+          description: User first name
+          example: "Fabian"
+
+        location:
+          type: string
+          description: User location
+          example: "Cape Town"
+
+        mobile:
+          type: string
+          description: South African mobile number
+          example: "0821234567"
+          pattern: "^0[6-8][0-9]{8}$"
+
+      required:
+        - email
+        - group
+        - family_name
+        - name
+        - location
+        - mobile
+
+      xml:
+        name: user
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "33bcf2e8-b091-905d-5372-00c567c43a45"
+
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+
+        name:
+          type: string
+          example: "Fabian"
+
+        family_name:
+          type: string
+          example: "Petersen"
+
+        username:
+          type: string
+          description: Cognito username
+          example: "fabian.petersen"
+
+        email_verified:
+          type: boolean
+          description: Whether the user's email is verified
+          example: true
+
+        status:
+          type: string
+          description: User account status
+          example: CONFIRMED
+          enum:
+            - UNCONFIRMED
+            - CONFIRMED
+            - ARCHIVED
+            - COMPROMISED
+            - UNKNOWN
+            - RESET_REQUIRED
+            - FORCE_CHANGE_PASSWORD
+
+        group:
+          type: string
+          description: User role/group
+          example: admin
+          enum:
+            - admin
+            - technician
+            - contractor
+            - manager
+            - user
+
+        location:
+          type: string
+          example: "Cape Town"
+
+        userCreated:
+          type: string
+          format: date-time
+          description: User creation timestamp
+          example: "2024-10-01T12:00:00Z"
+
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: "2024-10-10T15:30:00Z"
+
+        mobile:
+          type: string
+          description: South African mobile number
+          example: "0821234567"
+          pattern: "^0[6-8][0-9]{8}$"
+
+      required:
+        - id
+        - email
+        - name
+        - family_name
+        - username
+        - email_verified
+        - status
+        - group
+        - location
+        - userCreated
+        - updatedAt
+        - mobile
+
+      xml:
+        name: userResponse
+
+  securitySchemes:
+    petstore_auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://petstore3.swagger.io/oauth/authorize
+          scopes:
+            write:pets: modify pets in your account
+            read:pets: read your pets
+    api_key:
+      type: apiKey
+      name: api_key
+      in: header

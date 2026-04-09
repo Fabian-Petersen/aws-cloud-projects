@@ -272,10 +272,10 @@ api_parent_routes = {
   }
 
   # $ POST: Item created Routes"
-  maintenance-request = {
+  job-request = {
     methods = {
       POST = {
-        lambda        = "postMaintenanceRequest"
+        lambda        = "postJobRequest"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -610,7 +610,7 @@ api_child_routes = {
 // $ Must create a dynamic resource to add actions
 
 extra_policies = {
-  postMaintenanceRequest      = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  postJobRequest              = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   postMaintenanceAction       = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   getJobsPendingById          = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   getMaintenanceActionById    = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
@@ -727,9 +727,9 @@ lambda_functions = {
     }
   }
 
-  postMaintenanceRequest = {
-    file_name = "postMaintenanceRequest.py"
-    handler   = "postMaintenanceRequest.lambda_handler"
+  postJobRequest = {
+    file_name = "postJobRequest.py"
+    handler   = "postJobRequest.lambda_handler"
     runtime   = "python3.12"
 
     dynamodb_permissions = {

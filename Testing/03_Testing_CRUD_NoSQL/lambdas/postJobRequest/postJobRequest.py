@@ -39,16 +39,10 @@ locations = {
   'Central Services': 'CTS'
 }
 
-# def generateJobCardNo(location:str) -> str:
-#     locationID = locations.get(location)
-#     utc_now = datetime.now(timezone.utc)
-#     capeTownTime = str(utc_now + timedelta(hours=2))
-#     jobDate = datetime.fromisoformat(capeTownTime).strftime("%Y%m")
-#     count = 15
-#     counter = count + 1
-#     formattedCount=f"{counter:04d}"
-#     jobcardNumber=f"Job-{locationID}-{jobDate}-{formattedCount}"
-#     return jobcardNumber
+def to_human_date(iso_string: str) -> str:
+    SAST = timezone(timedelta(hours=2))
+    dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
+    return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
 
 def lambda_handler(event, context):
     print("Event:", json.dumps(event))
@@ -65,10 +59,13 @@ def lambda_handler(event, context):
         for field in required_fields:
             if field not in data:
                 return _response(400, {"message": f"Missing field: {field}"})
+            
+        # Get the current time for the update
+        now = datetime.now(timezone.utc).isoformat()
 
         #$ Create backend meta data
         item_id = str(uuid.uuid4())
-        created_at = datetime.now(timezone.utc).isoformat()
+        created_at = to_human_date(now)
         status=str("Pending")
 
         #$ data from the cognito user sign-in
