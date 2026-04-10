@@ -2,15 +2,16 @@ import json
 import boto3
 # from boto3.dynamodb.conditions import Key
 from boto3.dynamodb.conditions import Attr
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table("crud-nosql-app-maintenance-request-table")
 
 # $ Change the date format in the database to readible for humans
 def to_human_date(iso_string: str) -> str:
-    dt = datetime.fromisoformat(iso_string)
-    return dt.strftime("%d %b %Y, %H:%M")
+    SAST = timezone(timedelta(hours=2))
+    dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
+    return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
 
 # $ Get the User Groups from the claims
 def parse_groups(groups_claim):
@@ -60,7 +61,8 @@ def lambda_handler(event, context):
     allowedOrigins = [
     'https://www.crud-nosql.app.fabian-portfolio.net',
     'https://crud-nosql.app.fabian-portfolio.net',
-    'http://localhost:5173'
+    'http://localhost:5173',
+    'http://localhost:8085' # swagger api testing
     ]
 
     # $ Only allow known origins

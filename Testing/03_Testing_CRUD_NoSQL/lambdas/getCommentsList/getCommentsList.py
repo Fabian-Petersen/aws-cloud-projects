@@ -1,15 +1,16 @@
 import json
 import boto3
 from boto3.dynamodb.conditions import Key
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table("crud-nosql-app-comments-table")
 
 # Change the date format in the database to readible for humans
 def to_human_date(iso_string: str) -> str:
-    dt = datetime.fromisoformat(iso_string)
-    return dt.strftime("%d %b %Y, %H:%M")
+    SAST = timezone(timedelta(hours=2))
+    dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
+    return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
     
 def lambda_handler(event, context):
 

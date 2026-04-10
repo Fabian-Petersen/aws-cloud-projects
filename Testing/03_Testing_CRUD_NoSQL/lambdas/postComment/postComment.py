@@ -1,7 +1,7 @@
 import json
 import boto3
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from botocore.config import Config
 
 dynamodb = boto3.resource("dynamodb")
@@ -26,6 +26,12 @@ HEADERS = {
     "Access-Control-Allow-Credentials": "true"
 }
 
+# Change the date format in the database to readible for humans
+def to_human_date(iso_string: str) -> str:
+    SAST = timezone(timedelta(hours=2))
+    dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
+    return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
+
 def lambda_handler(event, context):
     print('event:',event)
     try:
@@ -43,7 +49,8 @@ def lambda_handler(event, context):
 
         # Create backend meta data
         item_id = str(uuid.uuid4())
-        created_at = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc).isoformat()
+        created_at = to_human_date(now)
 
         # data from the cognito user sign-in
         user_id = claims.get("sub")

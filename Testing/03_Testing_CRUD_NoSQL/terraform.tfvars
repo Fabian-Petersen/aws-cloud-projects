@@ -37,131 +37,153 @@ s3_origin_id = "s3-origin"
 
 ordered_cache_items = [
   # The order below will give the precedence in the distribution config
-  # $ Requests
+  # $ Jobs
   {
-    path_pattern    = "/jobs-list" # exact match
+    path_pattern    = "/jobs" # exact match
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
   {
-    path_pattern    = "/jobs-list/*" # matches trailing slash or subpaths
+    path_pattern    = "/jobs/*" # matches trailing slash or subpaths
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
-  {
-    path_pattern    = "/jobs-list-pending" # exact match
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
-  {
-    path_pattern    = "/jobs-list-pending/*" # matches trailing slash or subpaths
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
-  {
-    path_pattern    = "/jobs-list-approved" # exact match
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
-  {
-    path_pattern    = "/jobs-list-approved/*" # matches trailing slash or subpaths
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
-  {
-    path_pattern    = "/maintenance-request"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
+  # {
+  #   path_pattern    = "/jobs-list-pending" # exact match
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
+  # {
+  #   path_pattern    = "/jobs-list-pending/*" # matches trailing slash or subpaths
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
+  # {
+  #   path_pattern    = "/jobs-list-approved" # exact match
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
+  # {
+  #   path_pattern    = "/jobs-list-approved/*" # matches trailing slash or subpaths
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
+  # {
+  #   path_pattern    = "/maintenance-request"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
   # {
   #   path_pattern    = "/maintenance-request/*"
   #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   # },
 
-  # $ Actions
-  {
-    path_pattern    = "/maintenance-actions-list"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
-  {
-    path_pattern    = "/maintenance-actions-list/*"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
-  {
-    path_pattern    = "/maintenance-action"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
-  {
-    path_pattern    = "/maintenance-action/*"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
+  # $ Actions (moved under jobs/actioned/)
+  # {
+  #   path_pattern    = "/maintenance-actions-list"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
+  # {
+  #   path_pattern    = "/maintenance-actions-list/*"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
+  # {
+  #   path_pattern    = "/maintenance-action"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
+  # {
+  #   path_pattern    = "/maintenance-action/*"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
   # $ Assets
   {
-    path_pattern    = "/assets-list"
+    path_pattern    = "/assets"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     }, {
-    path_pattern    = "/assets-list/*"
+    path_pattern    = "/assets/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
-  {
-    path_pattern    = "/asset"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    }, {
-    path_pattern    = "/asset/*"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
+  # {
+  #   path_pattern    = "/assets-list"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  #   }, {
+  #   path_pattern    = "/assets-list/*"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
+  # {
+  #   path_pattern    = "/asset"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  #   }, {
+  #   path_pattern    = "/asset/*"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
   # $ Comments
   {
-    path_pattern    = "/comments-list"
+    path_pattern    = "/comments"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     }, {
-    path_pattern    = "/comments-list/*"
+    path_pattern    = "/comments/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
-  {
-    path_pattern    = "/comment"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    }, {
-    path_pattern    = "/comment/*"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
+  # {
+  #   path_pattern    = "/comments-list"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  #   }, {
+  #   path_pattern    = "/comments-list/*"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
+  # {
+  #   path_pattern    = "/comment"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  #   }, {
+  #   path_pattern    = "/comment/*"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
   # $ Jobcards
 
-  {
-    path_pattern    = "/maintenance-jobcard"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
-  {
-    path_pattern    = "/maintenance-jobcard/*"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
+  # {
+  #   path_pattern    = "/maintenance-jobcard"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
+  # {
+  #   path_pattern    = "/maintenance-jobcard/*"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
   # $ Reject Maintenance Request
-  {
-    path_pattern    = "/job-request-rejected"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    }, {
-    path_pattern    = "/job-request-rejected/*"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
+  # {
+  #   path_pattern    = "/job-request-rejected"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  #   }, {
+  #   path_pattern    = "/job-request-rejected/*"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
   # $ Approve Maintenance Request
+  # {
+  #   path_pattern    = "/job-request-approved"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  #   }, {
+  #   path_pattern    = "/job-request-approved/*"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
+  # $ Users, Technicians, Contractors
   {
-    path_pattern    = "/job-request-approved"
+    path_pattern    = "/users"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     }, {
-    path_pattern    = "/job-request-approved/*"
+    path_pattern    = "/users/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
 
   # $ Technicians
-  {
-    path_pattern    = "/technician-list"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    }, {
-    path_pattern    = "/technician-list/*"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
+  # {
+  #   path_pattern    = "/technician-list"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  #   }, {
+  #   path_pattern    = "/technician-list/*"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
   # $ Contractors
-  {
-    path_pattern    = "/contractor-list"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    }, {
-    path_pattern    = "/contractor-list/*"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
-  # $ Users
+  # {
+  #   path_pattern    = "/contractor-list"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  #   }, {
+  #   path_pattern    = "/contractor-list/*"
+  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  # },
+  # $ admin
   {
     path_pattern    = "/admin/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
@@ -175,8 +197,7 @@ ordered_cache_items = [
 #$ api gateway variables
 api_name = "crud-nosql-app-apigateway"
 api_parent_routes = {
-  # $ GET: All Items from the backend"
-  jobs-list = {
+  jobs = {
     methods = {
       GET = {
         lambda        = "getJobsList"
@@ -188,46 +209,15 @@ api_parent_routes = {
     }
   }
 
-  jobs-list-pending = {
-    methods = {
-      GET = {
-        lambda        = "getJobsPendingList"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
-
-  jobs-list-approved = {
-    methods = {
-      GET = {
-        lambda        = "getJobsApprovedList"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
-
-  assets-list = {
+  assets = {
     methods = {
       GET = {
         lambda        = "getAssetsList"
         authorization = "COGNITO_USER_POOLS"
       }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
 
-  maintenance-actions-list = {
-    methods = {
-      GET = {
-        lambda        = "getMaintenanceActionsList"
+      POST = {
+        lambda        = "postCreateAsset"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -235,81 +225,13 @@ api_parent_routes = {
       }
     }
   }
-  comments-list = {
+
+  comments = {
     methods = {
       GET = {
         lambda        = "getCommentsList"
         authorization = "COGNITO_USER_POOLS"
       }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
-
-  technician-list = {
-    methods = {
-      GET = {
-        lambda        = "getTechnicianList"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
-
-  contractor-list = {
-    methods = {
-      GET = {
-        lambda        = "getContractorList"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
-
-  # $ POST: Item created Routes"
-  job-request = {
-    methods = {
-      POST = {
-        lambda        = "postJobRequest"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
-
-  asset = {
-    methods = {
-      POST = {
-        lambda        = "postCreateAsset"
-        authorization = "COGNITO_USER_POOLS"
-      }
-
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
-
-  maintenance-action = {
-    methods = {
-      POST = {
-        lambda        = "postMaintenanceAction"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
-  comment = {
-    methods = {
       POST = {
         lambda        = "postComment"
         authorization = "COGNITO_USER_POOLS"
@@ -320,32 +242,14 @@ api_parent_routes = {
     }
   }
 
-  job-request-rejected = {
+  users = {
     methods = {
-      POST = {
-        lambda        = "postRejectRequest"
+      GET = {
+        lambda        = "getUserList"
         authorization = "COGNITO_USER_POOLS"
       }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
-  job-request-approved = {
-    methods = {
       POST = {
-        lambda        = "postApproveRequest"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
-  contractor = {
-    methods = {
-      POST = {
-        lambda        = "postCreateContractor"
+        lambda        = "postUser"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -361,33 +265,68 @@ api_parent_routes = {
       }
     }
   }
-
-  maintenance-jobcard = {}
 }
 
 api_child_routes = {
-  # Child of maintenance-request
-  # maintenance-request-id = {
-  #   # path       = "/maintenance-request/{id}"
-  #   parent_key = "maintenance-request"
-  #   path_part  = "{id}"
-  #   methods = {
-  #     GET = {
-  #       lambda        = "getJobsPendingById"
-  #       authorization = "COGNITO_USER_POOLS"
-  #     }
-  #     DELETE = {
-  #       lambda        = "deleteMaintenanceRequestById"
-  #       authorization = "COGNITO_USER_POOLS"
-  #     }
-  #     OPTIONS = {
-  #       authorization = "NONE"
-  #     }
-  #   }
-  # }
   # $ Lambda get the request which have been created
+  job-request = {
+    parent_key = "jobs" # /jobs/requests/
+    path_part  = "requests"
+    methods = {
+      POST = {
+        lambda        = "postJobRequest"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  job-request-approved = {
+    parent_key = "job-request" # /jobs/requests/approved
+    path_part  = "approved"
+    methods = {
+      POST = {
+        lambda        = "postApproveRequest"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  job-request-rejected = {
+    parent_key = "job-request" # /jobs/requests/rejected
+    path_part  = "rejected"
+    methods = {
+      POST = {
+        lambda        = "postRejectRequest"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  jobs-pending = {
+    parent_key = "jobs" # /jobs/pending/ "status === pending"
+    path_part  = "pending"
+    methods = {
+      GET = {
+        lambda        = "getJobsPendingList"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
   jobs-list-pending-id = {
-    parent_key = "jobs-list-pending"
+    parent_key = "jobs-pending" # /jobs/pending/{id}
     path_part  = "{id}"
     methods = {
       GET = {
@@ -408,9 +347,24 @@ api_child_routes = {
     }
   }
 
+  jobs-list-approved = {
+    parent_key = "jobs" # /jobs/approved
+    path_part  = "approved"
+    methods = {
+      GET = {
+        lambda        = "getJobsApprovedList"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+
   # $ Lambda get the request which have been approved
   jobs-list-approved-id = {
-    parent_key = "jobs-list-approved"
+    parent_key = "jobs-list-approved" # /jobs/approved/{id}
     path_part  = "{id}"
     methods = {
       GET = {
@@ -423,20 +377,16 @@ api_child_routes = {
     }
   }
 
-
-  maintenance-action-id = {
-    # path       = "/maintenance-action/{id}"
-    parent_key = "maintenance-action"
-    path_part  = "{id}"
+  jobs-actioned = {
+    parent_key = "jobs" # /jobs/actioned
+    path_part  = "actioned"
     methods = {
       GET = {
-        lambda        = "getMaintenanceActionById"
+        lambda        = "getJobsActionedList"
         authorization = "COGNITO_USER_POOLS"
       }
-      # POST   = "postMaintenanceActionById"
-      # PUT    = "updateMaintenanceActionById"
-      DELETE = {
-        lambda        = "deleteMaintenanceActionById"
+      POST = {
+        lambda        = "postJobAction"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -444,9 +394,70 @@ api_child_routes = {
       }
     }
   }
+
+  jobs-actioned-id = {
+    parent_key = "jobs-actioned" # /jobs/actioned/{id}
+    path_part  = "{id}"
+    methods = {
+      GET = {
+        lambda        = "getJobActionedById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      PUT = {
+        lambda        = "updateJobActionedById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      DELETE = {
+        lambda        = "deleteJobActionedById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  # ! Check this function to return the correct data for completed jobs
+  # jobs-completed = {
+  #   parent_key = "jobs" # /jobs/completed 
+  #   path_part  = "completed"
+  #   methods = {
+  #     GET = {
+  #       lambda        = "getJobsCompletedList"
+  #       authorization = "COGNITO_USER_POOLS"
+
+  #     }
+  #     OPTIONS = {
+  #       authorization = "NONE"
+  #     }
+  #   }
+  # }
+
+  jobcard = {
+    parent_key = "jobs" # /jobs/jobcard
+    path_part  = "jobcard"
+    methods = {
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+  jobcard-id = {
+    parent_key = "jobcard" # /jobs/jobcard/{id}
+    path_part  = "{id}"
+    methods = {
+      GET = {
+        lambda        = "getJobcardById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
   asset-id = {
-    # path       = "/asset/{id}"
-    parent_key = "asset"
+    parent_key = "assets" # /assets/{id}
     path_part  = "{id}"
     methods = {
       GET = {
@@ -466,9 +477,23 @@ api_child_routes = {
       }
     }
   }
-  comment-id = {
-    # path       = "/comment/{id}"
-    parent_key = "comment"
+  asset-location = {
+    parent_key = "assets" # /assets/location
+    path_part  = "location"
+    methods = {
+      GET = {
+        lambda        = "getAssetsByLocation"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  comments-id = {
+    # path       = "/comments/{commentId}"
+    parent_key = "comments"
     path_part  = "{id}"
     methods = {
       GET = {
@@ -480,13 +505,13 @@ api_child_routes = {
       }
     }
   }
-  maintenance-jobcard-id = {
-    # path       = "/maintenance-jobcard/{id}"
-    parent_key = "maintenance-jobcard"
-    path_part  = "{id}"
+
+  users-get-current-user = {
+    parent_key = "users" // path: admin/user/
+    path_part  = "get-current-user"
     methods = {
       GET = {
-        lambda        = "getMaintenanceJobcardById"
+        lambda        = "getUser"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -494,9 +519,61 @@ api_child_routes = {
       }
     }
   }
+  users-id = {
+    parent_key = "users" // path: /users/userId
+    path_part  = "{id}"
+    methods = {
+      GET = {
+        lambda        = "getUserById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      PUT = {
+        lambda        = "updateUserById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      DELETE = {
+        lambda        = "deleteUserById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  users-technicians = {
+    parent_key = "users" # /users/technicians
+    path_part  = "technicians"
+    methods = {
+      GET = {
+        lambda        = "getTechnicianList"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+  users-contractors = {
+    parent_key = "users" # /users/contractors
+    path_part  = "contractors"
+    methods = {
+      GET = {
+        lambda        = "getContractorList"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      POST = {
+        lambda        = "postCreateContractor"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
   contractor-id = {
-    # path       = "/asset/{id}"
-    parent_key = "contractor"
+    parent_key = "users-contractors" # /users/contractors/{contractorId}
     path_part  = "{id}"
     methods = {
       GET = {
@@ -517,61 +594,8 @@ api_child_routes = {
     }
   }
 
-  admin-users = {
-    parent_key = "admin" // path: admin/users/
-    path_part  = "users"
-    methods = {
-      POST = {
-        lambda        = "postUser"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      GET = {
-        lambda        = "getUserList"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
-
-  admin-user = {
-    parent_key = "admin" // path: admin/user/
-    path_part  = "user"
-    methods = {
-      GET = {
-        lambda        = "getUser"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
-
-  admin-users-id = {
-    parent_key = "admin-users" // path: admin/users/id
-    path_part  = "{id}"
-    methods = {
-      GET = {
-        lambda        = "getUserById"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      PUT = {
-        lambda        = "updateUserById"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      DELETE = {
-        lambda        = "deleteUserById"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
-  admin-users-resend-temp-pwd = {
-    parent_key = "admin-users" // path: admin/users/resend-temp-password
+  admin-resend-temp-pwd = {
+    parent_key = "admin" // path: admin/resend-temp-password
     path_part  = "resend-temp-password"
     methods = {
       OPTIONS = {
@@ -579,8 +603,8 @@ api_child_routes = {
       }
     }
   }
-  admin-users-resend-temp-pwd-id = {
-    parent_key = "admin-users-resend-temp-pwd" // path: admin/users/resend-temp-password/id
+  admin-resend-temp-pwd-id = {
+    parent_key = "admin-resend-temp-pwd" // path: admin/resend-temp-password/id
     path_part  = "{id}"
     methods = {
       POST = {
@@ -592,9 +616,9 @@ api_child_routes = {
       }
     }
   }
-  admin-users-confirm_user_signup = {
-    parent_key = "admin-users" // path: admin/users/confirm_user_signup
-    path_part  = "confirm_user_signup"
+  admin-confirm-user-signup = {
+    parent_key = "admin" // path: admin/confirm-user-signup
+    path_part  = "confirm-user-signup"
     methods = {
       POST = {
         lambda        = "postConfirmationTrigger"
@@ -610,15 +634,15 @@ api_child_routes = {
 // $ Must create a dynamic resource to add actions
 
 extra_policies = {
-  postJobRequest              = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  postMaintenanceAction       = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  getJobsPendingById          = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  getMaintenanceActionById    = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  deleteJobRequestById        = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  deleteMaintenanceActionById = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  postCreateAsset             = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  deleteAssetById             = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  getMaintenanceJobcardById   = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  postJobRequest        = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  postJobAction         = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  getJobsPendingById    = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  getJobActionedById    = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  deleteJobRequestById  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  deleteJobActionedById = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  postCreateAsset       = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  deleteAssetById       = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  getJobcardById        = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   // existing policy created for s3EventLambda to allow putObject on s3 bucket 
 }
 
@@ -832,9 +856,9 @@ lambda_functions = {
     }
   }
 
-  getMaintenanceActionsList = {
-    file_name = "getMaintenanceActionsList.py"
-    handler   = "getMaintenanceActionsList.lambda_handler"
+  getJobsActionedList = {
+    file_name = "getJobsActionedList.py"
+    handler   = "getJobsActionedList.lambda_handler"
     runtime   = "python3.12"
 
     dynamodb_permissions = {
@@ -846,9 +870,9 @@ lambda_functions = {
     }
   }
 
-  getMaintenanceActionById = {
-    file_name = "getMaintenanceActionById.py"
-    handler   = "getMaintenanceActionById.lambda_handler"
+  getJobActionedById = {
+    file_name = "getJobActionedById.py"
+    handler   = "getJobActionedById.lambda_handler"
     runtime   = "python3.12"
 
     dynamodb_permissions = {
@@ -860,9 +884,9 @@ lambda_functions = {
     }
   }
 
-  postMaintenanceAction = {
-    file_name = "postMaintenanceAction.py"
-    handler   = "postMaintenanceAction.lambda_handler"
+  postJobAction = {
+    file_name = "postJobAction.py"
+    handler   = "postJobAction.lambda_handler"
     runtime   = "python3.12"
 
     dynamodb_permissions = {
@@ -880,9 +904,22 @@ lambda_functions = {
     }
   }
 
-  deleteMaintenanceActionById = {
-    file_name = "deleteMaintenanceActionById.py"
-    handler   = "deleteMaintenanceActionById.lambda_handler"
+  updateJobActionedById = {
+    file_name = "updateJobActionedById.py"
+    handler   = "updateJobActionedById.lambda_handler"
+    runtime   = "python3.12"
+    dynamodb_permissions = {
+      maintenance_action_table = {
+        table_name         = "crud-nosql-app-maintenance-action-table"
+        actions            = ["dynamodb:UpdateItem", "dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  deleteJobActionedById = {
+    file_name = "deleteJobActionedById.py"
+    handler   = "deleteJobActionedById.lambda_handler"
     runtime   = "python3.12"
 
     dynamodb_permissions = {
@@ -916,6 +953,25 @@ lambda_functions = {
     dynamodb_permissions = {
       assets_table = {
         table_name         = "crud-nosql-app-assets-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  getAssetsByLocation = {
+    file_name = "getAssetsByLocation.py"
+    handler   = "getAssetsByLocation.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      assets_table = {
+        table_name         = "crud-nosql-app-assets-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+      users_table = {
+        table_name         = "crud-nosql-app-users-table"
         actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = false
       }
@@ -964,9 +1020,9 @@ lambda_functions = {
     }
   }
 
-  getMaintenanceJobcardById = {
-    file_name = "getMaintenanceJobcardById.py"
-    handler   = "getMaintenanceJobcardById.lambda_handler"
+  getJobcardById = {
+    file_name = "getJobcardById.py"
+    handler   = "getJobcardById.lambda_handler"
     runtime   = "python3.12"
 
     dynamodb_permissions = {
@@ -1159,7 +1215,7 @@ lambda_functions = {
       }
     }
   }
-  # $ // ============================ USers lambdas ============================== //
+  # $ // ============================ Users lambdas ============================== //
   getUserList = {
     file_name = "getUserList.py"
     handler   = "getUserList.lambda_handler"
@@ -1594,8 +1650,12 @@ dynamodb_tables = {
       "AssetIDIndex" = {
         hash_key   = "assetID"
         projection = "ALL"
-
       }
+      "LocationIndex" = {
+        hash_key   = "location"
+        projection = "ALL"
+      }
+
     }
   }
   crud-nosql-app-maintenance-action = {

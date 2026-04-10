@@ -1,7 +1,7 @@
 {
   "version": "2.0",
-  "routeKey": "GET /assets",
-  "rawPath": "/assets",
+  "routeKey": "GET /assets/location",
+  "rawPath": "/assets/location",
   "rawQueryString": "",
   "headers": {
     "accept": "application/json",
