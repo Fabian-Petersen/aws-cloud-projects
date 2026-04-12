@@ -1,0 +1,372 @@
+
+# # $ Global variables
+variable "project_name" {
+  description = "The name of the project"
+  type        = string
+}
+
+variable "region" {
+  description = "aws region for the project"
+  type        = string
+}
+
+variable "env" {
+  description = "development environment: dev, staging or prod"
+  type        = string
+}
+
+variable "global_region" {
+  description = "aws region for the SSL certificates"
+  type        = string
+}
+
+# variable "profile_1" {
+#   # default     = "fabian-user"
+#   description = "aws profile for the main account"
+#   type        = string
+# }
+
+# variable "profile_2" {
+#   # default     = "fabian-user2"
+#   description = "free tier profile"
+#   type        = string
+# }
+
+variable "profile_1_account_id" {
+  # default     = "875431507944"
+  description = "main account id"
+  type        = string
+}
+
+# variable "profile_2_account_id" {
+#   # default     = "157489943321"
+#   description = "free tier account id"
+#   type        = string
+# }
+
+# # variable "key_name" {
+# #   description = "ssh key for the ec2 instance"
+# #   type        = string
+# # }
+
+# #$ ======================== route53 routes ========================
+# variable "primary_hosted_zone" {
+#   default     = "fabian-portfolio.net"
+#   description = "hosted zone in the main account in the main account"
+#   type        = string
+# }
+
+# variable "secondary_hosted_zone" {
+#   default     = "app.fabian-portfolio.net"
+#   description = "hosted zone in free account with root zone in main account"
+#   type        = string
+# }
+
+# variable "subdomain_name" {
+#   # default     = "crud-nosql.app.fabian-portfolio.net"
+#   description = "subdomain for the website from parent domain"
+#   type        = string
+# }
+
+# variable "redirect_subdomain_name" {
+#   # default     = "www.crud-nosql.app.fabian-portfolio.net"
+#   description = "redirect to for the website"
+#   type        = string
+# }
+
+# variable "hosted_zone" {
+#   description = "hosted zone used as variable in route53"
+#   type        = string
+# }
+
+# #$ ======================== cloudfront ========================
+# variable "cloudfront_policies" {
+#   description = "Managed CloudFront policy IDs"
+#   type        = map(string)
+# }
+
+# variable "ordered_cache_items" {
+#   description = "List of ordered cache behaviors for CloudFront"
+#   type = list(object({
+#     path_pattern    = string
+#     allowed_methods = list(string)
+#   }))
+# }
+
+# variable "price_class" {}
+# variable "s3_origin_id" {}
+
+
+# #$ ======================== api gateway ========================
+# variable "api_name" {
+#   # default     = "project_apigateway"
+#   description = "Name of the api for the project"
+#   type        = string
+# }
+
+# variable "api_parent_routes" {
+#   type = map(object({
+#     methods = optional(map(object({
+#       lambda        = optional(string)
+#       authorization = string
+#     })), {}) # default empty map
+#   }))
+#   default = {}
+# }
+
+# variable "api_child_routes" {
+#   type = map(object({
+#     parent_key = string
+#     path_part  = string
+#     methods = optional(map(object({
+#       lambda        = optional(string)
+#       authorization = string
+#     })), {})
+#   }))
+#   default = {}
+# }
+
+# #$ ======================== IAM Policies ====================
+
+# variable "lambda_policies" {
+#   description = "Reusable IAM policy statements for Lambda functions"
+#   type = map(object({
+#     actions   = list(string)
+#     resources = list(string)
+#     effect    = optional(string, "Allow")
+#   }))
+# }
+
+# #$ ======================== lambda functions ====================
+# # variable "lambda_functions" {
+# #   description = "lambda functions required for backend"
+# #   type = map(object({
+# #     file_name           = string
+# #     handler             = string
+# #     runtime             = string
+# #     action              = list(string)
+# #     dynamodb_table_name = string
+# #     allow_index_access  = bool
+# #   }))
+# # }
+
+# variable "lambda_functions" {
+#   type = map(object({
+#     file_name = string
+#     handler   = string
+#     runtime   = string
+
+#     dynamodb_permissions = map(object({
+#       table_name         = string
+#       actions            = list(string)
+#       allow_index_access = bool
+#     }))
+
+#     statements = optional(list(object({
+#       effect    = optional(string, "Allow")
+#       actions   = list(string)
+#       resources = list(string)
+
+#       conditions = optional(list(object({
+#         test     = string
+#         variable = string
+#         values   = list(string)
+#       })), [])
+#     })), [])
+#   }))
+# }
+
+# # $ Lambdas not tied to the dynamoDB routes, these lambdas use custom policies as needed
+# variable "lambda_functions_custom" {
+#   type = map(object({
+#     file_name = string
+#     handler   = string
+#     runtime   = string
+#     timeout   = optional(number, 15)
+
+#     environment_variables = optional(map(string), {})
+
+#     inline_policy_statements = optional(list(object({
+#       sid       = optional(string)
+#       effect    = optional(string, "Allow")
+#       actions   = list(string)
+#       resources = list(string)
+#     })), [])
+
+#     managed_policy_arns = optional(list(string), [])
+#   }))
+# }
+
+# # $ Variable for iam functions 
+# # variable "lambda_functions" {
+# #   type = map(object({
+# #     file_name   = string
+# #     handler     = string
+# #     runtime     = string
+# #     permissions = optional(set(string), [])
+# #     statements = optional(list(object({
+# #       effect    = optional(string, "Allow")
+# #       actions   = list(string)
+# #       resources = list(string)
+# #     })), [])
+# #   }))
+# # }
+
+# variable "extra_policies" {
+#   description = "Optional map of extra IAM policy ARNs per Lambda"
+#   type        = map(string)
+# }
+
+# variable "packageType" {
+#   type        = string
+#   description = "Package to upload lambda (zip / image)"
+# }
+
+
+# #$ s3 event lambda
+# variable "file_name" { type = string }
+# variable "table_names" {
+#   type = list(string)
+# }
+
+# variable "bucket_name" { type = string }
+# variable "handler" { type = string }
+# variable "lambda_name" { type = string }
+
+# #$ ======================== DynamoDB Tables ====================
+# # variable "dynamoDB_table_names" {
+# #   type = list(string)
+# # }
+
+# # $ Changed the table variable to a map to scale if specific features are required per table
+# # $ Map variable makes the code easier for specific features.
+# variable "dynamodb_tables" {
+#   type = map(object({
+#     enable_gsi    = bool
+#     enable_stream = bool
+
+#     # Per-table primary key config
+#     pk = optional(string) # default "id" if not set
+#     sk = optional(string) # only set if you want a sort key
+
+#     gsis = optional(map(object({
+#       hash_key   = string
+#       range_key  = optional(string)
+#       projection = string
+#     })))
+#   }))
+# }
+# #$ ======================== Cognito ====================
+# variable "prevent_user_existence" {
+#   type        = string
+#   description = "Enable in production"
+# }
+
+# variable "test_user_username" {
+#   description = "test username"
+#   type        = string
+# }
+
+# variable "test_user_name" {
+#   description = "name of the user to be used as test"
+#   type        = string
+# }
+
+# variable "test_user_email" {
+#   description = "test user email"
+#   type        = string
+# }
+
+# variable "users" {
+#   type = map(object({
+#     username   = string
+#     group      = string
+#     attributes = map(string) # extra attributes like surname, given_name, etc.
+#   }))
+#   validation {
+#     condition = alltrue([
+#       for user in values(var.users) :
+#       contains(keys(var.user_groups), user.group)
+#     ])
+#     error_message = "Every user's group must exist in var.user_groups."
+#   }
+# }
+# # variable "lambda_triggers" {
+# #   type = map(string)
+# # }
+
+# variable "user_groups" {
+#   type = map(object({
+#     precedence = number
+#     }
+#     )
+#   )
+# }
+
+# # $ pdf generator variables
+# variable "dynamodb_table_name" {
+#   type = string
+# }
+
+# variable "function_name" {}
+
+# variable "image_uri" {}
+
+# # variable "lambda_zip_path" {
+# #   type        = string
+# #   description = "Path to lambda zip file"
+# # }
+
+# variable "lambda_handler" {
+#   type    = string
+#   default = "handler.lambda_handler"
+# }
+
+# variable "runtime" {
+#   type = string
+# }
+
+# variable "s3_bucket" {
+#   type = string
+# }
+
+
+# # $ ECR Variables
+# variable "repository_name" {
+#   type        = string
+#   description = "Name of the ECR repository"
+# }
+
+# variable "max_image_count" {
+#   type        = number
+#   description = "How many images to keep"
+# }
+
+# variable "image_tag_mutability" {
+#   type    = string
+#   default = "MUTABLE"
+# }
+
+# variable "scan_on_push" {
+#   type = bool
+# }
+
+# $ SSM Paraments
+variable "parameters" {
+  description = "SSM parameters to create."
+  type = map(object({
+    value       = string
+    type        = optional(string, "String")   # String | SecureString | StringList
+    tier        = optional(string, "Standard") # Standard | Advanced
+    description = optional(string)
+    prefix      = optional(string) # allow custom SSM prefix
+  }))
+}
+
+# # $ SES Variables
+# variable "from_email" { type = string } # for SES identity
+
+# #$ lambda packaging
+# variable "ses_function_name" { type = string }
+# variable "ses_lambda_handler" { type = string }
+# variable "ses_filename" {}
