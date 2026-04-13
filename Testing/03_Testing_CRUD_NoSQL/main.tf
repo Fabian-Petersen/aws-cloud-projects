@@ -132,17 +132,21 @@ module "lambda" {
   region               = var.region
   profile_2_account_id = var.profile_2_account_id
   extra_policies       = var.extra_policies
+  env                  = var.env
+  project_name         = var.project_name
 }
 
 #$ // =========================== lambda triggered by s3 ============================== //
 
 module "s3_event_lambda" {
-  source      = "../../modules/lambda/modules/s3"
-  file_name   = var.file_name
-  bucket_name = var.bucket_name
-  table_names = var.table_names
-  lambda_name = var.lambda_name
-  handler     = var.handler
+  source       = "../../modules/lambda/modules/s3"
+  file_name    = var.file_name
+  bucket_name  = var.bucket_name
+  table_names  = var.table_names
+  lambda_name  = var.lambda_name
+  handler      = var.handler
+  env          = var.env
+  project_name = var.project_name
 
   depends_on = [module.dynamodb_tables]
 }
@@ -151,6 +155,8 @@ module "s3_event_lambda" {
 module "cognito_lambda" {
   source                  = "../../modules/lambda/modules/lambda"
   lambda_functions_custom = var.lambda_functions_custom
+  env                     = var.env
+  project_name            = var.project_name
 }
 
 #$  // =================================== dynamoDB =================================== //

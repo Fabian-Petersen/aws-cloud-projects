@@ -47,28 +47,6 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
   })
 }
 
-# resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
-#   for_each = var.lambda_functions
-#   name     = "${each.key}_dynamodb_policy"
-#   role     = aws_iam_role.lambda_exec_role[each.key].id
-
-#   policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         Effect = "Allow"
-#         Action = each.value.action
-#         Resource = each.value.allow_index_access ? [
-#           "arn:aws:dynamodb:${var.region}:${var.profile_2_account_id}:table/${each.value.dynamodb_table_name}",
-#           "arn:aws:dynamodb:${var.region}:${var.profile_2_account_id}:table/${each.value.dynamodb_table_name}/index/*"
-#           ] : [
-#           "arn:aws:dynamodb:${var.region}:${var.profile_2_account_id}:table/${each.value.dynamodb_table_name}"
-#         ]
-#       }
-#     ]
-#   })
-# }
-
 #$ [Step 2.1] : Add additional policies a lambda needs over and above dynamoDB
 resource "aws_iam_role_policy_attachment" "extra_policies" {
   for_each   = var.extra_policies
@@ -81,6 +59,19 @@ resource "aws_iam_role_policy_attachment" "lambda_logging" {
   for_each   = var.lambda_functions
   role       = aws_iam_role.lambda_exec_role[each.key].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+#$ [Step 3.1] : Create CloudWatch Log Group with 3-day retention for each Lambda
+resource "aws_cloudwatch_log_group" "lambda_log_group" {
+  for_each = var.lambda_functions
+
+  name              = "/aws/lambda/${each.key}"
+  retention_in_days = 3
+
+  tags = {
+    Name        = "${var.project_name}_cloudwatch_logs"
+    Environment = var.env
+  }
 }
 
 #$ [Step 4] : Create the Lambda function
@@ -96,5 +87,15 @@ resource "aws_lambda_function" "lambda_function" {
 
   #% [INFO] The hash updates when code changes and terraform will update the code in the cloud
   timeout = 15
+
+  depends_on = [
+    aws_cloudwatch_log_group.lambda_log_group,
+    aws_iam_role_policy_attachment.lambda_logging
+  ]
+
+  tags = {
+    Name        = "${var.project_name}/${each.key}"
+    Environment = var.env
+  }
 }
 

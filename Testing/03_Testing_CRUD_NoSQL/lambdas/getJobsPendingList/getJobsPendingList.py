@@ -4,15 +4,25 @@ import json
 import boto3
 from boto3.dynamodb.conditions import Key
 from boto3.dynamodb.conditions import Attr
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table("crud-nosql-app-maintenance-request-table")
 
 # $ Change the date format in the database to readible for humans
 def to_human_date(iso_string: str) -> str:
-    dt = datetime.fromisoformat(iso_string)
-    return dt.strftime("%d %b %Y, %H:%M")
+    """
+    Convert an ISO 8601 timestamp string to a human-readable date in SAST.
+
+    Args:
+        iso_string (str): ISO formatted datetime string (e.g., "2024-01-01T12:00:00Z").
+
+    Returns:
+        str: Formatted date string (e.g., "01 Jan 2024, 14:00").
+    """
+    SAST = timezone(timedelta(hours=2))
+    dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
+    return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
 
 # $ Get the User Groups from the claims
 def parse_groups(groups_claim):
@@ -39,8 +49,9 @@ def parse_groups(groups_claim):
 def query_all_pending(**kwargs):
     items = []
     response = table.query(
-        IndexName="StatusIndex",
+        IndexName="StatusJobCreatedIndex",
         KeyConditionExpression=Key("status").eq("Pending"),
+        ScanIndexForward=False, # Descending order (newest first)
         **kwargs
     )
     
@@ -48,12 +59,16 @@ def query_all_pending(**kwargs):
 
     while "LastEvaluatedKey" in response:
         response = table.query(
-            IndexName="StatusIndex",
+            IndexName="StatusJobCreatedIndex",
             KeyConditionExpression=Key("status").eq("Pending"),
             ExclusiveStartKey=response["LastEvaluatedKey"],
+            ScanIndexForward=False, # Descending order (newest first)
             **kwargs
         )
         items.extend(response.get("Items", []))
+
+    # Sort by created_at descending (newest first)
+    items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
 
     return items
     

@@ -11,6 +11,9 @@
 #   }))
 # }
 
+variable "env" {}
+variable "project_name" {}
+
 variable "lambda_functions" {
   type = map(object({
     file_name = string

@@ -17,3 +17,6 @@ variable "lambda_functions_custom" {
     managed_policy_arns = optional(list(string), [])
   }))
 }
+
+variable "env" {}
+variable "project_name" {}

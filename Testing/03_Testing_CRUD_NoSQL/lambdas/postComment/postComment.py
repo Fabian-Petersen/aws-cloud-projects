@@ -49,8 +49,12 @@ def lambda_handler(event, context):
 
         # Create backend meta data
         item_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
-        created_at = to_human_date(now)
+
+        # Get the current South African time
+        sast = timezone(timedelta(hours=2))
+        now = datetime.now(sast).isoformat()
+        
+        created_at = now
 
         # data from the cognito user sign-in
         user_id = claims.get("sub")

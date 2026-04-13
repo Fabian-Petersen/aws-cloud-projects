@@ -78,6 +78,18 @@ resource "aws_iam_role_policy_attachment" "lambda_logging" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+#$ [Step 3.1] : Create CloudWatch Log Group with 3-day retention for each Lambda
+resource "aws_cloudwatch_log_group" "lambda_log_group" {
+  for_each = var.lambda_functions_custom
+
+  name              = "/aws/lambda/${each.key}"
+  retention_in_days = 3
+
+  tags = {
+    Name        = "${var.project_name}_cloudwatch_logs"
+    Environment = var.env
+  }
+}
 
 #$ [Step 4] : Create the Lambda function
 resource "aws_lambda_function" "lambda_function" {
@@ -94,5 +106,15 @@ resource "aws_lambda_function" "lambda_function" {
   filename         = data.archive_file.lambda_zip[each.key].output_path
   source_code_hash = data.archive_file.lambda_zip[each.key].output_base64sha256
   timeout          = each.value.timeout
+
+  depends_on = [
+    aws_cloudwatch_log_group.lambda_log_group,
+    aws_iam_role_policy_attachment.lambda_logging
+  ]
+
+  tags = {
+    Name        = "${var.project_name}/${each.key}"
+    Environment = var.env
+  }
 }
 

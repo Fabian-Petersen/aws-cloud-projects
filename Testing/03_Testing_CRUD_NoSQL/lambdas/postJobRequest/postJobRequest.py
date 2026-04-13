@@ -39,7 +39,17 @@ locations = {
   'Central Services': 'CTS'
 }
 
+# $ Change the date format in the database to readible for humans
 def to_human_date(iso_string: str) -> str:
+    """
+    Convert an ISO 8601 timestamp string to a human-readable date in SAST.
+
+    Args:
+        iso_string (str): ISO formatted datetime string (e.g., "2024-01-01T12:00:00Z").
+
+    Returns:
+        str: Formatted date string (e.g., "01 Jan 2024, 14:00").
+    """
     SAST = timezone(timedelta(hours=2))
     dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
     return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
@@ -61,11 +71,12 @@ def lambda_handler(event, context):
                 return _response(400, {"message": f"Missing field: {field}"})
             
         # Get the current time for the update
-        now = datetime.now(timezone.utc).isoformat()
+        sast = timezone(timedelta(hours=2))
+        now = datetime.now(sast).isoformat()
 
         #$ Create backend meta data
         item_id = str(uuid.uuid4())
-        created_at = to_human_date(now)
+        created_at = now
         status=str("Pending")
 
         #$ data from the cognito user sign-in

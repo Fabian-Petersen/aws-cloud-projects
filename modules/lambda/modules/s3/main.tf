@@ -85,6 +85,18 @@ resource "aws_iam_role_policy_attachment" "lambda_attach" {
   policy_arn = aws_iam_policy.lambda_policy.arn
 }
 
+#$ [Step 3.1] : Create CloudWatch Log Group with 3-day retention for each Lambda
+resource "aws_cloudwatch_log_group" "lambda_log_group" {
+  name              = "/aws/lambda/${var.lambda_name}"
+  retention_in_days = 3
+
+  tags = {
+    Name        = "${var.project_name}_cloudwatch_logs"
+    Environment = var.env
+  }
+}
+
+
 resource "aws_lambda_function" "s3_event_lambda" {
   function_name    = var.lambda_name
   role             = aws_iam_role.lambda_role.arn
@@ -92,6 +104,11 @@ resource "aws_lambda_function" "s3_event_lambda" {
   handler          = var.handler
   filename         = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+
+  tags = {
+    Name        = "${var.project_name}/${var.lambda_name}"
+    Environment = var.env
+  }
 }
 
 resource "aws_lambda_permission" "allow_s3" {
@@ -119,4 +136,5 @@ resource "aws_s3_bucket_notification" "s3_notification" {
   }
 
   depends_on = [aws_lambda_permission.allow_s3]
+
 }

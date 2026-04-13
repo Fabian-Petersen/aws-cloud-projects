@@ -7,3 +7,7 @@ variable "bucket_name" {
 }
 variable "handler" { type = string }
 variable "lambda_name" { type = string }
+
+variable "env" {}
+variable "project_name" {}
+
