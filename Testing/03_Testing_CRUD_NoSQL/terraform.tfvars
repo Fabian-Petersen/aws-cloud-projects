@@ -739,6 +739,23 @@ lambda_functions = {
         allow_index_access = false
       }
     }
+    statements = [
+      {
+        actions   = ["s3:DeleteObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/maintenance/*"]
+      },
+      {
+        actions   = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images"]
+        conditions = [
+          {
+            test     = "StringLike"
+            variable = "s3:prefix"
+            values   = ["maintenance/*"]
+          }
+        ]
+      }
+    ]
   }
 
   getJobsActionedList = {
