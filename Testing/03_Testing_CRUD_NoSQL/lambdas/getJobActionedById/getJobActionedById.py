@@ -1,6 +1,6 @@
 import json
 import boto3
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table("crud-nosql-app-maintenance-action-table")
@@ -13,8 +13,18 @@ HEADERS = {
 }
 
 def to_human_date(iso_string: str) -> str:
-    dt = datetime.fromisoformat(iso_string)
-    return dt.strftime("%d %b %Y, %H:%M")
+    """
+    Convert an ISO 8601 timestamp string to a human-readable date in SAST.
+
+    Args:
+        iso_string (str): ISO formatted datetime string (e.g., "2024-01-01T12:00:00Z").
+
+    Returns:
+        str: Formatted date string (e.g., "01 Jan 2024, 14:00").
+    """
+    SAST = timezone(timedelta(hours=2))
+    dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
+    return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
 
 def lambda_handler(event, context):
     try:
@@ -34,8 +44,9 @@ def lambda_handler(event, context):
         if not item:
             return _response(404, {"message": "Maintenance request not found"})
 
-        if "createdAt" in item:
-            item["createdAt"] = to_human_date(item["createdAt"])
+        for field in ["createdAt", "start_time", "end_time"]:
+            if field in item:
+                item[field] = to_human_date(item[field])
 
         return _response(200, item)
 

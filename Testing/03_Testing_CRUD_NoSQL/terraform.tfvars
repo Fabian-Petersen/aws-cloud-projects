@@ -46,70 +46,14 @@ ordered_cache_items = [
     path_pattern    = "/jobs/*" # matches trailing slash or subpaths
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
-  # {
-  #   path_pattern    = "/jobs-list-pending" # exact match
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
-  # {
-  #   path_pattern    = "/jobs-list-pending/*" # matches trailing slash or subpaths
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
-  # {
-  #   path_pattern    = "/jobs-list-approved" # exact match
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
-  # {
-  #   path_pattern    = "/jobs-list-approved/*" # matches trailing slash or subpaths
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
-  # {
-  #   path_pattern    = "/maintenance-request"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
-  # {
-  #   path_pattern    = "/maintenance-request/*"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
-
-  # $ Actions (moved under jobs/actioned/)
-  # {
-  #   path_pattern    = "/maintenance-actions-list"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
-  # {
-  #   path_pattern    = "/maintenance-actions-list/*"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
-  # {
-  #   path_pattern    = "/maintenance-action"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
-  # {
-  #   path_pattern    = "/maintenance-action/*"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
   # $ Assets
   {
-    path_pattern    = "/assets"
+    path_pattern    = "/assets-data"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     }, {
-    path_pattern    = "/assets/*"
+    path_pattern    = "/assets-data/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
-  # {
-  #   path_pattern    = "/assets-list"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  #   }, {
-  #   path_pattern    = "/assets-list/*"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
-  # {
-  #   path_pattern    = "/asset"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  #   }, {
-  #   path_pattern    = "/asset/*"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
   # $ Comments
   {
     path_pattern    = "/comments"
@@ -118,47 +62,6 @@ ordered_cache_items = [
     path_pattern    = "/comments/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
-  # {
-  #   path_pattern    = "/comments-list"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  #   }, {
-  #   path_pattern    = "/comments-list/*"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
-  # {
-  #   path_pattern    = "/comment"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  #   }, {
-  #   path_pattern    = "/comment/*"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
-  # $ Jobcards
-
-  # {
-  #   path_pattern    = "/maintenance-jobcard"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
-  # {
-  #   path_pattern    = "/maintenance-jobcard/*"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
-  # $ Reject Maintenance Request
-  # {
-  #   path_pattern    = "/job-request-rejected"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  #   }, {
-  #   path_pattern    = "/job-request-rejected/*"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
-  # $ Approve Maintenance Request
-  # {
-  #   path_pattern    = "/job-request-approved"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  #   }, {
-  #   path_pattern    = "/job-request-approved/*"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
-  # $ Users, Technicians, Contractors
   {
     path_pattern    = "/users"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
@@ -166,24 +69,6 @@ ordered_cache_items = [
     path_pattern    = "/users/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
-
-  # $ Technicians
-  # {
-  #   path_pattern    = "/technician-list"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  #   }, {
-  #   path_pattern    = "/technician-list/*"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
-  # $ Contractors
-  # {
-  #   path_pattern    = "/contractor-list"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  #   }, {
-  #   path_pattern    = "/contractor-list/*"
-  #   allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  # },
-  # $ admin
   {
     path_pattern    = "/admin/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
@@ -209,7 +94,7 @@ api_parent_routes = {
     }
   }
 
-  assets = {
+  "assets-data" = {
     methods = {
       GET = {
         lambda        = "getAssetsList"
@@ -457,7 +342,7 @@ api_child_routes = {
   }
 
   asset-id = {
-    parent_key = "assets" # /assets/{id}
+    parent_key = "assets-data" # /assets-data/{id}
     path_part  = "{id}"
     methods = {
       GET = {
@@ -478,7 +363,7 @@ api_child_routes = {
     }
   }
   asset-location = {
-    parent_key = "assets" # /assets/location
+    parent_key = "assets-data" # /assets-data/location
     path_part  = "location"
     methods = {
       GET = {

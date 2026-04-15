@@ -72,7 +72,7 @@ def lambda_handler(event, context):
         claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {}) # Get the user information from the authoriser token.
 
         # Validate required fields
-        required_fields = ["start_time", "end_time", "total_km", "work_order_number", "work_completed", "status", "root_cause", "findings","signature", "selectedRowId"]
+        required_fields = ["start_time", "end_time", "total_km", "work_order_number", "work_completed", "status", "root_cause", "findings","signature", "selectedRowId","signedBy"]
         for field in required_fields:
             if field not in data:
                 return _response(400, {"message": f"Missing field: {field}"})
@@ -150,6 +150,7 @@ def lambda_handler(event, context):
             "work_completed": data["work_completed"],
             "findings": data["findings"],
             "images": data["images"],
+            "signedBy":data["signedBy"],
             "signature": data["signature"]  # Will be updated by S3-triggered Lambda later
         }
 
