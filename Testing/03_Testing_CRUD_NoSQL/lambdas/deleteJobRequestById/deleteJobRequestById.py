@@ -1,5 +1,6 @@
 import json
 import boto3
+from boto3.dynamodb.conditions import Key
 
 dynamodb = boto3.resource("dynamodb")
 s3 = boto3.client("s3")
@@ -17,16 +18,33 @@ HEADERS = {
     "Access-Control-Allow-Credentials": "true"
 }
 
-
 def lambda_handler(event, context):
+    print("event:", event)
     try:
         request_uuid = event.get("pathParameters", {}).get("id")
         if not request_uuid:
             return _response(400, {"message": "id (UUID) is required"})
 
+        # Fetch the sk jobCreated from the database using id
+        response = table.query(
+            KeyConditionExpression=Key("id").eq(request_uuid)
+        )
+        
+        items = response.get("Items", [])
+        if not items:
+            return _response(404, {"message": "Item not found"})
+
+        item = items[0]  # assuming 1 item per id
+        job_created = item["jobCreated"]
+
+        print("jobCreated:", job_created)
+
         # 1. Fetch item to get image metadata
         response = table.get_item(
-            Key={"id": request_uuid}
+            Key={
+            "id": request_uuid,  
+            "jobCreated": job_created
+            }
         )
 
         item = response.get("Item")
@@ -46,9 +64,11 @@ def lambda_handler(event, context):
 
         # 3. Delete DynamoDB item
         table.delete_item(
-            Key={"id": request_uuid}
+            Key={
+            "id": request_uuid,
+            "jobCreated": job_created
+            }
         )
-
         return _response(200, {"message": "Request and images deleted successfully"})
 
     except Exception as exc:
