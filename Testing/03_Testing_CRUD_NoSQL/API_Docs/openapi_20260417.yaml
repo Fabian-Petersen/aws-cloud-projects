@@ -113,7 +113,7 @@ paths:
             - write:pets
             - read:pets
   
-  /jobs/actioned:
+  /jobs/completed:
     get:
       tags:
         - jobs
