@@ -1799,4 +1799,3 @@ ses_filename       = "jobs-notify-admin.py"
 ses_lambda_handler = "jobs-notify-admin.lambda_handler"
 from_email         = "no-reply@crud-nosql.app.fabian-portfolio.net"
 # dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
-
