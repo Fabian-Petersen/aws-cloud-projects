@@ -84,10 +84,6 @@ api_name = "crud-nosql-app-apigateway"
 api_parent_routes = {
   jobs = {
     methods = {
-      GET = {
-        lambda        = "getJobsList"
-        authorization = "COGNITO_USER_POOLS"
-      }
       OPTIONS = {
         authorization = "NONE"
       }
@@ -154,10 +150,14 @@ api_parent_routes = {
 
 api_child_routes = {
   # $ Lambda get the request which have been created
-  job-request = {
+  jobs-requests = {
     parent_key = "jobs" # /jobs/requests/
     path_part  = "requests"
     methods = {
+      GET = {
+        lambda        = "getJobsList"
+        authorization = "COGNITO_USER_POOLS"
+      }
       POST = {
         lambda        = "postJobRequest"
         authorization = "COGNITO_USER_POOLS"
@@ -168,9 +168,48 @@ api_child_routes = {
     }
   }
 
-  job-request-approved = {
-    parent_key = "job-request" # /jobs/requests/approved
-    path_part  = "approved"
+  jobs-actions = {
+    parent_key = "jobs" # /jobs/actions/
+    path_part  = "actions"
+    methods = {
+      GET = {
+        lambda        = "getJobsActionedList"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  jobs-id = {
+    parent_key = "jobs" # /jobs/{id}
+    path_part  = "{id}"
+    methods = {
+      # ! These functions are not yet created, enable GSI for status to handle the filtering for pending and approved jobs, and getJobsList will handle the GET request for individual job details
+      GET = {
+        lambda        = "getJobById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      # Functions to delete:updateJobRequestById, updateJobActionedById
+      PUT = {
+        lambda        = "updateJobById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      # Functions to deleteJobRequestById, deleteJobActionedById
+      DELETE = {
+        lambda        = "deleteJobById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  jobs-approve = {
+    parent_key = "job-id" # /jobs/{id}/approve
+    path_part  = "approve"
     methods = {
       POST = {
         lambda        = "postApproveRequest"
@@ -182,9 +221,9 @@ api_child_routes = {
     }
   }
 
-  job-request-rejected = {
-    parent_key = "job-request" # /jobs/requests/rejected
-    path_part  = "rejected"
+  job-reject = {
+    parent_key = "job-id" # /jobs/{id}/reject
+    path_part  = "reject"
     methods = {
       POST = {
         lambda        = "postRejectRequest"
@@ -196,80 +235,76 @@ api_child_routes = {
     }
   }
 
-  jobs-pending = {
-    parent_key = "jobs" # /jobs/pending/ "status === pending"
-    path_part  = "pending"
-    methods = {
-      GET = {
-        lambda        = "getJobsPendingList"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
+  # jobs-pending = {
+  #   parent_key = "jobs" #/jobs/pending/ "status === pending"
+  #   path_part  = "pending"
+  #   methods = {
+  #     # GET = {
+  #     #   lambda        = "getJobsPendingList"
+  #     #   authorization = "COGNITO_USER_POOLS"
+  #     # }
+  #     OPTIONS = {
+  #       authorization = "NONE"
+  #     }
+  #   }
+  # }
 
-  jobs-list-pending-id = {
-    parent_key = "jobs-pending" # /jobs/pending/{id}
-    path_part  = "{id}"
-    methods = {
-      GET = {
-        lambda        = "getJobsPendingById"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      PUT = {
-        lambda        = "updateJobRequestById"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      DELETE = {
-        lambda        = "deleteJobRequestById"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
+  # jobs-list-pending-id = {
+  #   parent_key = "jobs-pending" # /jobs/pending/{id}
+  #   path_part  = "{id}"
+  #   methods = {
+  #     # GET = {
+  #     #   lambda        = "getJobsPendingById"
+  #     #   authorization = "COGNITO_USER_POOLS"
+  #     # }
+  #     PUT = {
+  #       lambda        = "updateJobRequestById"
+  #       authorization = "COGNITO_USER_POOLS"
+  #     }
+  #     DELETE = {
+  #       lambda        = "deleteJobRequestById"
+  #       authorization = "COGNITO_USER_POOLS"
+  #     }
+  #     OPTIONS = {
+  #       authorization = "NONE"
+  #     }
+  #   }
+  # }
 
-  jobs-list-approved = {
-    parent_key = "jobs" # /jobs/approved
-    path_part  = "approved"
-    methods = {
-      GET = {
-        lambda        = "getJobsApprovedList"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
+  # jobs-list-approved = {
+  #   parent_key = "jobs" # /jobs/approved
+  #   path_part  = "approved"
+  #   methods = {
+  #     GET = {
+  #       lambda        = "getJobsApprovedList"
+  #       authorization = "COGNITO_USER_POOLS"
+  #     }
+  #     OPTIONS = {
+  #       authorization = "NONE"
+  #     }
+  #   }
+  # }
 
 
   # $ Lambda get the request which have been approved
-  jobs-list-approved-id = {
-    parent_key = "jobs-list-approved" # /jobs/approved/{id}
-    path_part  = "{id}"
-    methods = {
-      GET = {
-        lambda        = "getJobsApprovedById"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
+  # jobs-list-approved-id = {
+  #   parent_key = "jobs-list-approved" # /jobs/approved/{id}
+  #   path_part  = "{id}"
+  #   methods = {
+  #     GET = {
+  #       lambda        = "getJobsApprovedById"
+  #       authorization = "COGNITO_USER_POOLS"
+  #     }
+  #     OPTIONS = {
+  #       authorization = "NONE"
+  #     }
+  #   }
+  # }
 
   jobs-actioned = {
-    parent_key = "jobs" # /jobs/actioned
-    path_part  = "actioned"
+    parent_key = "job-id" # /jobs/{jobId}/action
+    path_part  = "action"
     methods = {
-      GET = {
-        lambda        = "getJobsActionedList"
-        authorization = "COGNITO_USER_POOLS"
-      }
       POST = {
         lambda        = "postJobAction"
         authorization = "COGNITO_USER_POOLS"
@@ -280,27 +315,27 @@ api_child_routes = {
     }
   }
 
-  jobs-actioned-id = {
-    parent_key = "jobs-actioned" # /jobs/actioned/{id}
-    path_part  = "{id}"
-    methods = {
-      GET = {
-        lambda        = "getJobActionedById"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      PUT = {
-        lambda        = "updateJobActionedById"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      DELETE = {
-        lambda        = "deleteJobActionedById"
-        authorization = "COGNITO_USER_POOLS"
-      }
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
+  # jobs-actioned-id = {
+  #   parent_key = "jobs-actioned" # /jobs/actioned/{id}
+  #   path_part  = "{id}"
+  #   methods = {
+  #     GET = {
+  #       lambda        = "getJobActionedById"
+  #       authorization = "COGNITO_USER_POOLS"
+  #     }
+  #     PUT = {
+  #       lambda        = "updateJobActionedById"
+  #       authorization = "COGNITO_USER_POOLS"
+  #     }
+  #     DELETE = {
+  #       lambda        = "deleteJobActionedById"
+  #       authorization = "COGNITO_USER_POOLS"
+  #     }
+  #     OPTIONS = {
+  #       authorization = "NONE"
+  #     }
+  #   }
+  # }
 
   # ! Check this function to return the correct data for completed jobs
   # jobs-completed = {
@@ -318,18 +353,18 @@ api_child_routes = {
   #   }
   # }
 
-  jobcard = {
-    parent_key = "jobs" # /jobs/jobcard
-    path_part  = "jobcard"
-    methods = {
-      OPTIONS = {
-        authorization = "NONE"
-      }
-    }
-  }
+  # jobcard = {
+  #   parent_key = "jobs" # /jobs/jobcard
+  #   path_part  = "jobcard"
+  #   methods = {
+  #     OPTIONS = {
+  #       authorization = "NONE"
+  #     }
+  #   }
+  # }
   jobcard-id = {
-    parent_key = "jobcard" # /jobs/jobcard/{id}
-    path_part  = "{id}"
+    parent_key = "job-id" # /jobs/{id}/jobcard
+    path_part  = "jobcard"
     methods = {
       GET = {
         lambda        = "getJobcardById"
@@ -519,15 +554,15 @@ api_child_routes = {
 // $ Must create a dynamic resource to add actions
 
 extra_policies = {
-  postJobRequest        = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  postJobAction         = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  getJobsPendingById    = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  getJobActionedById    = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  deleteJobRequestById  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  deleteJobActionedById = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  postCreateAsset       = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  deleteAssetById       = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  getJobcardById        = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  postJobRequest = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  postJobAction  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  # getJobsPendingById    = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  # getJobActionedById    = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  # deleteJobRequestById  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  # deleteJobActionedById = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  postCreateAsset = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  deleteAssetById = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  getJobcardById  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   // existing policy created for s3EventLambda to allow putObject on s3 bucket 
 }
 
@@ -603,38 +638,40 @@ lambda_functions = {
       maintenance_request_table = {
         table_name         = "crud-nosql-app-maintenance-request-table"
         actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-        allow_index_access = false
-      }
-    }
-  }
-
-  getJobsApprovedList = {
-    file_name = "getJobsApprovedList.py"
-    handler   = "getJobsApprovedList.lambda_handler"
-    runtime   = "python3.12"
-
-    dynamodb_permissions = {
-      maintenance_request_table = {
-        table_name         = "crud-nosql-app-maintenance-request-table"
-        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = true
       }
     }
   }
 
-  getJobsPendingList = {
-    file_name = "getJobsPendingList.py"
-    handler   = "getJobsPendingList.lambda_handler"
-    runtime   = "python3.12"
+  # ! Function to be deleted, handled by getJobsList with filter expression and GSI
+  # getJobsApprovedList = {
+  #   file_name = "getJobsApprovedList.py"
+  #   handler   = "getJobsApprovedList.lambda_handler"
+  #   runtime   = "python3.12"
 
-    dynamodb_permissions = {
-      maintenance_request_table = {
-        table_name         = "crud-nosql-app-maintenance-request-table"
-        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-        allow_index_access = true
-      }
-    }
-  }
+  #   dynamodb_permissions = {
+  #     maintenance_request_table = {
+  #       table_name         = "crud-nosql-app-maintenance-request-table"
+  #       actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+  #       allow_index_access = true
+  #     }
+  #   }
+  # }
+
+  # ! Function to be deleted, handled by getJobsList with filter expression and GSI
+  # getJobsPendingList = {
+  #   file_name = "getJobsPendingList.py"
+  #   handler   = "getJobsPendingList.lambda_handler"
+  #   runtime   = "python3.12"
+
+  #   dynamodb_permissions = {
+  #     maintenance_request_table = {
+  #       table_name         = "crud-nosql-app-maintenance-request-table"
+  #       actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+  #       allow_index_access = true
+  #     }
+  #   }
+  # }
 
   postJobRequest = {
     file_name = "postJobRequest.py"
@@ -649,15 +686,20 @@ lambda_functions = {
       }
     }
   }
-
-  getJobsPendingById = {
-    file_name = "getJobsPendingById.py"
-    handler   = "getJobsPendingById.lambda_handler"
+  # This function return pending, completed, in progress and rejected jobs
+  getJobById = {
+    file_name = "getJobById.py"
+    handler   = "getJobById.lambda_handler"
     runtime   = "python3.12"
 
     dynamodb_permissions = {
       maintenance_request_table = {
         table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+      maintenance_action_table = {
+        table_name         = "crud-nosql-app-maintenance-action-table"
         actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = false
       }
@@ -680,6 +722,37 @@ lambda_functions = {
       }
     ]
   }
+
+  # getJobsPendingById = {
+  #   file_name = "getJobsPendingById.py"
+  #   handler   = "getJobsPendingById.lambda_handler"
+  #   runtime   = "python3.12"
+
+  #   dynamodb_permissions = {
+  #     maintenance_request_table = {
+  #       table_name         = "crud-nosql-app-maintenance-request-table"
+  #       actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+  #       allow_index_access = false
+  #     }
+  #   }
+  #   statements = [
+  #     {
+  #       actions   = ["s3:GetObject"]
+  #       resources = ["arn:aws:s3:::crud-nosql-app-images/maintenance/*"]
+  #     },
+  #     {
+  #       actions   = ["s3:ListBucket"]
+  #       resources = ["arn:aws:s3:::crud-nosql-app-images"]
+  #       conditions = [
+  #         {
+  #           test     = "StringLike"
+  #           variable = "s3:prefix"
+  #           values   = ["maintenance/*"]
+  #         }
+  #       ]
+  #     }
+  #   ]
+  # }
 
   getJobsApprovedById = {
     file_name = "getJobsApprovedById.py"
@@ -713,28 +786,38 @@ lambda_functions = {
     ]
   }
 
-  updateJobRequestById = {
-    file_name = "updateJobRequestById.py"
-    handler   = "updateJobRequestById.lambda_handler"
+  updateJobById = {
+    file_name = "updateJobById.py"
+    handler   = "updateJobById.lambda_handler"
     runtime   = "python3.12"
 
     dynamodb_permissions = {
-      assets_table = {
+      request_table = {
         table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+      action_table = {
+        table_name         = "crud-nosql-app-maintenance-action-table"
         actions            = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
         allow_index_access = false
       }
     }
   }
 
-  deleteJobRequestById = {
-    file_name = "deleteJobRequestById.py"
-    handler   = "deleteJobRequestById.lambda_handler"
+  deleteJobById = {
+    file_name = "deleteJobById.py"
+    handler   = "deleteJobById.lambda_handler"
     runtime   = "python3.12"
 
     dynamodb_permissions = {
-      maintenance_request_table = {
+      request_table = {
         table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:DeleteItem", "dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+      action_table = {
+        table_name         = "crud-nosql-app-maintenance-action-table"
         actions            = ["dynamodb:DeleteItem", "dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = false
       }
@@ -755,19 +838,19 @@ lambda_functions = {
     }
   }
 
-  getJobActionedById = {
-    file_name = "getJobActionedById.py"
-    handler   = "getJobActionedById.lambda_handler"
-    runtime   = "python3.12"
+  # getJobActionedById = {
+  #   file_name = "getJobActionedById.py"
+  #   handler   = "getJobActionedById.lambda_handler"
+  #   runtime   = "python3.12"
 
-    dynamodb_permissions = {
-      maintenance_action_table = {
-        table_name         = "crud-nosql-app-maintenance-action-table"
-        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-        allow_index_access = false
-      }
-    }
-  }
+  #   dynamodb_permissions = {
+  #     maintenance_action_table = {
+  #       table_name         = "crud-nosql-app-maintenance-action-table"
+  #       actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+  #       allow_index_access = false
+  #     }
+  #   }
+  # }
 
   postJobAction = {
     file_name = "postJobAction.py"
@@ -1545,8 +1628,15 @@ dynamodb_tables = {
   }
   crud-nosql-app-maintenance-action = {
     pk            = "id"
-    enable_gsi    = false
+    enable_gsi    = true
     enable_stream = false
+    gsis = {
+      # $ This must be changed to 'group'
+      "GroupIndex" = {
+        hash_key   = "group"
+        projection = "ALL"
+      }
+    }
   }
 
   # request_id for comments by job and + createdAt for sorting

@@ -55,6 +55,7 @@ def add_presigned_urls(item: dict) -> dict:
             "filename": filename,
             "url": None
         }
+    
         if bucket and key:
             try:
                 new_img["url"] = s3.generate_presigned_url(
