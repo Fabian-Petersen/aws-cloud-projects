@@ -101,9 +101,12 @@ def lambda_handler(event, context):
             # Assumes each item stores the creator's sub in a field called "action_sub"
             items = scan_all(FilterExpression=Attr("action_sub").eq(user_sub))
 
+        DATE_FIELDS = ["actionCreated", "completed_at"]
+
         for item in items:
-            if "actionCreated" in item:
-                item["actionCreated"] = to_human_date(item["actionCreated"])
+            for field in DATE_FIELDS:
+                if field in item and item[field]:
+                    item[field] = to_human_date(item[field])
 
         return _response(200, items, HEADERS)
 

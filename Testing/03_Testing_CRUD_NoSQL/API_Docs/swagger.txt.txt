@@ -1,0 +1,5 @@
+swagger version details
+swaggerapi/swagger-editor v4.11.1
+
+start the container
+docker run -p 8080:8080 swaggerapi/swagger-editor:v4.11.1

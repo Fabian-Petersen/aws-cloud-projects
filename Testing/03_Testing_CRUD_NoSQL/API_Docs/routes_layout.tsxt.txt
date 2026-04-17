@@ -1,0 +1,32 @@
+GET    /jobs/requests/status=pending/complete/in_progress/rejected
+POST   /jobs/requests "create a new job"
+GET    /jobs/actioned/group=technician/contractor
+
+GET    /jobs/{jobId}
+PATCH  /jobs/{jobId}
+DELETE /jobs/{jobId}
+
+POST   /jobs/{jobId}/approve
+POST   /jobs/{jobId}/reject
+POST   /jobs/{jobId}/complete
+
+GET    /job-actions?technicianId=123
+POST   /job-actions
+GET    /job-actions/{actionId}
+PUT    /job-actions/{actionId}
+DELETE /job-actions/{actionId}
+
+GET    /jobs/{jobId}/jobcard
+
+GET    /assets
+POST   /assets
+GET    /assets/{assetId}
+PUT    /assets/{assetId}
+DELETE /assets/{assetId}
+
+GET    /users?group=technicians/contractors
+POST   /users
+GET    /users/{userId}
+PUT    /users/{userId}
+DELETE /users/{userId}
+GET    /users/me
