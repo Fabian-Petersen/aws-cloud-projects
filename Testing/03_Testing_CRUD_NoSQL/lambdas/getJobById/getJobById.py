@@ -84,6 +84,7 @@ def handle_request_metadata(event):
         "https://www.crud-nosql.app.fabian-portfolio.net",
         "https://crud-nosql.app.fabian-portfolio.net",
         "http://localhost:5173",
+        "http://localhost:8080"
     ]
 
     allowed_origin = origin if origin in allowed_origins else ""
@@ -147,23 +148,23 @@ def add_presigned_urls(item: dict) -> dict:
     item["images"] = new_images
     return item
 
-def get_request_job(job_id: str, status: str) -> dict:
+def get_request_job(job_id: str, status: str, headers) -> dict:
     result = table.query(
         KeyConditionExpression=Key("id").eq(job_id)
     )
     items = result.get("Items", [])
     if not items:
-        return _response(404, {"message": "Job not found"})
+        return _response(404, {"message": "Job not found"}, headers)
 
     item = items[0]
 
     if item.get("status") != status:
-        return _response(404, {"message": "Job not found"})
+        return _response(404, {"message": "Job not found"}, headers)
 
     if "jobCreated" in item:
         item["jobCreated"] = to_human_date(item["jobCreated"])
 
-    return _response(200, add_presigned_urls(item))
+    return _response(200, add_presigned_urls(item), headers)
 
 def lambda_handler(event, context):
     # CORS
@@ -172,22 +173,24 @@ def lambda_handler(event, context):
     options_response = handle_options_request(method, HEADERS)
     if options_response:
         return options_response
+    
+    print("event:", event)
 
     try:
         job_id = event.get("pathParameters", {}).get("id")
         status = (event.get("queryStringParameters") or {}).get("status")
 
         if not job_id:
-            return _response(400, {"message": "Missing job id"})
+            return _response(400, {"message": "Missing job id"}, HEADERS)
 
         if not status or status not in VALID_STATUSES:
-            return _response(400, {"message": f"Invalid or missing status. Must be one of: {', '.join(VALID_STATUSES)}"})
+            return _response(400, {"message": f"Invalid or missing status. Must be one of: {', '.join(VALID_STATUSES)}"}, HEADERS)
 
-        return get_request_job(job_id, status)
+        return get_request_job(job_id, status, HEADERS)
 
     except Exception as exc:
         print("Error:", exc)
-        return _response(500, {"message": "Internal server error"})
+        return _response(500, {"message": "Internal server error"}, HEADERS)
 
 # ----------------------------
 # Response helper
