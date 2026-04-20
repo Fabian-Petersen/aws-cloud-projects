@@ -168,12 +168,12 @@ api_child_routes = {
     }
   }
 
-  jobs-actions = {
-    parent_key = "jobs" # /jobs/actions/
-    path_part  = "actions"
+  jobs-completed = {
+    parent_key = "jobs" # /jobs/completed/
+    path_part  = "completed"
     methods = {
       GET = {
-        lambda        = "getJobsActionedList"
+        lambda        = "getJobsCompletedList"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -208,7 +208,7 @@ api_child_routes = {
   }
 
   jobs-approve = {
-    parent_key = "job-id" # /jobs/{id}/approve
+    parent_key = "jobs-id" # /jobs/{id}/approve
     path_part  = "approve"
     methods = {
       POST = {
@@ -222,7 +222,7 @@ api_child_routes = {
   }
 
   job-reject = {
-    parent_key = "job-id" # /jobs/{id}/reject
+    parent_key = "jobs-id" # /jobs/{id}/reject
     path_part  = "reject"
     methods = {
       POST = {
@@ -302,7 +302,7 @@ api_child_routes = {
   # }
 
   jobs-actioned = {
-    parent_key = "job-id" # /jobs/{jobId}/action
+    parent_key = "jobs-id" # /jobs/{jobId}/action
     path_part  = "action"
     methods = {
       POST = {
@@ -363,7 +363,7 @@ api_child_routes = {
   #   }
   # }
   jobcard-id = {
-    parent_key = "job-id" # /jobs/{id}/jobcard
+    parent_key = "jobs-id" # /jobs/{id}/jobcard
     path_part  = "jobcard"
     methods = {
       GET = {
@@ -554,8 +554,8 @@ api_child_routes = {
 // $ Must create a dynamic resource to add actions
 
 extra_policies = {
-  postJobRequest = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  postJobAction  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  # postJobRequest = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  # postJobAction  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   # getJobsPendingById    = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   # getJobActionedById    = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
   # deleteJobRequestById  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
@@ -685,6 +685,23 @@ lambda_functions = {
         allow_index_access = false
       }
     }
+    statements = [
+      {
+        actions   = ["s3:PutObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/maintenance/*"]
+      },
+      {
+        actions   = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images"]
+        conditions = [
+          {
+            test     = "StringLike"
+            variable = "s3:prefix"
+            values   = ["maintenance/*"]
+          }
+        ]
+      }
+    ]
   }
   # This function return pending, completed, in progress and rejected jobs
   getJobById = {
@@ -841,9 +858,9 @@ lambda_functions = {
     ]
   }
 
-  getJobsActionedList = {
-    file_name = "getJobsActionedList.py"
-    handler   = "getJobsActionedList.lambda_handler"
+  getJobsCompletedList = {
+    file_name = "getJobsCompletedList.py"
+    handler   = "getJobsCompletedList.lambda_handler"
     runtime   = "python3.12"
 
     dynamodb_permissions = {
@@ -887,6 +904,24 @@ lambda_functions = {
         allow_index_access = false
       }
     }
+
+    statements = [
+      {
+        actions   = ["s3:PutObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/maintenance/*"]
+      },
+      {
+        actions   = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images"]
+        conditions = [
+          {
+            test     = "StringLike"
+            variable = "s3:prefix"
+            values   = ["maintenance/*"]
+          }
+        ]
+      }
+    ]
   }
 
   updateJobActionedById = {
@@ -1799,4 +1834,3 @@ ses_filename       = "jobs-notify-admin.py"
 ses_lambda_handler = "jobs-notify-admin.lambda_handler"
 from_email         = "no-reply@crud-nosql.app.fabian-portfolio.net"
 # dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
-
