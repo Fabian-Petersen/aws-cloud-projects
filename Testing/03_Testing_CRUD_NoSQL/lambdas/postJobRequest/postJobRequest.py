@@ -54,8 +54,42 @@ def to_human_date(iso_string: str) -> str:
     dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
     return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
 
+def generate_test_event(event: dict) -> str: 
+    """
+    Serialises a Lambda event into a compact JSON string suitable for reuse as a test fixture.
+
+    This function converts the incoming event dictionary into a single-line JSON string
+    without extra whitespace, making it easy to copy from logs (e.g. CloudWatch) and
+    reuse directly in event.json files or API Gateway test payloads.
+
+    Args:
+        event (dict): The Lambda event object received from API Gateway or another source.
+
+    Returns:
+        str: A compact JSON string representation of the event, formatted for test reuse.
+
+    Use:
+    The output of this function can be printed in the Lambda logs to capture the exact event structure for testing.
+    For example, you can run this function in your Lambda handler to print the event:
+    
+    print("COPY_EVENT:", generate_test_event(event))
+    return {
+        "statusCode": 200,
+        "body": json.dumps({"message": "ok"})
+    }
+    """
+    return json.dumps(event, separators=(",", ":"))
+
+def normalize_string(value: str | None) -> str:
+    return str(value or "").strip().lower()
+
 def lambda_handler(event, context):
-    print("Event:", json.dumps(event))
+    # print("COPY_EVENT:", generate_test_event(event))
+    # return {
+    #     "statusCode": 200,
+    #     "body": json.dumps({"message": "ok"})
+    # }
+
     try:
         if not event.get("body"):
             return _response(400, {"message": "Missing request body"})
@@ -77,7 +111,7 @@ def lambda_handler(event, context):
         #$ Create backend meta data
         item_id = str(uuid.uuid4())
         created_at = now
-        status=str("Pending")
+        status=str("pending")
 
         #$ data from the cognito user sign-in
         user_id = claims.get("sub")
@@ -120,20 +154,20 @@ def lambda_handler(event, context):
         item = {
             "id": item_id, #$ created on backend
             "jobCreated": created_at, #$ created on backend
-            "status": status, #$ created on backend
-            "requested_by": requested_by, #$ created on backend for Jobcard
+            "status": normalize_string(status), #$ created on backend
+            "requested_by": normalize_string(requested_by), #$ created on backend for Jobcard
             # "jobcardNumber" : jobcardNumber, #$ created on backend
             "request_sub" : user_id, #$ created on backend
             "user_email" : user_email, #$ created on backend
-            "user_name" : user_name, #$ created on backend
-            "location": data["location"],
+            "user_name" : normalize_string(user_name), #$ created on backend
+            "location": normalize_string(data.get("location")),
             "type": data["type"],
-            "priority": data["priority"],
+            "priority": normalize_string(data.get("priority")),
             "equipment": data["equipment"],
             "impact": data["impact"],
             "jobComments": data["jobComments"],
             "description":data["description"],
-            "area":data["area"],
+            "area":normalize_string(data.get("area")),
             "assetID":data["assetID"],
             "images": []  # Will be updated by S3-triggered Lambda later
         }

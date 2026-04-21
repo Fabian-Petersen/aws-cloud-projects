@@ -900,7 +900,7 @@ lambda_functions = {
 
       maintenance_request_table = {
         table_name         = "crud-nosql-app-maintenance-request-table"
-        actions            = ["dynamodb:GetItem", "dynamodb:Query"]
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:UpdateItem"]
         allow_index_access = false
       }
     }
@@ -908,7 +908,7 @@ lambda_functions = {
     statements = [
       {
         actions   = ["s3:PutObject"]
-        resources = ["arn:aws:s3:::crud-nosql-app-images/maintenance/*"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/maintenance_action/*"]
       },
       {
         actions   = ["s3:ListBucket"]
@@ -917,7 +917,7 @@ lambda_functions = {
           {
             test     = "StringLike"
             variable = "s3:prefix"
-            values   = ["maintenance/*"]
+            values   = ["maintenance_action/*"]
           }
         ]
       }

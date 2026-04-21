@@ -202,6 +202,35 @@ def generate_jobcard_no(location: str, request_id: str) -> str:
     next_number = int(response["Attributes"]["lastSequence"])
     return f"Job-{location_id}-{job_date}-{next_number:04d}"
 
+def generate_test_event(event: dict) -> str: 
+    """
+    Serialises a Lambda event into a compact JSON string suitable for reuse as a test fixture.
+
+    This function converts the incoming event dictionary into a single-line JSON string
+    without extra whitespace, making it easy to copy from logs (e.g. CloudWatch) and
+    reuse directly in event.json files or API Gateway test payloads.
+
+    Args:
+        event (dict): The Lambda event object received from API Gateway or another source.
+
+    Returns:
+        str: A compact JSON string representation of the event, formatted for test reuse.
+
+    Use:
+    The output of this function can be printed in the Lambda logs to capture the exact event structure for testing.
+    For example, you can run this function in your Lambda handler to print the event:
+    
+    print("COPY_EVENT:", generate_test_event(event))
+    return {
+        "statusCode": 200,
+        "body": json.dumps({"message": "ok"})
+    }
+    """
+    return json.dumps(event, separators=(",", ":"))
+
+def normalize_string(value: str | None) -> str:
+    return str(value or "").strip().lower()
+
 def lambda_handler(event, context):
     """
     Process a maintenance request approval.
@@ -210,7 +239,7 @@ def lambda_handler(event, context):
     existing maintenance request from DynamoDB, and updates the request with the
     provided assignment and target date details.
 
-    When the incoming status is `Approved`, the function:
+    When the incoming status is `approved`, the function:
     - changes the stored database status to `In Progress`
     - generates a new jobcard number based on the request location
     - records approval metadata, including the approval timestamp and approver details
@@ -253,6 +282,12 @@ def lambda_handler(event, context):
         - the frontend may send `Approved`, but the database stores this as
         `In Progress`
     """
+    # print("COPY_EVENT:", generate_test_event(event))
+    # return {
+    #     "statusCode": 200,
+    #     "body": json.dumps({"message": "ok"})
+    # }
+
     try:
         if not event.get("body"):
             return _response(400, {"message": "Missing request body"})
@@ -273,11 +308,11 @@ def lambda_handler(event, context):
                 return _response(400, {"message": f"Missing field: {field}"})
 
         request_id = data["selectedRowId"]
-        action_status = data["status"]
+        action_status = normalize_string(data.get("status"))
         targetDate = data["targetDate"]
-        assign_to_name = data["assign_to_name"]
-        assign_to_sub = data["assign_to_sub"]
-        assign_to_group = data["assign_to_group"]
+        assign_to_name = normalize_string(data.get("assign_to_name"))
+        assign_to_sub = normalize_string(data.get("assign_to_sub"))
+        assign_to_group = normalize_string(data.get("assign_to_group"))
 
         # Get existing item first so we can read the sort key
         existing_item = get_request_by_id(request_id)
@@ -290,11 +325,11 @@ def lambda_handler(event, context):
         
         # $ Get the location when we need to build the jobcard
         location = existing_item.get("location")
-        if action_status == "Approved" and not location:
+        if action_status == "approved" and not location:
             return _response(500, {"message": "Location not found"})
 
         # Frontend action -> DB status
-        db_status = "In Progress" if action_status == "Approved" else action_status
+        db_status = "in progress" if action_status == "approved" else action_status
 
         update_expression = """
             SET #s = :status,
@@ -320,7 +355,7 @@ def lambda_handler(event, context):
             ":assign_to_group": assign_to_group
         }
 
-        if action_status == "Approved":
+        if action_status == "approved":
             jobcardNumber = generate_jobcard_no(location, request_id)
             approved_at = datetime.now(timezone.utc).isoformat()
             approved_by = f'{claims.get("name", "").strip()} {claims.get("family_name", "").strip()}'.strip()
@@ -339,7 +374,7 @@ def lambda_handler(event, context):
 
             condition_expression = "attribute_exists(id) AND attribute_exists(jobCreated)"
 
-            if action_status == "Approved":
+            if action_status == "approved":
                 condition_expression += " AND attribute_not_exists(jobcardNumber)"
 
             response = table_requests.update_item(

@@ -24,7 +24,7 @@ s3 = boto3.client(
 )
 
 PRESIGN_EXPIRES_SECONDS = int(os.getenv("PRESIGN_EXPIRES_SECONDS", "900"))
-VALID_STATUSES = {"Pending", "In Progress", "Complete", "Rejected"}
+VALID_STATUSES = {"pending", "in progress", "complete", "rejected"}
 
 # ----------------------------
 # Decimal serializer for DynamoDB types in JSON responses 
