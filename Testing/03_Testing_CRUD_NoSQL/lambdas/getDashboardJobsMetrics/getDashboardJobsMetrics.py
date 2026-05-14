@@ -1,8 +1,7 @@
+import boto3
 import json
 from decimal import Decimal
 from datetime import datetime, timezone, timedelta
-
-import boto3
 from boto3.dynamodb.conditions import Key
 
 
@@ -137,12 +136,17 @@ def safe_parse_date(date_string):
         return None
 
     try:
-        return datetime.fromisoformat(
+        parsed_date = datetime.fromisoformat(
             date_string.replace(
-                "Z",
-                "+00:00",
-            )
+                "Z", "+00:00")
         )
+
+        # If datetime is naive, force UTC
+        if parsed_date.tzinfo is None:
+            parsed_date = parsed_date.replace(
+                tzinfo=timezone.utc
+            )
+        return parsed_date
 
     except Exception:
         return None
@@ -272,7 +276,7 @@ def get_jobs_for_scope(access_scope):
         )
 
         completed_jobs = query_jobs_by_status(
-            "completed"
+            "complete"
         )
 
         return (
@@ -403,9 +407,7 @@ def get_approved_metrics(jobs):
 
 def get_overdue_metrics(jobs):
 
-    today = datetime.now(
-        timezone.utc
-    )
+    today = datetime.now(timezone.utc).date()
 
     overdue_jobs = []
 
@@ -424,7 +426,7 @@ def get_overdue_metrics(jobs):
         if not due_date:
             continue
 
-        if due_date < today:
+        if due_date.date() < today:
             overdue_jobs.append(job)
 
     current_jobs, previous_jobs = (
@@ -456,7 +458,7 @@ def get_completed_metrics(jobs):
     completed_jobs = [
         job for job in jobs
         if job.get("status")
-        == "completed"
+        == "complete"
     ]
 
     current_jobs, previous_jobs = (

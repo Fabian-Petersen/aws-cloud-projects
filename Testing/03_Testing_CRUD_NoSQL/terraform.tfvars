@@ -458,12 +458,21 @@ api_child_routes = {
     }
   }
 
-  jobs-metrics = {
+  dashboard-metrics = {
     parent_key = "dashboard" // path: admin/confirm-user-signup
+    path_part  = "metrics"
+    methods = {
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+  jobs-metrics = {
+    parent_key = "dashboard-metrics" // path: admin/confirm-user-signup
     path_part  = "jobs"
     methods = {
-      POST = {
-        lambda        = "postConfirmationTrigger"
+      GET = {
+        lambda        = "getDashboardJobsMetrics"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -1182,6 +1191,21 @@ lambda_functions = {
         table_name         = "crud-nosql-app-users-table"
         actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = false
+      }
+    }
+  }
+
+  /* -------------------------------- Dashboard ------------------------------- */
+  getDashboardJobsMetrics = {
+    file_name = "getDashboardJobsMetrics.py"
+    handler   = "getDashboardJobsMetrics.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      jobs_table = {
+        table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
       }
     }
   }

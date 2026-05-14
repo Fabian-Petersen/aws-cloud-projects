@@ -6,7 +6,7 @@
     "Accept": "application/json, text/plain, */*",
     "Accept-Encoding": "gzip, deflate, br, zstd",
     "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8,af;q=0.7",
-    "Authorization": "Bearer eyJraWQiOiIzSWlPU1NaTVM0TWdNZzlFK1BmWDNCMThmbHRiR2RcL3duWlFZV2cyMmNBZz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiI5MWJjZjJlOC1hMDkxLTcwNWQtNTY0Mi0wMGM5NjNjOTZhNTAiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaXNzIjoiaHR0cHM6XC9cL2NvZ25pdG8taWRwLmFmLXNvdXRoLTEuYW1hem9uYXdzLmNvbVwvYWYtc291dGgtMV9BNHdqdUhQbHEiLCJjb2duaXRvOnVzZXJuYW1lIjoiOTFiY2YyZTgtYTA5MS03MDVkLTU2NDItMDBjOTYzYzk2YTUwIiwib3JpZ2luX2p0aSI6IjQzMzJlMmRlLTI2MTMtNGEzZC1hNGI3LTUxNWYxMWFiZDhmNyIsImF1ZCI6IjNocHFzdGwzZGlxbHJyZmF1N3Q5bHVpcmozIiwiZXZlbnRfaWQiOiJjZDQyZmMzMy0zNzkyLTRhNWUtYjkzNS0xYzMzYzM3MGY4NjkiLCJ0b2tlbl91c2UiOiJpZCIsImF1dGhfdGltZSI6MTc3NTgxMjY0NywibmFtZSI6ImZhYmlhbiIsImV4cCI6MTc3NjA2Njc0NiwiaWF0IjoxNzc2MDYzMTQ2LCJmYW1pbHlfbmFtZSI6InBldGVyc2VuIiwianRpIjoiYjE3YzliMWItNjAyNi00MDczLWEwY2UtOTJkYWQ5MGQ2YTM3IiwiZW1haWwiOiJmcGV0ZXJzZW4yQGdtYWlsLmNvbSJ9.AKpW0d9X0ADfmevm7RAUjuR-R3SSOHWZHvQVquHilHfOD-EQpD2vIfRgsgp9ZYt3ycB-rn3HnZpTu7C7HrxoNPq0vljlcRFhM4-EpkZhtlPLOWiT32xTLALwvfnkbGv0sklcKimyLVctVhcs3E9_2pisvvEBUR1U7rJ5s9XY0gsvZnbDCe0QAvD6RZvOJjX_qEB7kuK9fA5sIeLZPR2YJEOhc9tx7TXzLPsxeFNnkFPjFqpXn5FdceeZSffFXuQVwCS3cwAFuD4OmDbPj7wNpgwipV3AMiiNr14lXoNNzQAbvbatgdh9v3dqavzP-ON0camK4wufQD40BvgnhL5hgg",
+    "Authorization": "Bearer ",
     "cache-control": "no-cache",
     "CloudFront-Forwarded-Proto": "https",
     "CloudFront-Is-Desktop-Viewer": "true",
@@ -39,9 +39,7 @@
     "Accept": ["application/json, text/plain, */*"],
     "Accept-Encoding": ["gzip, deflate, br, zstd"],
     "Accept-Language": ["en-GB,en-US;q=0.9,en;q=0.8,af;q=0.7"],
-    "Authorization": [
-      "Bearer eyJraWQiOiIzSWlPU1NaTVM0TWdNZzlFK1BmWDNCMThmbHRiR2RcL3duWlFZV2cyMmNBZz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiI5MWJjZjJlOC1hMDkxLTcwNWQtNTY0Mi0wMGM5NjNjOTZhNTAiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaXNzIjoiaHR0cHM6XC9cL2NvZ25pdG8taWRwLmFmLXNvdXRoLTEuYW1hem9uYXdzLmNvbVwvYWYtc291dGgtMV9BNHdqdUhQbHEiLCJjb2duaXRvOnVzZXJuYW1lIjoiOTFiY2YyZTgtYTA5MS03MDVkLTU2NDItMDBjOTYzYzk2YTUwIiwib3JpZ2luX2p0aSI6IjQzMzJlMmRlLTI2MTMtNGEzZC1hNGI3LTUxNWYxMWFiZDhmNyIsImF1ZCI6IjNocHFzdGwzZGlxbHJyZmF1N3Q5bHVpcmozIiwiZXZlbnRfaWQiOiJjZDQyZmMzMy0zNzkyLTRhNWUtYjkzNS0xYzMzYzM3MGY4NjkiLCJ0b2tlbl91c2UiOiJpZCIsImF1dGhfdGltZSI6MTc3NTgxMjY0NywibmFtZSI6ImZhYmlhbiIsImV4cCI6MTc3NjA2Njc0NiwiaWF0IjoxNzc2MDYzMTQ2LCJmYW1pbHlfbmFtZSI6InBldGVyc2VuIiwianRpIjoiYjE3YzliMWItNjAyNi00MDczLWEwY2UtOTJkYWQ5MGQ2YTM3IiwiZW1haWwiOiJmcGV0ZXJzZW4yQGdtYWlsLmNvbSJ9.AKpW0d9X0ADfmevm7RAUjuR-R3SSOHWZHvQVquHilHfOD-EQpD2vIfRgsgp9ZYt3ycB-rn3HnZpTu7C7HrxoNPq0vljlcRFhM4-EpkZhtlPLOWiT32xTLALwvfnkbGv0sklcKimyLVctVhcs3E9_2pisvvEBUR1U7rJ5s9XY0gsvZnbDCe0QAvD6RZvOJjX_qEB7kuK9fA5sIeLZPR2YJEOhc9tx7TXzLPsxeFNnkFPjFqpXn5FdceeZSffFXuQVwCS3cwAFuD4OmDbPj7wNpgwipV3AMiiNr14lXoNNzQAbvbatgdh9v3dqavzP-ON0camK4wufQD40BvgnhL5hgg"
-    ],
+    "Authorization": ["Bearer "],
     "cache-control": ["no-cache"],
     "CloudFront-Forwarded-Proto": ["https"],
     "CloudFront-Is-Desktop-Viewer": ["true"],
