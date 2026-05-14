@@ -77,6 +77,15 @@ ordered_cache_items = [
     path_pattern    = "/admin"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
   },
+  {
+    path_pattern    = "/dashboard/*"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
+  {
+    path_pattern    = "/dashboard"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+  },
+
 ]
 
 #$ api gateway variables
@@ -141,6 +150,18 @@ api_parent_routes = {
 
   admin = {
     methods = {
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  dashboard = {
+    methods = {
+      GET = {
+        lambda        = "getDashboardJobsMetrics"
+        authorization = "COGNITO_USER_POOLS"
+      }
       OPTIONS = {
         authorization = "NONE"
       }
@@ -235,72 +256,6 @@ api_child_routes = {
     }
   }
 
-  # jobs-pending = {
-  #   parent_key = "jobs" #/jobs/pending/ "status === pending"
-  #   path_part  = "pending"
-  #   methods = {
-  #     # GET = {
-  #     #   lambda        = "getJobsPendingList"
-  #     #   authorization = "COGNITO_USER_POOLS"
-  #     # }
-  #     OPTIONS = {
-  #       authorization = "NONE"
-  #     }
-  #   }
-  # }
-
-  # jobs-list-pending-id = {
-  #   parent_key = "jobs-pending" # /jobs/pending/{id}
-  #   path_part  = "{id}"
-  #   methods = {
-  #     # GET = {
-  #     #   lambda        = "getJobsPendingById"
-  #     #   authorization = "COGNITO_USER_POOLS"
-  #     # }
-  #     PUT = {
-  #       lambda        = "updateJobRequestById"
-  #       authorization = "COGNITO_USER_POOLS"
-  #     }
-  #     DELETE = {
-  #       lambda        = "deleteJobRequestById"
-  #       authorization = "COGNITO_USER_POOLS"
-  #     }
-  #     OPTIONS = {
-  #       authorization = "NONE"
-  #     }
-  #   }
-  # }
-
-  # jobs-list-approved = {
-  #   parent_key = "jobs" # /jobs/approved
-  #   path_part  = "approved"
-  #   methods = {
-  #     GET = {
-  #       lambda        = "getJobsApprovedList"
-  #       authorization = "COGNITO_USER_POOLS"
-  #     }
-  #     OPTIONS = {
-  #       authorization = "NONE"
-  #     }
-  #   }
-  # }
-
-
-  # $ Lambda get the request which have been approved
-  # jobs-list-approved-id = {
-  #   parent_key = "jobs-list-approved" # /jobs/approved/{id}
-  #   path_part  = "{id}"
-  #   methods = {
-  #     GET = {
-  #       lambda        = "getJobsApprovedById"
-  #       authorization = "COGNITO_USER_POOLS"
-  #     }
-  #     OPTIONS = {
-  #       authorization = "NONE"
-  #     }
-  #   }
-  # }
-
   jobs-actioned = {
     parent_key = "jobs-id" # /jobs/{jobId}/action
     path_part  = "action"
@@ -315,53 +270,6 @@ api_child_routes = {
     }
   }
 
-  # jobs-actioned-id = {
-  #   parent_key = "jobs-actioned" # /jobs/actioned/{id}
-  #   path_part  = "{id}"
-  #   methods = {
-  #     GET = {
-  #       lambda        = "getJobActionedById"
-  #       authorization = "COGNITO_USER_POOLS"
-  #     }
-  #     PUT = {
-  #       lambda        = "updateJobActionedById"
-  #       authorization = "COGNITO_USER_POOLS"
-  #     }
-  #     DELETE = {
-  #       lambda        = "deleteJobActionedById"
-  #       authorization = "COGNITO_USER_POOLS"
-  #     }
-  #     OPTIONS = {
-  #       authorization = "NONE"
-  #     }
-  #   }
-  # }
-
-  # ! Check this function to return the correct data for completed jobs
-  # jobs-completed = {
-  #   parent_key = "jobs" # /jobs/completed 
-  #   path_part  = "completed"
-  #   methods = {
-  #     GET = {
-  #       lambda        = "getJobsCompletedList"
-  #       authorization = "COGNITO_USER_POOLS"
-
-  #     }
-  #     OPTIONS = {
-  #       authorization = "NONE"
-  #     }
-  #   }
-  # }
-
-  # jobcard = {
-  #   parent_key = "jobs" # /jobs/jobcard
-  #   path_part  = "jobcard"
-  #   methods = {
-  #     OPTIONS = {
-  #       authorization = "NONE"
-  #     }
-  #   }
-  # }
   jobcard-id = {
     parent_key = "jobs-id" # /jobs/{id}/jobcard
     path_part  = "jobcard"
@@ -539,6 +447,20 @@ api_child_routes = {
   admin-confirm-user-signup = {
     parent_key = "admin" // path: admin/confirm-user-signup
     path_part  = "confirm-user-signup"
+    methods = {
+      POST = {
+        lambda        = "postConfirmationTrigger"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  jobs-metrics = {
+    parent_key = "dashboard" // path: admin/confirm-user-signup
+    path_part  = "jobs"
     methods = {
       POST = {
         lambda        = "postConfirmationTrigger"

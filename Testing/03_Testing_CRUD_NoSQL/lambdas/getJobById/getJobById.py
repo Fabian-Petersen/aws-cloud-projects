@@ -27,8 +27,10 @@ PRESIGN_EXPIRES_SECONDS = int(os.getenv("PRESIGN_EXPIRES_SECONDS", "900"))
 VALID_STATUSES = {"pending", "in progress", "complete", "rejected"}
 
 # ----------------------------
-# Decimal serializer for DynamoDB types in JSON responses 
+# Decimal serializer for DynamoDB types in JSON responses
 # ----------------------------
+
+
 def decimal_serializer(obj):
     """
     Custom JSON serializer for handling DynamoDB Decimal types.
@@ -49,8 +51,10 @@ def decimal_serializer(obj):
     raise TypeError
 
 # ----------------------------
-# Date formatting in SAST for human readability 
+# Date formatting in SAST for human readability
 # ----------------------------
+
+
 def to_human_date(iso_string: str) -> str:
     """
     Convert an ISO 8601 timestamp string to a human-readable date in SAST.
@@ -64,6 +68,7 @@ def to_human_date(iso_string: str) -> str:
     SAST = timezone(timedelta(hours=2))
     dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
     return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
+
 
 def handle_request_metadata(event):
     """
@@ -104,6 +109,7 @@ def handle_request_metadata(event):
 
     return method, response_headers
 
+
 def handle_options_request(method, headers):
     """
     Handle CORS preflight (OPTIONS) requests.
@@ -118,6 +124,7 @@ def handle_options_request(method, headers):
     if method == "OPTIONS":
         return _response(200, {"message": "Success"}, headers)
     return None
+
 
 def add_presigned_urls(item: dict) -> dict:
     images = item.get("images", [])
@@ -148,6 +155,7 @@ def add_presigned_urls(item: dict) -> dict:
     item["images"] = new_images
     return item
 
+
 def get_request_job(job_id: str, status: str, headers) -> dict:
     result = table.query(
         KeyConditionExpression=Key("id").eq(job_id)
@@ -166,6 +174,7 @@ def get_request_job(job_id: str, status: str, headers) -> dict:
 
     return _response(200, add_presigned_urls(item), headers)
 
+
 def lambda_handler(event, context):
     # CORS
     method, HEADERS = handle_request_metadata(event)
@@ -173,7 +182,7 @@ def lambda_handler(event, context):
     options_response = handle_options_request(method, HEADERS)
     if options_response:
         return options_response
-    
+
     print("event:", event)
 
     try:
@@ -195,6 +204,8 @@ def lambda_handler(event, context):
 # ----------------------------
 # Response helper
 # ----------------------------
+
+
 def _response(status_code, body, headers):
     """
     Construct a standard API Gateway HTTP response.

@@ -6,13 +6,16 @@ from boto3.dynamodb.types import TypeDeserializer
 
 deserializer = TypeDeserializer()
 
+
 def ddb_to_dict(ddb_item):
     return {k: deserializer.deserialize(v) for k, v in ddb_item.items()}
+
 
 dynamodb = boto3.resource("dynamodb", region_name="af-south-1")
 table_action = dynamodb.Table("crud-nosql-app-maintenance-action-table")
 s3 = boto3.client("s3", region_name="af-south-1")
 BUCKET_NAME = "crud-nosql-app-images"
+
 
 def lambda_handler(event, context):
     for record in event["Records"]:
@@ -30,12 +33,15 @@ def lambda_handler(event, context):
         old_item = ddb_to_dict(old)
         new_item = ddb_to_dict(new)
 
+        print("OLD STATUS:", old_item.get("status"))
+        print("NEW STATUS:", new_item.get("status"))
+
         # Only when status changes
         if old_item.get("status") == new_item.get("status"):
             continue
 
-        # Only when status becomes Complete
-        if new_item.get("status") != "Complete":
+        # Only when status becomes complete
+        if new_item.get("status") != "complete":
             continue
 
         print("STATUS CHANGED TO COMPLETE")
@@ -63,18 +69,18 @@ def lambda_handler(event, context):
 
         if jobcard_data:
             print("Merged jobcard_data:", jobcard_data)
-        
+
         pdf = PDFGenerator()
         pdf_bytes = pdf.create_pdf(jobcard_data)
         print("pdf size:", len(pdf_bytes))
-        
+
         # save the pdf to s3 bucket
         key = f"jobcards/{jobcard_data['request_id']}.pdf"
         s3.put_object(
-        Bucket=BUCKET_NAME,
-        Key=key,
-        Body=pdf_bytes,
-        ContentType="application/pdf"
+            Bucket=BUCKET_NAME,
+            Key=key,
+            Body=pdf_bytes,
+            ContentType="application/pdf"
         )
 
     return {
@@ -83,6 +89,7 @@ def lambda_handler(event, context):
             "message": "PDF created and uploaded to s3",
         }
     }
+
 
 # Run the lambda locally with the events.json file to test
 if __name__ == "__main__":
@@ -93,16 +100,13 @@ if __name__ == "__main__":
     print(json.dumps(result, indent=2))
 
 
-
-
-
 # $ Local execution only
 # if __name__ == "__main__":
 #     # The data comes from the maintenance-actions-table & maintenance-requests-table
-    
+
 #     jobcard_data = {
 #         "job_card_no": "1524336", # generate the jobcard_no in requests_lambda. save jopbcard in requests_table
-#         "asset_description":"Band Saw", 
+#         "asset_description":"Band Saw",
 #         "asset_id":"RT-0028", # requests-table
 #         "requested_by": "John Doe", # requests-table
 #         "date": "2026-01-10", # requests-table
@@ -124,12 +128,12 @@ if __name__ == "__main__":
 #     }
 
 #         path = pdf.create_pdf(jobcard_data, filename="jobcard.pdf")
-    
+
 #         except Exception as exc:
 #             print("Lambda error:", exc)
 #             return _response(500, {"message": "Internal server error"})
- 
-#         def _response(status_code: int, body: dict)     
+
+#         def _response(status_code: int, body: dict)
 #             return {
 #                 "statusCode": status_code,
 #                 "headers": HEADERS,

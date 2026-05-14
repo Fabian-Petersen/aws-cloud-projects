@@ -32,6 +32,7 @@ HEADERS = {
     "Access-Control-Allow-Credentials": "true"
 }
 
+
 def to_human_date(iso_string: str) -> str:
     """
     Convert an ISO 8601 timestamp string to a human-readable date in SAST.
@@ -45,6 +46,7 @@ def to_human_date(iso_string: str) -> str:
     SAST = timezone(timedelta(hours=2))
     dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
     return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
+
 
 def decimal_serializer(obj):
     """
@@ -104,6 +106,7 @@ def handle_request_metadata(event):
 
     return method, response_headers
 
+
 def handle_options_request(method, headers):
     """
     Handle CORS preflight (OPTIONS) requests.
@@ -120,6 +123,8 @@ def handle_options_request(method, headers):
     return None
 
 # $ Function to get the location and requested_by from requests table
+
+
 def get_request_fields_by_id(table, request_id: str) -> dict:
     """
     Get request fields by partition key id.
@@ -150,7 +155,8 @@ def get_request_fields_by_id(table, request_id: str) -> dict:
         "jobcardNumber": item.get("jobcardNumber"),
     }
 
-def generate_test_event(event: dict) -> str: 
+
+def generate_test_event(event: dict) -> str:
     """
     Serialises a Lambda event into a compact JSON string suitable for reuse as a test fixture.
 
@@ -167,7 +173,7 @@ def generate_test_event(event: dict) -> str:
     Use:
     The output of this function can be printed in the Lambda logs to capture the exact event structure for testing.
     For example, you can run this function in your Lambda handler to print the event:
-    
+
     print("COPY_EVENT:", generate_test_event(event))
     return {
         "statusCode": 200,
@@ -176,8 +182,10 @@ def generate_test_event(event: dict) -> str:
     """
     return json.dumps(event, separators=(",", ":"))
 
+
 def normalize_string(value: str | None) -> str:
     return str(value or "").strip().lower()
+
 
 def lambda_handler(event, context):
     # Run to capture a event.json to test the function code
@@ -199,10 +207,13 @@ def lambda_handler(event, context):
             return _response(400, {"message": "Missing request body"}, HEADERS)
 
         data = json.loads(event["body"])
-        claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {}) # Get the user information from the authoriser token.
+        # Get the user information from the authoriser token.
+        claims = event.get("requestContext", {}).get(
+            "authorizer", {}).get("claims", {})
 
         # Validate required fields
-        required_fields = ["start_time", "end_time", "total_km", "work_order_number", "work_completed", "status", "root_cause", "findings","signature", "selectedRowId","signedBy"]
+        required_fields = ["start_time", "end_time", "total_km", "work_order_number", "work_completed",
+                           "status", "root_cause", "findings", "signature", "selectedRowId", "signedBy"]
         for field in required_fields:
             if field not in data:
                 return _response(400, {"message": f"Missing field: {field}"}, HEADERS)
@@ -224,13 +235,15 @@ def lambda_handler(event, context):
         requested_by = normalize_string(request_info.get("requested_by"))
         jobcardNumber = request_info.get("jobcardNumber", "")
         job_created = request_info.get("jobCreated")
-        
+
         # data from the cognito user sign-in
         user_id = claims.get("sub")
-        actioned_by = normalize_string(f'{claims.get("name", "")} {claims.get("family_name", "")}')
+        actioned_by = normalize_string(
+            f'{claims.get("name", "")} {claims.get("family_name", "")}')
 
         # Check if the request was completed, if yes add a completed date.
-        if data.get("status", "") == "complete":
+        status = normalize_string(data.get("status") or "")
+        if status == "complete":
             completed_at = datetime.now(timezone.utc).isoformat()
         else:
             completed_at = ""
@@ -240,7 +253,8 @@ def lambda_handler(event, context):
         # Check if frontend included any files
         for file_info in data.get("images", []):
             filename = file_info.get("filename")
-            content_type = file_info.get("content_type", "application/octet-stream")
+            content_type = file_info.get(
+                "content_type", "application/octet-stream")
             if not filename:
                 continue
 
@@ -258,21 +272,23 @@ def lambda_handler(event, context):
 
             # The config above force the url to be af-south-1 region and the code below check if the url is region specific.
             if "s3.af-south-1.amazonaws.com" not in url:
-                raise Exception("Presigned URL generated with incorrect S3 endpoint")
+                raise Exception(
+                    "Presigned URL generated with incorrect S3 endpoint")
 
-            presigned_urls.append({"filename": filename, "url": url, "key": key, "content_type": content_type})
+            presigned_urls.append(
+                {"filename": filename, "url": url, "key": key, "content_type": content_type})
 
         # Save metadata to DynamoDB
         item = {
-            "id": item_id, #$ created on backend
-            "actionCreated": created_at, #$ created on backend
-            "request_id": data["selectedRowId"], #$ created on backend
-            "action_sub": user_id,  #$ created on backend
-            "actioned_by": actioned_by, #$ created on backend
-            "completed_at": completed_at, #$ created on backend
-            "requested_by": requested_by,#% from requests-table
-            "location": location,#% from requests-table
-            "jobcardNumber": jobcardNumber, #% from requests-table
+            "id": item_id,  # $ created on backend
+            "actionCreated": created_at,  # $ created on backend
+            "request_id": data["selectedRowId"],  # $ created on backend
+            "action_sub": user_id,  # $ created on backend
+            "actioned_by": actioned_by,  # $ created on backend
+            "completed_at": completed_at,  # $ created on backend
+            "requested_by": requested_by,  # % from requests-table
+            "location": location,  # % from requests-table
+            "jobcardNumber": jobcardNumber,  # % from requests-table
             "start_time": data["start_time"],
             "end_time": data["end_time"],
             "total_km": data["total_km"],
@@ -282,19 +298,21 @@ def lambda_handler(event, context):
             "work_completed": data["work_completed"],
             "findings": data["findings"],
             "images": data["images"],
-            "signedBy":normalize_string(data.get("signedBy")),
-            "signature": data["signature"]  # Will be updated by S3-triggered Lambda later
+            "signedBy": normalize_string(data.get("signedBy")),
+            # Will be updated by S3-triggered Lambda later
+            "signature": data["signature"]
         }
 
         # $ Upddate the status of the request created status
         table_requests.update_item(
-            Key={"id": data["selectedRowId"], 
-                "jobCreated": job_created},
+            Key={"id": data["selectedRowId"],
+                 "jobCreated": job_created},
             UpdateExpression="SET #s = :status, action_id = :action_id",
             ExpressionAttributeNames={"#s": "status"},
             ExpressionAttributeValues={
                 ":status": data["status"],
-                ":action_id": item_id # $ id passed to the request table to link the 'request made & action taken'
+                # $ id passed to the request table to link the 'request made & action taken'
+                ":action_id": item_id
             },
             ConditionExpression="attribute_exists(id) AND attribute_exists(jobCreated)"
         )
@@ -325,6 +343,7 @@ def _response(status_code, body, headers):
         "headers": headers,
         "body": json.dumps(body, default=decimal_serializer),
     }
+
 
 # Run the lambda locally with the events.json file to test
 if __name__ == "__main__":

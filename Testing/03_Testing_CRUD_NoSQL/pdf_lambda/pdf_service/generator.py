@@ -17,6 +17,7 @@ from pdf_service.work_completed import build_work_completed
 from pdf_service.paragraph_styles import meta_style
 from pdf_service.signature import build_signature
 
+
 class PDFGenerator:
     def __init__(self):
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -34,7 +35,7 @@ class PDFGenerator:
     def create_pdf(self, jobcard: dict) -> bytes:
         if not isinstance(jobcard, dict):
             raise ValueError("jobcard must be a dict")
-        
+
         buffer = BytesIO()
 
         doc = build_doc(buffer)
@@ -50,7 +51,7 @@ class PDFGenerator:
         story += build_services(jobcard, styles)
         story += build_findings(jobcard, styles)
         story += build_work_completed(jobcard, styles)
-        story += build_signature(jobcard.get('signature', ''), styles)
+        story += build_signature(jobcard, styles)
 
         doc.build(
             story,

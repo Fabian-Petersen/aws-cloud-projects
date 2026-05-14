@@ -20,6 +20,7 @@ HEADERS = {
     "Access-Control-Allow-Credentials": "true"
 }
 
+
 def get_request_by_id(request_id: str) -> dict | None:
     """
     Retrieve a maintenance request from DynamoDB by its request ID. 
@@ -41,16 +42,18 @@ def get_request_by_id(request_id: str) -> dict | None:
     items = response.get("Items", [])
     return items[0] if items else None
 
+
 locations = {
-  'Phillipi': 'PHP',
-  'Bellville': 'BTX',
-  'Khayelitsha': 'IKH',
-  'Wynberg': 'WBG',
-  'Maitland': 'VTR',
-  'Golden Acre': 'GAC',
-  'Distribution Centre': 'DCN',
-  'Central Services': 'CTS'
+    'phillipi': 'PHP',
+    'bellville': 'BTX',
+    'khayelitsha': 'IKH',
+    'wynberg': 'WBG',
+    'maitland': 'VTR',
+    'golden acre': 'GAC',
+    'distribution centre': 'DCN',
+    'central services': 'CTS'
 }
+
 
 def get_cape_town_now() -> datetime:
     """
@@ -62,6 +65,7 @@ def get_cape_town_now() -> datetime:
     """
     utc_now = datetime.now(timezone.utc)
     return utc_now.astimezone(timezone(timedelta(hours=2)))
+
 
 def get_month_bounds():
     """
@@ -78,28 +82,30 @@ def get_month_bounds():
         - current_month_code: A string in YYYYMM format for the current month
     """
     now_ct = get_cape_town_now()
-    start_of_month = now_ct.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    start_of_month = now_ct.replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0)
     if now_ct.month == 12:
         next_month = now_ct.replace(
-        year=now_ct.year + 1,
-        month=1,
-        day=1,
-        hour=0,
-        minute=0,
-        second=0,
-        microsecond=0
+            year=now_ct.year + 1,
+            month=1,
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0
         )
     else:
         next_month = now_ct.replace(
-        month=now_ct.month + 1,
-        day=1,
-        hour=0,
-        minute=0,
-        second=0,
-        microsecond=0
-    )
+            month=now_ct.month + 1,
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0
+        )
 
     return start_of_month.isoformat(), next_month.isoformat(), now_ct.strftime("%Y%m")
+
 
 def get_monthly_jobcard_count(location: str) -> int:
     """
@@ -153,6 +159,7 @@ def get_monthly_jobcard_count(location: str) -> int:
 
     return total_count
 
+
 def generate_jobcard_no(location: str, request_id: str) -> str:
     """
     Generate the next jobcard number for a given location using an atomic
@@ -202,7 +209,8 @@ def generate_jobcard_no(location: str, request_id: str) -> str:
     next_number = int(response["Attributes"]["lastSequence"])
     return f"Job-{location_id}-{job_date}-{next_number:04d}"
 
-def generate_test_event(event: dict) -> str: 
+
+def generate_test_event(event: dict) -> str:
     """
     Serialises a Lambda event into a compact JSON string suitable for reuse as a test fixture.
 
@@ -219,7 +227,7 @@ def generate_test_event(event: dict) -> str:
     Use:
     The output of this function can be printed in the Lambda logs to capture the exact event structure for testing.
     For example, you can run this function in your Lambda handler to print the event:
-    
+
     print("COPY_EVENT:", generate_test_event(event))
     return {
         "statusCode": 200,
@@ -228,8 +236,10 @@ def generate_test_event(event: dict) -> str:
     """
     return json.dumps(event, separators=(",", ":"))
 
+
 def normalize_string(value: str | None) -> str:
     return str(value or "").strip().lower()
+
 
 def lambda_handler(event, context):
     """
@@ -293,7 +303,8 @@ def lambda_handler(event, context):
             return _response(400, {"message": "Missing request body"})
 
         data = json.loads(event["body"])
-        claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {})
+        claims = event.get("requestContext", {}).get(
+            "authorizer", {}).get("claims", {})
 
         required_fields = [
             "targetDate",
@@ -322,7 +333,7 @@ def lambda_handler(event, context):
         job_created = existing_item.get("jobCreated")
         if not job_created:
             return _response(500, {"message": "Existing item missing jobCreated"})
-        
+
         # $ Get the location when we need to build the jobcard
         location = existing_item.get("location")
         if action_status == "approved" and not location:
@@ -358,7 +369,8 @@ def lambda_handler(event, context):
         if action_status == "approved":
             jobcardNumber = generate_jobcard_no(location, request_id)
             approved_at = datetime.now(timezone.utc).isoformat()
-            approved_by = f'{claims.get("name", "").strip()} {claims.get("family_name", "").strip()}'.strip()
+            approved_by = f'{claims.get("name", "").strip()} {claims.get("family_name", "").strip()}'.strip(
+            )
             approved_by_sub = claims.get("sub", "")
 
             update_expression += """,

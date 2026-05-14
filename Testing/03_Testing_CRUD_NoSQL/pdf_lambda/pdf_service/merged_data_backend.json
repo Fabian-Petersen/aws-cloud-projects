@@ -1,5 +1,5 @@
 {
-  "status": "Completed",
+  "status": "complete",
   "asset_description": "Generator",
   "assetID": "A123",
   "action_id": "e8d5b52a-415e-49ae-b9c3-ed67f7e59b8c",
@@ -18,5 +18,7 @@
   "root_cause": "negligence",
   "start_time": "2026-02-12T19:12:00Z",
   "end_time": "2026-02-12T19:14:00Z",
+  "signedBy": "john doe",
+  "completed_at": "26-02-14T20:01:07.275083+00:00",
   "jobcard_no": "job-mx20260214-0010"
 }

@@ -44,14 +44,16 @@
           "status": { "S": "Complete" },
           "signature": { "S": "data:image/png;base64,i...." },
           "total_km": { "S": "40" },
+          "signedBy": { "S": "John Doe,..." },
+          "completed_at": { "S": "2026-04-23T17:43:39.786034+00:00" },
           "findings": {
             "S": "This is the last step to complete before creating the email trigger"
           },
           "root_cause": { "S": "Wear & Tear" },
-          "start_time": { "S": "2026-02-15T13:00" },
-          "end_time": { "S": "2026-02-15T20:00" },
-          "jobCreated": { "S": "2026-02-15T17:43:39.786034+00:00" },
-          "actionCreated": { "S": "2026-02-15T17:52:49.702487+00:00" },
+          "start_time": { "S": "2026-04-23T13:00" },
+          "end_time": { "S": "2026-04-23T20:00" },
+          "jobCreated": { "S": "2026-04-23T17:43:39.786034+00:00" },
+          "actionCreated": { "S": "2026-04-23T17:52:49.702487+00:00" },
           "work_order_number": { "S": "INV-235432" }
         },
         "StreamViewType": "NEW_AND_OLD_IMAGES"

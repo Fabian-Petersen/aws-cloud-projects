@@ -5,9 +5,11 @@ import io
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import Paragraph, Spacer, Table, TableStyle, Image
 
-def build_signature(base64_str:str, styles):
+
+def build_signature(jobcard, styles):
     story = []
     story.append(Spacer(1, 10))
+    base64_str = jobcard.get('signature', '')
 
     if not base64_str:
         return Spacer(1, 10)
@@ -26,8 +28,15 @@ def build_signature(base64_str:str, styles):
         fontSize=8,
     )
 
+# Old signature, description changed `Customer Signature` -->  `jobcard[signedBy]`
+# [Paragraph(f"<b>Jobcard No:</b> {jobcard.get('jobcardNumber', '')}", meta_style)],
+    # signature_label = Paragraph(
+    #     "<b>Customer Signature</b>",
+    #     label_styles
+    # )
+
     signature_label = Paragraph(
-        "<b>Customer Signature</b>",
+        f"<b>Signed By:</b> {jobcard.get('signedBy', '')}",
         label_styles
     )
 
@@ -57,7 +66,7 @@ def build_signature(base64_str:str, styles):
     return story
 
 
-#$ The below function is for a signature saved in a local directory e.g .png
+# $ The below function is for a signature saved in a local directory e.g .png
 # def build_signature(styles, assets_dir):
 #     story = []
 
@@ -69,7 +78,7 @@ def build_signature(base64_str:str, styles):
 #         if os.path.exists(signature_path)
 #         else Spacer(1, 10)
 #     )
-    
+
 #     label_styles = ParagraphStyle(
 #         name="",
 #         parent=styles["Normal"],

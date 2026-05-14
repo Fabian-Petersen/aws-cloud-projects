@@ -45,14 +45,8 @@
 # % Received an error trying to use the image `The image manifest, config or layer media type for the # source image 157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator@sha256:848f8d23260bd6e3089d6ca7c8a6951a1e01eedd06e77970b7d130d8534856b9 is not supported.`
 # Tried the following: 
 # step 1: docker buildx build --platform linux/amd64 --provenance=false -t pdf-lambda:latest .
-# step 2: docker tag pdf-lambda:latest 157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v2
-# step 3: docker push 157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v2
-# 
-# 
-# 
-# 
-# 
-# 
+# step 2: docker tag pdf-lambda:latest 157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v3
+# step 3: docker push 157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v3
 
 FROM public.ecr.aws/lambda/python:3.10
 
