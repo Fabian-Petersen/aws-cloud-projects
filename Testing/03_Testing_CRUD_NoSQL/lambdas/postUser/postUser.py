@@ -11,15 +11,18 @@ ssm = boto3.client("ssm")
 # Fetch user pool id from SSM parameter
 USER_POOL_PARAM = os.getenv("USER_POOL_PARAM", "/crud-nosql/cognito")
 
+
 def get_user_pool_id():
     """Fetch the Cognito User Pool ID from SSM"""
     response = ssm.get_parameter(Name=USER_POOL_PARAM)
     return response["Parameter"]["Value"]
 
+
 def to_human_date(iso_string: str) -> str:
     SAST = timezone(timedelta(hours=2))
     dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
     return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
+
 
 HEADERS = {
     "Content-Type": "application/json",
@@ -28,6 +31,7 @@ HEADERS = {
     "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Requested-With",
     "Access-Control-Allow-Credentials": "true"
 }
+
 
 def get_cognito_user_by_email(email: str, user_pool_id: str) -> dict | None:
     """
@@ -50,17 +54,18 @@ def lambda_handler(event, context):
         # --- 1. Parse and validate input ---
         body = json.loads(event.get("body", "{}"))
 
-        required_fields = ["email", "group", "family_name", "name", "location", "mobile"]
+        required_fields = ["email", "group",
+                           "family_name", "name", "location", "mobile"]
         missing = [f for f in required_fields if not body.get(f)]
         if missing:
             return _response(400, {"error": f"Missing required fields: {', '.join(missing)}"})
 
-        email       = body["email"]
-        group       = body["group"]
+        email = body["email"]
+        group = body["group"]
         family_name = body["family_name"]
-        name        = body["name"]
-        location    = body["location"]
-        mobile      = body["mobile"]
+        name = body["name"]
+        location = body["location"]
+        mobile = body["mobile"]
 
         #  Get the userpool id
         user_pool_id = get_user_pool_id()
@@ -69,7 +74,6 @@ def lambda_handler(event, context):
         existing_user = get_cognito_user_by_email(email, user_pool_id)
         if existing_user:
             return _response(409, {"error": "User already exists."})
-        
 
         # --- 3. Create user in Cognito ---
         cognito_response = cognito.admin_create_user(
@@ -142,6 +146,7 @@ def _response(status_code: int, body: dict) -> dict:
         "headers": HEADERS,
         "body": json.dumps(body, default=str),
     }
+
 
 # --- Local testing ---
 if __name__ == "__main__":

@@ -5,7 +5,7 @@
   "equipment": "Sausage Filler",
   "impact": "Operations halted",
   "jobComments": "Mincer RT-0004 not working",
-  "status": "Complete",
+  "status": "complete",
   "images": [],
   "description": "testing pdf creation from frontend",
   "jobCreated": "2026-02-14T22:50:21.884572+00:00",

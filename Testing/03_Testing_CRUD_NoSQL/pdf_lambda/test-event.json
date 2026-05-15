@@ -11,7 +11,7 @@
         },
         "NewImage": {
           "id": { "S": "example-id" },
-          "status": { "S": "Complete" },
+          "status": { "S": "complete" },
           "jobcard_no": { "S": "JC123" },
           "asset_description": { "S": "Generator" },
           "assetID": { "S": "A123" },

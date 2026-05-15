@@ -23,9 +23,9 @@
           "requested_by": { "S": "Fabian" },
           "action_id": { "S": "f92b6d65-58e5-4792-ba03-0dd1c3069fd2" },
           "assetID": { "S": "RT-0009" },
-          "location": { "S": "Maitland" },
+          "location": { "S": "maitland" },
           "jobComments": { "S": "Tetsting the pdf creation,..." },
-          "status": { "S": "Pending" }
+          "status": { "S": "pending" }
         },
         "NewImage": {
           "id": { "S": "053173f2-9cf5-48bd-94ef-bfdbef15ccd5" },
@@ -41,7 +41,7 @@
           "assetID": { "S": "RT-0009" },
           "location": { "S": "Maitland" },
           "jobComments": { "S": "Tetsting the pdf creation,..." },
-          "status": { "S": "Complete" },
+          "status": { "S": "complete" },
           "signature": { "S": "data:image/png;base64,i...." },
           "total_km": { "S": "40" },
           "signedBy": { "S": "John Doe,..." },

@@ -11,14 +11,13 @@ from boto3.dynamodb.conditions import Key
 
 dynamodb = boto3.resource("dynamodb")
 
-jobs_table = dynamodb.Table(
-    "crud-nosql-app-maintenance-request-table"
-)
-
+jobs_table = dynamodb.Table("crud-nosql-app-maintenance-request-table")
+users_table = dynamodb.Table("crud-nosql-app-users-table")
 
 # ======================================================================================
 # JSON Encoder
 # ======================================================================================
+
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -82,6 +81,10 @@ def get_user_access_scope(groups, claims):
         )
     )
 
+    # =========================================================================
+    # Admin / Technician
+    # =========================================================================
+
     if has_full_access:
 
         return {
@@ -89,11 +92,25 @@ def get_user_access_scope(groups, claims):
             "location": None,
         }
 
+    # =========================================================================
+    # Manager / Standard User
+    # =========================================================================
+
+    user_sub = claims.get("sub")
+
+    user = get_user_by_sub(user_sub)
+    location = user.get("location")
+
+    if not user:
+
+        return {
+            "full_access": False,
+            "location": None,
+        }
+
     return {
         "full_access": False,
-        "location": claims.get(
-            "custom:location"
-        ),
+        "location": location.lower() if location else None,
     }
 
 
@@ -131,7 +148,6 @@ def calculate_percentage_change(
 
 
 def safe_parse_date(date_string):
-
     if not date_string:
         return None
 
@@ -257,6 +273,24 @@ def query_jobs_by_location(location):
 
     return items
 
+# ======================================================================================
+# User Helpers
+# ======================================================================================
+
+
+def get_user_by_sub(user_sub):
+
+    if not user_sub:
+        return None
+
+    response = users_table.get_item(
+        Key={
+            "id": user_sub
+        }
+    )
+
+    return response.get("Item")
+
 
 # ======================================================================================
 # Scoped Job Fetching
@@ -287,6 +321,7 @@ def get_jobs_for_scope(access_scope):
 
     # Manager / User
     location = access_scope["location"]
+    print('location:', location)
 
     if not location:
         return []
@@ -485,7 +520,9 @@ def get_completed_metrics(jobs):
 # Lambda Handler
 # ======================================================================================
 
-def handler(event, context):
+def lambda_handler(event, context):
+
+    print('event:', event)
 
     # =========================================================================
     # User Claims
@@ -497,26 +534,21 @@ def handler(event, context):
         .get("claims", {},)
     )
 
-    groups = parse_groups(
-        claims.get("cognito:groups")
-    )
+    print('claims:', claims)
+
+    groups = parse_groups(claims.get("cognito:groups"))
 
     # =========================================================================
     # Access Scope
     # =========================================================================
 
-    access_scope = (
-        get_user_access_scope(groups, claims,)
-    )
+    access_scope = (get_user_access_scope(groups, claims,))
 
     # =========================================================================
     # CORS
     # =========================================================================
 
-    headers = (
-        event.get("headers")
-        or {}
-    )
+    headers = (event.get("headers") or {})
 
     origin = (
         headers.get("origin")

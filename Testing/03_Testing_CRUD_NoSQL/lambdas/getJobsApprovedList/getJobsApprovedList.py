@@ -10,11 +10,15 @@ dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table("crud-nosql-app-maintenance-request-table")
 
 # $ Change the date format in the database to readible for humans
+
+
 def to_human_date(iso_string: str) -> str:
     dt = datetime.fromisoformat(iso_string)
     return dt.strftime("%d %b %Y, %H:%M")
 
 # $ Get the User Groups from the claims
+
+
 def parse_groups(groups_claim):
     if not groups_claim:
         return []
@@ -36,11 +40,13 @@ def parse_groups(groups_claim):
     return []
 
 # $ Return jobs that are approved using the status GSI
+
+
 def query_all_approved(**kwargs):
     items = []
     response = table.query(
         IndexName="StatusJobCreatedIndex",
-        KeyConditionExpression=Key("status").eq("In Progress"),
+        KeyConditionExpression=Key("status").eq("in progress"),
         ScanIndexForward=False,  # newest first
         **kwargs
     )
@@ -49,16 +55,19 @@ def query_all_approved(**kwargs):
     while "LastEvaluatedKey" in response:
         response = table.query(
             IndexName="StatusJobCreatedIndex",
-            KeyConditionExpression=Key("status").eq("In Progress"),
+            KeyConditionExpression=Key("status").eq("in progress"),
             ExclusiveStartKey=response["LastEvaluatedKey"],
-            ScanIndexForward=False, # use to sort by jobCreated last -> first
+            ScanIndexForward=False,  # use to sort by jobCreated last -> first
             **kwargs
         )
         items.extend(response.get("Items", []))
 
     return items
+
+
 def lambda_handler(event, context):
-    claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {})
+    claims = event.get("requestContext", {}).get(
+        "authorizer", {}).get("claims", {})
     groups = parse_groups(claims.get("cognito:groups"))
     user_sub = claims.get("sub")
 
@@ -67,21 +76,21 @@ def lambda_handler(event, context):
     origin = headers.get("origin") or headers.get("Origin") or ""
 
     allowedOrigins = [
-    'https://www.crud-nosql.app.fabian-portfolio.net',
-    'https://crud-nosql.app.fabian-portfolio.net',
-    'http://localhost:5173'
+        'https://www.crud-nosql.app.fabian-portfolio.net',
+        'https://crud-nosql.app.fabian-portfolio.net',
+        'http://localhost:5173'
     ]
 
     # $ Only allow known origins
     allowedOrigin = origin if origin in allowedOrigins else ""
-    
+
     HEADERS = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
-    "Access-Control-Allow-Credentials": "true"
-        }
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": allowedOrigin,
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+        "Access-Control-Allow-Credentials": "true"
+    }
 
     method = (
         event.get("httpMethod")
@@ -91,10 +100,11 @@ def lambda_handler(event, context):
     if method == "OPTIONS":
         print("OPTIONS request...")
         return _response(200, {"message": "Success"}, HEADERS)
-        
-    # $ Admin can see all completed actions and technician what he submitted 
+
+    # $ Admin can see all completed actions and technician what he submitted
     try:
-        is_admin_users= any(group in ["admin", "technician", "user", "contractor"] for group in groups)
+        is_admin_users = any(
+            group in ["admin", "technician", "user", "contractor"] for group in groups)
 
         if is_admin_users:
             items = query_all_approved()
@@ -103,7 +113,8 @@ def lambda_handler(event, context):
                 return _response(403, {"message": "User sub not found in token"}, HEADERS)
 
             # Assumes each item stores the creator's sub in a field called "request_sub"
-            items = query_all_approved(FilterExpression=Attr("request_sub").eq(user_sub))
+            items = query_all_approved(
+                FilterExpression=Attr("request_sub").eq(user_sub))
 
         for item in items:
             if "jobCreated" in item:

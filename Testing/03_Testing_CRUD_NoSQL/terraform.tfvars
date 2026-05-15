@@ -319,6 +319,20 @@ api_child_routes = {
     }
   }
 
+  asset-history = {
+    parent_key = "asset-id" # /assets-data/:id/history
+    path_part  = "history"
+    methods = {
+      GET = {
+        lambda        = "getAssetJobsHistoryMetrics"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
   comments-id = {
     # path       = "/comments/{commentId}"
     parent_key = "comments"
@@ -468,7 +482,7 @@ api_child_routes = {
     }
   }
   jobs-metrics = {
-    parent_key = "dashboard-metrics" // path: admin/confirm-user-signup
+    parent_key = "dashboard-metrics" // path: dashboard/metrics/jobs
     path_part  = "jobs"
     methods = {
       GET = {
@@ -971,6 +985,25 @@ lambda_functions = {
     }
   }
 
+  getAssetJobsHistoryMetrics = {
+    file_name = "getAssetJobsHistoryMetrics.py"
+    handler   = "getAssetJobsHistoryMetrics.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      jobs_table = {
+        table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+      users_table = {
+        table_name         = "crud-nosql-app-users-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
   getJobcardById = {
     file_name = "getJobcardById.py"
     handler   = "getJobcardById.lambda_handler"
@@ -1206,6 +1239,11 @@ lambda_functions = {
         table_name         = "crud-nosql-app-maintenance-request-table"
         actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = true
+      }
+      users_table = {
+        table_name         = "crud-nosql-app-users-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
       }
     }
   }
@@ -1594,6 +1632,12 @@ dynamodb_tables = {
         hash_key   = "action_id"
         projection = "ALL"
       }
+      "AssetIdIndex" = {
+        hash_key   = "assetID"
+        range_key  = "jobCreated"
+        projection = "ALL"
+      }
+
     }
   }
 
