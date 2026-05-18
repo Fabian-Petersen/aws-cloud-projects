@@ -1,3 +1,4 @@
+from decimal import Decimal
 import json
 import boto3
 import os
@@ -16,7 +17,8 @@ s3 = boto3.client(
     )
 )
 
-PRESIGN_EXPIRES_SECONDS = int(os.getenv("PRESIGN_EXPIRES_SECONDS", "900"))  # 15 min default
+PRESIGN_EXPIRES_SECONDS = int(
+    os.getenv("PRESIGN_EXPIRES_SECONDS", "900"))  # 15 min default
 
 HEADERS = {
     "Content-Type": "application/json",
@@ -26,9 +28,11 @@ HEADERS = {
     "Access-Control-Allow-Credentials": "true"
 }
 
+
 def to_human_date(iso_string: str) -> str:
     dt = datetime.fromisoformat(iso_string)
     return dt.strftime("%d %b %Y, %H:%M")
+
 
 def add_presigned_urls(item: dict) -> dict:
     """
@@ -71,6 +75,7 @@ def add_presigned_urls(item: dict) -> dict:
     item["images"] = new_images
     return item
 
+
 def lambda_handler(event, context):
     try:
         # Path param from API Gateway
@@ -85,6 +90,9 @@ def lambda_handler(event, context):
         )
 
         item = result.get("Item")
+        # convert the number to a float to prevent decimal error
+        if isinstance(item.get("replacementValue"), Decimal):
+            item["replacementValue"] = float(item["replacementValue"])
 
         if not item:
             return _response(404, {"message": "Asset not found"})
@@ -94,11 +102,13 @@ def lambda_handler(event, context):
 
         # ✅ Add presigned URLs to each image
         item = add_presigned_urls(item)
+        print("item:", item)
         return _response(200, item)
 
     except Exception as exc:
         print("Error:", exc)
         return _response(500, {"message": "Error from lambda, internal server error"})
+
 
 def _response(status_code, body):
     return {
@@ -106,6 +116,7 @@ def _response(status_code, body):
         "headers": HEADERS,
         "body": json.dumps(body),
     }
+
 
     # Run the lambda locally with the events.json file to test
 if __name__ == "__main__":

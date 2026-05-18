@@ -852,8 +852,11 @@ lambda_functions = {
 
     statements = [
       {
-        actions   = ["s3:PutObject"]
-        resources = ["arn:aws:s3:::crud-nosql-app-images/maintenance_action/*"]
+        actions = ["s3:PutObject"]
+        resources = [
+          "arn:aws:s3:::crud-nosql-app-images/maintenance_action/*",
+          "arn:aws:s3:::crud-nosql-app-images/invoices/*"
+        ]
       },
       {
         actions   = ["s3:ListBucket"]
@@ -862,7 +865,10 @@ lambda_functions = {
           {
             test     = "StringLike"
             variable = "s3:prefix"
-            values   = ["maintenance_action/*"]
+            values = [
+              "maintenance_action/*",
+              "invoices/*"
+            ]
           }
         ]
       }
@@ -998,6 +1004,11 @@ lambda_functions = {
       }
       users_table = {
         table_name         = "crud-nosql-app-users-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+      assets_table = {
+        table_name         = "crud-nosql-app-assets-table"
         actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = false
       }

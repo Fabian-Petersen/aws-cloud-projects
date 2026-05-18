@@ -11,6 +11,7 @@ dynamodb = boto3.resource("dynamodb")
 
 jobs_table = dynamodb.Table("crud-nosql-app-maintenance-request-table")
 users_table = dynamodb.Table("crud-nosql-app-users-table")
+assets_table = dynamodb.Table("crud-nosql-app-assets-table")
 
 # ======================================================================================
 # JSON Encoder
@@ -73,7 +74,22 @@ def get_user_scope(groups, claims):
 
 
 # ======================================================================================
-# JOB HISTORY QUERY (IMPORTANT PART)
+# GET ASSET BARCODE ID
+# ======================================================================================
+
+def get_asset_barcode_id(asset_id) -> str:
+
+    response = assets_table.query(
+        KeyConditionExpression=Key("id").eq(asset_id)
+    )
+
+    barcode_id = response['Items'][0]['assetID']
+
+    return barcode_id
+
+
+# ======================================================================================
+# JOB HISTORY QUERY
 # ======================================================================================
 
 def get_asset_history(asset_id):
@@ -81,10 +97,11 @@ def get_asset_history(asset_id):
     items = []
 
     response = jobs_table.query(
-        IndexName="AssetIdIndex",   # <-- REQUIRED GSI
+        IndexName="AssetIdIndex",
         KeyConditionExpression=Key("assetID").eq(asset_id)
     )
 
+    print("response:", response)
     items.extend(response.get("Items", []))
 
     while "LastEvaluatedKey" in response:
@@ -97,10 +114,10 @@ def get_asset_history(asset_id):
 
     return items
 
-
 # ======================================================================================
 # FILTER (manager scope)
 # ======================================================================================
+
 
 def filter_by_location(jobs, location):
 
@@ -118,18 +135,18 @@ def filter_by_location(jobs, location):
 # ======================================================================================
 
 def lambda_handler(event, context):
+    print("event:", event)
 
     claims = event.get("requestContext", {}).get(
         "authorizer", {}).get("claims", {})
     print("claims:", claims)
 
     groups = parse_groups(claims.get("cognito:groups"))
+    print("groups:", groups)
 
     print("event:", event)
 
     scope = get_user_scope(groups, claims)
-
-    print("scope:", scope)
 
     headers = event.get("headers") or {}
     origin = headers.get("origin") or headers.get("Origin") or ""
@@ -158,14 +175,18 @@ def lambda_handler(event, context):
 
         asset_id = (event.get("pathParameters") or {}).get("id")
 
+        assetID = get_asset_barcode_id(asset_id)
+
+        print("assetID:", assetID)
+
         if not asset_id:
             return _response(400, {"message": "Missing asset id"}, HEADERS)
 
         # =========================================================================
         # Query history from REQUESTS table (source of truth)
         # =========================================================================
-
-        history = get_asset_history(asset_id)
+        history = get_asset_history(assetID)
+        print("History query result:", json.dumps(history, cls=DecimalEncoder))
 
         # =========================================================================
         # Manager / user restriction
@@ -189,16 +210,30 @@ def lambda_handler(event, context):
             if j.get("status") == "complete"
         ]
 
+        inProgress_history = [
+            j for j in history
+            if j.get("status") == "in progress"
+        ]
+
         print("History:", json.dumps(completed_history, cls=DecimalEncoder))
 
         return _response(
             200,
             {
                 "assetId": asset_id,
-                "pendingRequests": len(history),
-                "inProgressRequests": 0,
-                "completedRequests": len(completed_history),
-                "history": completed_history
+                "barcode_id": assetID,
+                "metrics": {
+                    "pendingRequests": {
+                        "value": len(history),
+                    },
+                    "inProgressRequests": {
+                        "value": 0,
+                    },
+                    "completedRequests": {
+                        "value": len(completed_history),
+                    },
+                },
+                "history": completed_history,
             },
             HEADERS,
         )

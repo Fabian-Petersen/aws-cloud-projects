@@ -187,6 +187,40 @@ def normalize_string(value: str | None) -> str:
     return str(value or "").strip().lower()
 
 
+# Generate the presigned url for the images and invoices
+ACCEPTED_TYPES = {
+    "images": ["image/jpeg", "image/png", "image/webp", "image/gif"],
+    # invoices can be pdf or image
+    "invoices": ["application/pdf", "image/jpeg", "image/png"]
+}
+
+
+def generate_url(prefix: str, file_info: dict, accepted_types: list[str], item_id: str) -> dict | None:
+    filename = file_info.get("filename")
+    content_type = file_info.get("content_type", "application/octet-stream")
+
+    if not filename:
+        return None
+
+    # Validate content type
+    if content_type not in accepted_types:
+        raise Exception(
+            f"Invalid file type '{content_type}' for prefix '{prefix}'. Accepted: {accepted_types}")
+
+    key = f"{prefix}/{item_id}/{filename}"
+    url = s3.generate_presigned_url(
+        "put_object",
+        Params={"Bucket": BUCKET_NAME, "Key": key,
+                "ContentType": content_type},
+        ExpiresIn=3600
+    )
+
+    if "s3.af-south-1.amazonaws.com" not in url:
+        raise Exception("Presigned URL generated with incorrect S3 endpoint")
+
+    return {"filename": filename, "url": url, "key": key, "content_type": content_type}
+
+
 def lambda_handler(event, context):
     # Run to capture a event.json to test the function code
     # print("COPY_EVENT:", generate_test_event(event))
@@ -196,6 +230,7 @@ def lambda_handler(event, context):
     #     "body": json.dumps({"message": "ok"})
     # }
 
+    print("event:", event)
     method, HEADERS = handle_request_metadata(event)
 
     options_response = handle_options_request(method, HEADERS)
@@ -250,33 +285,13 @@ def lambda_handler(event, context):
 
         presigned_urls = []
 
-        # Check if frontend included any files
         for file_info in data.get("images", []):
-            filename = file_info.get("filename")
-            content_type = file_info.get(
-                "content_type", "application/octet-stream")
-            if not filename:
-                continue
+            if result := generate_url("maintenance_action", file_info, ACCEPTED_TYPES["images"], item_id):
+                presigned_urls.append(result)
 
-        # Generate presigned urls
-            key = f"maintenance_action/{item_id}/{filename}"
-            url = s3.generate_presigned_url(
-                "put_object",
-                Params={
-                    "Bucket": BUCKET_NAME,
-                    "Key": key,
-                    "ContentType": content_type
-                },
-                ExpiresIn=3600  # 1 hour
-            )
-
-            # The config above force the url to be af-south-1 region and the code below check if the url is region specific.
-            if "s3.af-south-1.amazonaws.com" not in url:
-                raise Exception(
-                    "Presigned URL generated with incorrect S3 endpoint")
-
-            presigned_urls.append(
-                {"filename": filename, "url": url, "key": key, "content_type": content_type})
+        for file_info in data.get("invoices", []):
+            if result := generate_url("invoices", file_info, ACCEPTED_TYPES["invoices"], item_id):
+                presigned_urls.append(result)
 
         # Save metadata to DynamoDB
         item = {
@@ -297,6 +312,13 @@ def lambda_handler(event, context):
             "root_cause": data["root_cause"],
             "work_completed": data["work_completed"],
             "findings": data["findings"],
+            "sundries": data["sundries"],
+            "total_cost_sundries": data["total_cost_sundries"],
+            "parts": data["parts"],
+            "total_cost_parts": data["total_cost_parts"],
+            "contractor": data["contractor"],
+            "total_cost_contractor": data["total_cost_contractor"],
+            "invoices": data["invoices"],
             "images": data["images"],
             "signedBy": normalize_string(data.get("signedBy")),
             # Will be updated by S3-triggered Lambda later
