@@ -1012,6 +1012,11 @@ lambda_functions = {
         actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = false
       }
+      action_table = {
+        table_name         = "crud-nosql-app-maintenance-action-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
     }
   }
 
@@ -1681,12 +1686,18 @@ dynamodb_tables = {
   }
   crud-nosql-app-maintenance-action = {
     pk            = "id"
+    sk            = "actionCreated"
     enable_gsi    = true
     enable_stream = false
     gsis = {
       # $ This must be changed to 'group'
       "GroupIndex" = {
         hash_key   = "group"
+        projection = "ALL"
+      }
+      "AssetIdIndex" = {
+        hash_key   = "assetID"
+        range_key  = "actionCreated"
         projection = "ALL"
       }
     }

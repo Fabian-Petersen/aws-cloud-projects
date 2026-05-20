@@ -21,25 +21,27 @@ BUCKET_NAME = "crud-nosql-app-images"
 table = dynamodb.Table(TABLE_NAME)
 
 HEADERS = {
-"Content-Type": "application/json",
-"Access-Control-Allow-Origin": "http://localhost:5173",
-"Access-Control-Allow-Methods": "POST,OPTIONS",
-"Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
-"Access-Control-Allow-Credentials": "true"
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "http://localhost:5173",
+    "Access-Control-Allow-Methods": "POST,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+    "Access-Control-Allow-Credentials": "true"
 }
 
 locations = {
-  'Phillipi': 'PHP',
-  'Bellville': 'BTX',
-  'Khayelitsha': 'IKH',
-  'Wynberg': 'WBG',
-  'Maitland': 'VTR',
-  'Golden Acre': 'GAC',
-  'Distribution Centre': 'DCN',
-  'Central Services': 'CTS'
+    'Phillipi': 'PHP',
+    'Bellville': 'BTX',
+    'Khayelitsha': 'IKH',
+    'Wynberg': 'WBG',
+    'Maitland': 'VTR',
+    'Golden Acre': 'GAC',
+    'Distribution Centre': 'DCN',
+    'Central Services': 'CTS'
 }
 
 # $ Change the date format in the database to readible for humans
+
+
 def to_human_date(iso_string: str) -> str:
     """
     Convert an ISO 8601 timestamp string to a human-readable date in SAST.
@@ -54,7 +56,8 @@ def to_human_date(iso_string: str) -> str:
     dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
     return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
 
-def generate_test_event(event: dict) -> str: 
+
+def generate_test_event(event: dict) -> str:
     """
     Serialises a Lambda event into a compact JSON string suitable for reuse as a test fixture.
 
@@ -71,7 +74,7 @@ def generate_test_event(event: dict) -> str:
     Use:
     The output of this function can be printed in the Lambda logs to capture the exact event structure for testing.
     For example, you can run this function in your Lambda handler to print the event:
-    
+
     print("COPY_EVENT:", generate_test_event(event))
     return {
         "statusCode": 200,
@@ -80,8 +83,10 @@ def generate_test_event(event: dict) -> str:
     """
     return json.dumps(event, separators=(",", ":"))
 
+
 def normalize_string(value: str | None) -> str:
     return str(value or "").strip().lower()
+
 
 def lambda_handler(event, context):
     # print("COPY_EVENT:", generate_test_event(event))
@@ -93,46 +98,49 @@ def lambda_handler(event, context):
     try:
         if not event.get("body"):
             return _response(400, {"message": "Missing request body"})
-        
-        #$ Get the user information from the authoriser token.
-        data = json.loads(event["body"])
-        claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {}) 
 
-        #$ Validate required fields
-        required_fields = ["location", "type", "priority", "equipment", "impact", "jobComments", "description", "area", "assetID"]
+        # $ Get the user information from the authoriser token.
+        data = json.loads(event["body"])
+        claims = event.get("requestContext", {}).get(
+            "authorizer", {}).get("claims", {})
+
+        # $ Validate required fields
+        required_fields = ["location", "type", "priority", "equipment", "impact",
+                           "jobComments", "description", "area", "assetID", "breakdown_time"]
         for field in required_fields:
             if field not in data:
                 return _response(400, {"message": f"Missing field: {field}"})
-            
+
         # Get the current time for the update
         sast = timezone(timedelta(hours=2))
         now = datetime.now(sast).isoformat()
 
-        #$ Create backend meta data
+        # $ Create backend meta data
         item_id = str(uuid.uuid4())
         created_at = now
-        status=str("pending")
+        status = str("pending")
 
-        #$ data from the cognito user sign-in
+        # $ data from the cognito user sign-in
         user_id = claims.get("sub")
-        user_name = claims.get("name","")
+        user_name = claims.get("name", "")
         requested_by = f'{claims.get("name", "")} {claims.get("family_name", "")}'
         user_email = claims.get("email")
-        
-        #$ Build the jobcardNumber
+
+        # $ Build the jobcardNumber
         # location = data["location"]
         # jobcardNumber = generateJobCardNo(location)
 
         presigned_urls = []
 
-        #$ Check if frontend included any files
+        # $ Check if frontend included any files
         for file_info in data.get("images", []):
             filename = file_info.get("filename")
-            content_type = file_info.get("content_type", "application/octet-stream")
+            content_type = file_info.get(
+                "content_type", "application/octet-stream")
             if not filename:
                 continue
 
-        #$ Generate presigned urls
+        # $ Generate presigned urls
             key = f"maintenance/{item_id}/{filename}"
             url = s3.generate_presigned_url(
                 "put_object",
@@ -146,39 +154,44 @@ def lambda_handler(event, context):
 
             # The config above force the url to be af-south-1 region and the code below check if the url is region specific.
             if "s3.af-south-1.amazonaws.com" not in url:
-                raise Exception("Presigned URL generated with incorrect S3 endpoint")
+                raise Exception(
+                    "Presigned URL generated with incorrect S3 endpoint")
 
-            presigned_urls.append({"filename": filename, "url": url, "key": key, "content_type": content_type})
+            presigned_urls.append(
+                {"filename": filename, "url": url, "key": key, "content_type": content_type})
 
         # Save metadata to DynamoDB
         item = {
-            "id": item_id, #$ created on backend
-            "jobCreated": created_at, #$ created on backend
-            "status": normalize_string(status), #$ created on backend
-            "requested_by": normalize_string(requested_by), #$ created on backend for Jobcard
+            "id": item_id,  # $ created on backend
+            "jobCreated": created_at,  # $ created on backend
+            "status": normalize_string(status),  # $ created on backend
+            # $ created on backend for Jobcard
+            "requested_by": normalize_string(requested_by),
             # "jobcardNumber" : jobcardNumber, #$ created on backend
-            "request_sub" : user_id, #$ created on backend
-            "user_email" : user_email, #$ created on backend
-            "user_name" : normalize_string(user_name), #$ created on backend
+            "request_sub": user_id,  # $ created on backend
+            "user_email": user_email,  # $ created on backend
+            "user_name": normalize_string(user_name),  # $ created on backend
             "location": normalize_string(data.get("location")),
             "type": data["type"],
             "priority": normalize_string(data.get("priority")),
             "equipment": data["equipment"],
+            "breakdown_time": data["breakdown_time"],
             "impact": data["impact"],
             "jobComments": data["jobComments"],
-            "description":data["description"],
-            "area":normalize_string(data.get("area")),
-            "assetID":data["assetID"],
+            "description": data["description"],
+            "area": normalize_string(data.get("area")),
+            "assetID": data["assetID"],
             "images": []  # Will be updated by S3-triggered Lambda later
         }
 
         table.put_item(Item=item)
 
-        return _response(200, {"data":item, "presigned_urls": presigned_urls})
+        return _response(200, {"data": item, "presigned_urls": presigned_urls})
 
     except Exception as exc:
         print("Error:", exc)
         return _response(500, {"message": "Internal server error"})
+
 
 def _response(status_code, body):
     return {
@@ -186,6 +199,7 @@ def _response(status_code, body):
         "headers": HEADERS,
         "body": json.dumps(body),
     }
+
 
 # Run the lambda locally with the events.json file to test
 if __name__ == "__main__":

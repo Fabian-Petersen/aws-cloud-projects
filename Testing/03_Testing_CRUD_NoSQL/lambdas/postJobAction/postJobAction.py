@@ -133,10 +133,12 @@ def get_request_fields_by_id(table, request_id: str) -> dict:
     """
     res = table.query(
         KeyConditionExpression=Key("id").eq(request_id),
-        ProjectionExpression="id, jobCreated, #loc, #rb, #job",
+        ProjectionExpression="id, jobCreated, #loc, #rb, #asset, #brkt, #job",
         ExpressionAttributeNames={
             "#loc": "location",
             "#rb": "requested_by",
+            "#asset": "assetID",
+            "#brkt": "breakdown_time",
             "#job": "jobcardNumber",
         },
         Limit=1
@@ -152,6 +154,8 @@ def get_request_fields_by_id(table, request_id: str) -> dict:
         "jobCreated": item.get("jobCreated"),
         "location": item.get("location"),
         "requested_by": item.get("requested_by"),
+        "assetID": item.get("assetID"),
+        "breakdown_time": item.get("breakdown_time"),
         "jobcardNumber": item.get("jobcardNumber"),
     }
 
@@ -270,6 +274,8 @@ def lambda_handler(event, context):
         requested_by = normalize_string(request_info.get("requested_by"))
         jobcardNumber = request_info.get("jobcardNumber", "")
         job_created = request_info.get("jobCreated")
+        assetID = request_info.get("assetID", "")
+        breakdown_time = request_info.get("breakdown_time", "")
 
         # data from the cognito user sign-in
         user_id = claims.get("sub")
@@ -304,6 +310,8 @@ def lambda_handler(event, context):
             "requested_by": requested_by,  # % from requests-table
             "location": location,  # % from requests-table
             "jobcardNumber": jobcardNumber,  # % from requests-table
+            "assetID": assetID,  # % from the requests-table
+            "breakdown_time": breakdown_time,  # % from the requests-table
             "start_time": data["start_time"],
             "end_time": data["end_time"],
             "total_km": data["total_km"],
