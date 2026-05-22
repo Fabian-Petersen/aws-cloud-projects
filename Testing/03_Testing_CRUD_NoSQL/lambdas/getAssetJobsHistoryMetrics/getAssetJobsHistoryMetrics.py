@@ -176,7 +176,8 @@ def filter_by_location(jobs, location):
     ]
 
 # ======================================================================================
-# GET LAST COMPLETED JOB ======================================================================================
+# GET LAST COMPLETED JOB
+# ======================================================================================
 
 
 def get_last_completed_action(asset_id):
@@ -267,9 +268,19 @@ def calculate_asset_cost(asset_id) -> float:
 
 
 def safe_float(value):
-    if value is None:
+    try:
+        if value is None:
+            return 0.0
+
+        value_str = str(value).strip().lower()
+
+        if value_str in ("", "empty", "none", "null", "nan"):
+            return 0.0
+
+        return float(value_str)
+
+    except (ValueError, TypeError):
         return 0.0
-    return float(str(value))
 
 
 def get_asset_cost_by_year(asset_id):
@@ -389,7 +400,9 @@ def get_mttr(asset_id):
     if not repair_times:
         return None
 
-    return sum(repair_times) / len(repair_times)
+        mttr = sum(repair_times) / len(repair_times)
+
+    return round(sum(repair_times) / len(repair_times), 2)
 
 
 # ======================================================================================
@@ -441,6 +454,9 @@ def build_completed_history(completed_actions: list, request_history: list) -> l
         request = request_map.get(request_id, {})
 
         record = {
+            # Standardised primary key for frontend
+            "id": request_id,
+
             # From requests table
             "jobCreated": to_human_date(request["jobCreated"]) if request.get("jobCreated") else None,
             "description": request.get("description"),
@@ -574,8 +590,10 @@ def lambda_handler(event, context):
         mttr = get_mttr(assetID)
         total_cost = calculate_asset_cost(assetID)
         total_cost_by_year = get_asset_cost_by_year(assetID)
-        print("total_cost_by_year:", json.dumps(
-            total_cost_by_year, cls=DecimalEncoder))
+        # print("total_cost_by_year:", json.dumps(total_cost_by_year, cls=DecimalEncoder))
+
+        # print("request_history count:", len(request_history))
+        # print("sample request:", request_history[0] if request_history else "EMPTY")
 
         return _response(
             200,
@@ -597,16 +615,16 @@ def lambda_handler(event, context):
                 },
                 "reliability": [
                     {
-                        "mtbf": 0
+                        "name": "MTBF", "value": 25
                     },
                     {
-                        "mttr": mttr,
+                        "name": "MTTR", "value": mttr,
                     },
                     {
-                        "availability": 0
+                        "name": "Availability", "value": 95
                     },
                     {
-                        "failureCount": len(completed_history)
+                        "name": "Failure Count", "value": len(completed_history)
                     }
                 ],
                 "history": build_completed_history(completed_history, request_history),
