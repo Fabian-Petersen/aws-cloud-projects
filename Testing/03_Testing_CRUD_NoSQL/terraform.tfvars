@@ -494,6 +494,19 @@ api_child_routes = {
       }
     }
   }
+  charts-metrics = {
+    parent_key = "dashboard-metrics" // path: dashboard/metrics/charts
+    path_part  = "charts"
+    methods = {
+      GET = {
+        lambda        = "getDashboardStoreJobsMetrics"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
 }
 
 // $ Must create a dynamic resource to add actions
@@ -816,20 +829,6 @@ lambda_functions = {
       }
     }
   }
-
-  # getJobActionedById = {
-  #   file_name = "getJobActionedById.py"
-  #   handler   = "getJobActionedById.lambda_handler"
-  #   runtime   = "python3.12"
-
-  #   dynamodb_permissions = {
-  #     maintenance_action_table = {
-  #       table_name         = "crud-nosql-app-maintenance-action-table"
-  #       actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-  #       allow_index_access = false
-  #     }
-  #   }
-  # }
 
   postJobAction = {
     file_name = "postJobAction.py"
@@ -1244,7 +1243,7 @@ lambda_functions = {
     }
   }
 
-  /* -------------------------------- Dashboard ------------------------------- */
+  # $ // -------------------------------- Dashboard ------------------------------- */
   getDashboardJobsMetrics = {
     file_name = "getDashboardJobsMetrics.py"
     handler   = "getDashboardJobsMetrics.lambda_handler"
@@ -1253,6 +1252,24 @@ lambda_functions = {
     dynamodb_permissions = {
       jobs_table = {
         table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+      users_table = {
+        table_name         = "crud-nosql-app-users-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+  getDashboardStoreJobsMetrics = {
+    file_name = "getDashboardStoreJobsMetrics.py"
+    handler   = "getDashboardStoreJobsMetrics.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      actions_table = {
+        table_name         = "crud-nosql-app-maintenance-action-table"
         actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = true
       }
@@ -1631,27 +1648,27 @@ dynamodb_tables = {
 
     gsis = {
       "StatusIndex" = {
-        hash_key   = "status"
-        projection = "ALL"
+        hash_key        = "status"
+        projection_type = "ALL"
       }
       "StatusJobCreatedIndex" = {
-        hash_key   = "status"
-        range_key  = "jobCreated"
-        projection = "ALL"
+        hash_key        = "status"
+        range_key       = "jobCreated"
+        projection_type = "ALL"
       }
       "LocationIndex" = {
-        hash_key   = "location"
-        range_key  = "jobCreated"
-        projection = "ALL"
+        hash_key        = "location"
+        range_key       = "jobCreated"
+        projection_type = "ALL"
       }
       "ActionIdIndex" = {
-        hash_key   = "action_id"
-        projection = "ALL"
+        hash_key        = "action_id"
+        projection_type = "ALL"
       }
       "AssetIdIndex" = {
-        hash_key   = "assetID"
-        range_key  = "jobCreated"
-        projection = "ALL"
+        hash_key        = "assetID"
+        range_key       = "jobCreated"
+        projection_type = "ALL"
       }
 
     }
@@ -1674,12 +1691,12 @@ dynamodb_tables = {
     enable_stream = false
     gsis = {
       "AssetIDIndex" = {
-        hash_key   = "assetID"
-        projection = "ALL"
+        hash_key        = "assetID"
+        projection_type = "ALL"
       }
       "LocationIndex" = {
-        hash_key   = "location"
-        projection = "ALL"
+        hash_key        = "location"
+        projection_type = "ALL"
       }
 
     }
@@ -1690,15 +1707,16 @@ dynamodb_tables = {
     enable_gsi    = true
     enable_stream = false
     gsis = {
-      # $ This must be changed to 'group'
-      "GroupIndex" = {
-        hash_key   = "group"
-        projection = "ALL"
+      "LocationIndex" = {
+        hash_key           = "location"
+        range_key          = "actionCreated"
+        projection_type    = "INCLUDE"
+        non_key_attributes = ["total_cost_contractor", "total_cost_parts", "total_cost_sundries"]
       }
       "AssetIdIndex" = {
-        hash_key   = "assetID"
-        range_key  = "actionCreated"
-        projection = "ALL"
+        hash_key        = "assetID"
+        range_key       = "actionCreated"
+        projection_type = "ALL"
       }
     }
   }
