@@ -212,58 +212,6 @@ def get_stores_cost_by_year(store_names=None, filter_year=None, filter_location=
 
     return result
 
-
-# def get_stores_cost_by_year():
-#     store_names = ["maitland", "bellville", "wynberg", "phillipi", "khyalitsha", "golden acre", "middestad"]
-#     grouped = defaultdict(lambda: defaultdict(float))
-
-#     for store in store_names:
-#         try:
-#             resp = action_table.query(
-#                 IndexName="LocationIndex",
-#                 KeyConditionExpression=Key("location").eq(store.lower()),
-#                 ProjectionExpression=(
-#                     "actionCreated, "
-#                     "total_cost_parts, "
-#                     "total_cost_sundries, "
-#                     "total_cost_contractor"
-#                 )
-#             )
-#             items = resp.get("Items", [])
-
-#             for job in items:
-#                 date_str = job.get("actionCreated")
-#                 if not date_str:
-#                     continue
-#                 try:
-#                     dt = datetime.fromisoformat(date_str)
-#                     year = str(dt.year)
-#                     total_cost = (
-#                         safe_float(job.get("total_cost_parts")) +
-#                         safe_float(job.get("total_cost_sundries")) +
-#                         safe_float(job.get("total_cost_contractor"))
-#                     )
-#                     grouped[year][store] += total_cost
-#                 except Exception:
-#                     continue
-
-#         except Exception as e:
-#             print(f"Skipping store '{store}': {str(e)}")
-#             continue  # store has no data or query failed — skip it
-
-#     # Always include all stores in output, even if they have 0 cost
-#     result = {}
-#     for year, stores in grouped.items():
-#         result[year] = [
-#             {
-#                 "name": store,
-#                 "value": round(stores.get(store, 0), 2)  # defaults to 0 if no data
-#             }
-#             for store in store_names
-#         ]
-
-#     return result
-
 # ======================================================================================
 # GET: Store cost by year
 # ======================================================================================
@@ -320,7 +268,7 @@ def get_store_cost_by_year(store: str) -> dict:
     return result
 
 # ======================================================================================
-# GET: Store total cost by month per year
+# GET: Store total cost by month for the selected year
 # ======================================================================================
 
 
@@ -365,17 +313,18 @@ def get_store_cost_by_month(location: str, year: str) -> dict:
     return {
         "location": location,
         "year": year,
-        "data": [
-            {
-                "name": MONTH_NAMES[m - 1],
-                "value": round(monthly.get(m, 0), 2)
-            }
-            for m in range(1, 13)
-        ]
+        "data": {
+            year: [
+                {
+                    "name": MONTH_NAMES[m - 1],
+                    "value": round(monthly.get(m, 0), 2)
+                }
+                for m in range(1, 13)
+            ]}
     }
 
 # ======================================================================================
-# GET: Store total cost per month
+# GET: Total cost of jobs of selected store for the month
 # ======================================================================================
 
 
@@ -408,14 +357,12 @@ def get_store_jobs_by_month(store: str, month: str, year: str) -> dict:
             IndexName="LocationIndex",
             KeyConditionExpression=Key("location").eq(store.lower()),
             ProjectionExpression=(
-                # "id, " # add this to the GSI if required
+                "request_id, "
+                "assetID, "
                 "actionCreated, "
                 "total_cost_parts, "
                 "total_cost_sundries, "
                 "total_cost_contractor "
-                # "description, "
-                # "asset, "
-                # "status"
             )
         )
         items = resp.get("Items", [])
@@ -435,11 +382,9 @@ def get_store_jobs_by_month(store: str, month: str, year: str) -> dict:
                     safe_float(job.get("total_cost_contractor"))
                 )
                 jobs.append({
-                    # "id": job.get("id"),
+                    "request_id": job.get("request_id"),
+                    "assetID": job.get("assetID"),
                     "date": date_str,
-                    # "description": job.get("description"),
-                    # "asset": job.get("asset"),
-                    # "status": job.get("status"),
                     "costs": {
                         "parts": safe_float(job.get("total_cost_parts")),
                         "sundries": safe_float(job.get("total_cost_sundries")),
@@ -455,8 +400,8 @@ def get_store_jobs_by_month(store: str, month: str, year: str) -> dict:
     jobs.sort(key=lambda j: j["date"])
     return {
         "location": store,
-        "month": MONTH_NAMES[int(month_int) - 1],
         "year": year,
+        "month": MONTH_NAMES[int(month_int) - 1],
         "total_jobs": len(jobs),
         "total_cost": round(sum(j["costs"]["total"] for j in jobs), 2),
         "jobs": jobs
@@ -629,6 +574,5 @@ def lambda_handler(event, context):
         return _response(200, data, HEADERS)
 
     except Exception as error:
-        import traceback
         traceback.print_exc()
         return _response(500, {"message": "Failed to fetch dashboard metrics"}, HEADERS)

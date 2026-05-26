@@ -1,5 +1,9 @@
 """
-This function retrieves a specific maintenance job by its ID and status. It supports both pending/approved jobs from the request table and actioned jobs from the action table. The function validates the input parameters, formats dates for human readability, and generates presigned URLs for any associated images stored in S3. CORS headers are included to allow cross-origin requests from the frontend application. The function also includes robust error handling for missing parameters, invalid status values, and database retrieval issues.
+This function retrieves a specific maintenance job by its ID and status. 
+It supports both pending/approved jobs from the request table and actioned jobs from the action table. 
+The function validates the input parameters, formats dates for human readability, and generates presigned URLs for any associated images stored in S3. 
+CORS headers are included to allow cross-origin requests from the frontend application. 
+The function also includes robust error handling for missing parameters, invalid status values, and database retrieval issues.
 """
 
 import json
@@ -11,7 +15,8 @@ from boto3.dynamodb.conditions import Key
 from botocore.config import Config
 
 dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table("crud-nosql-app-maintenance-request-table")
+request_table = dynamodb.Table("crud-nosql-app-maintenance-request-table")
+action_table = dynamodb.Table("crud-nosql-app-maintenance-action-table")
 
 s3 = boto3.client(
     "s3",
@@ -156,23 +161,67 @@ def add_presigned_urls(item: dict) -> dict:
     return item
 
 
+def get_actionID(job_id: str) -> str | None:
+    result = request_table.query(
+        KeyConditionExpression=Key("id").eq(job_id)
+    )
+
+    items = result.get("Items", [])
+
+    if not items:
+        return None
+
+    return items[0].get("action_id")
+
+
 def get_request_job(job_id: str, status: str, headers) -> dict:
-    result = table.query(
+    # 1. Base job (always from request table status = pending, rejected or in progress)
+    result = request_table.query(
         KeyConditionExpression=Key("id").eq(job_id)
     )
     items = result.get("Items", [])
     if not items:
         return _response(404, {"message": "Job not found"}, headers)
 
-    item = items[0]
+    base_item = items[0]
 
-    if item.get("status") != status:
+    if base_item.get("status") != status:
         return _response(404, {"message": "Job not found"}, headers)
 
-    if "jobCreated" in item:
-        item["jobCreated"] = to_human_date(item["jobCreated"])
+    if "jobCreated" in base_item:
+        base_item["jobCreated"] = to_human_date(base_item["jobCreated"])
 
-    return _response(200, add_presigned_urls(item), headers)
+    # 3. If NOT complete → return base only
+    if status != "complete":
+        return _response(
+            200,
+            add_presigned_urls(base_item),
+            headers
+        )
+    # 4. Fetch action table data (completed job details)
+
+    action_id = get_actionID(job_id)
+    # print("action_id:", action_id)
+
+    action_result = action_table.query(
+        KeyConditionExpression=Key("id").eq(action_id)
+    )
+
+    action_items = action_result.get("Items", [])
+    action_data = action_items[0] if action_items else {}
+
+    # 5. Build merged response
+    merged = {
+        **base_item,
+        "completion": action_data,  # keep clean namespace
+        "status": "complete"
+    }
+
+    return _response(
+        200,
+        add_presigned_urls(merged),
+        headers
+    )
 
 
 def lambda_handler(event, context):

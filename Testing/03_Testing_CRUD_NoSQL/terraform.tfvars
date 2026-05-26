@@ -1711,7 +1711,7 @@ dynamodb_tables = {
         hash_key           = "location"
         range_key          = "actionCreated"
         projection_type    = "INCLUDE"
-        non_key_attributes = ["total_cost_contractor", "total_cost_parts", "total_cost_sundries"]
+        non_key_attributes = ["total_cost_contractor", "total_cost_parts", "total_cost_sundries", "request_id", "assetID"]
       }
       "AssetIdIndex" = {
         hash_key        = "assetID"
