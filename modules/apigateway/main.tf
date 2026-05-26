@@ -1,11 +1,51 @@
 locals {
+  # Guard: "api" must never appear in api_parent_routes (it's the grandparent resource)
+  _validate_no_api_key = (
+    contains(keys(var.api_parent_routes), "api")
+    ? tobool("ERROR: 'api' must not be in api_parent_routes — it is reserved for the /api grandparent resource")
+    : true
+  )
+  parent_keys = toset(keys(var.api_parent_routes))
+
+  # Explicit level classification — no chained key() inference
+  level_1_children = {
+    for k, v in var.api_child_routes :
+    k => v if try(v.level, 1) == 1
+  }
+  level_2_children = {
+    for k, v in var.api_child_routes :
+    k => v if try(v.level, 1) == 2
+  }
+  level_3_children = {
+    for k, v in var.api_child_routes :
+    k => v if try(v.level, 1) == 3
+  }
+
   all_resources = merge(
+    { api = aws_api_gateway_resource.api_prefix },
     aws_api_gateway_resource.parents,
     aws_api_gateway_resource.children_level_1,
     aws_api_gateway_resource.children_level_2,
     aws_api_gateway_resource.children_level_3
   )
+
+  all_routes = merge(
+    var.api_parent_routes,
+    var.api_child_routes
+  )
+
+  method_map = flatten([
+    for key, route in local.all_routes : [
+      for method, info in route.methods : {
+        resource_name = key
+        http_method   = method
+        lambda_name   = try(info.lambda, null)
+        authorization = info.authorization
+      }
+    ]
+  ])
 }
+
 
 #$ [Step 1] : Define the API for the project
 resource "aws_api_gateway_rest_api" "project_apigateway" {
@@ -13,75 +53,45 @@ resource "aws_api_gateway_rest_api" "project_apigateway" {
   description = "API for ${var.project_name}"
 }
 
+#$ [Step 1b] : Grandparent /api resource
+resource "aws_api_gateway_resource" "api_prefix" {
+  rest_api_id = aws_api_gateway_rest_api.project_apigateway.id
+  parent_id   = aws_api_gateway_rest_api.project_apigateway.root_resource_id
+  path_part   = "api"
+}
+
 #$ [Step 2] : Parent Resources
 resource "aws_api_gateway_resource" "parents" {
   for_each    = var.api_parent_routes
   rest_api_id = aws_api_gateway_rest_api.project_apigateway.id
-  parent_id   = aws_api_gateway_rest_api.project_apigateway.root_resource_id
+  parent_id   = aws_api_gateway_resource.api_prefix.id
   path_part   = each.key
 }
 
-
-#$ [Step 3] : Child Resources
-# $ Children with parents as parent
+#$ [Step 3] Children — classified purely from var locals (no resource key refs)
 resource "aws_api_gateway_resource" "children_level_1" {
-  for_each = {
-    for k, v in var.api_child_routes :
-    k => v if contains(keys(var.api_parent_routes), v.parent_key)
-  }
-
+  for_each    = local.level_1_children
   rest_api_id = aws_api_gateway_rest_api.project_apigateway.id
   parent_id   = aws_api_gateway_resource.parents[each.value.parent_key].id
   path_part   = each.value.path_part
 }
-# $ Children with another child route as parent to create nested routes
-# $ Children of level 1
-resource "aws_api_gateway_resource" "children_level_2" {
-  for_each = {
-    for k, v in var.api_child_routes :
-    k => v if contains(keys(aws_api_gateway_resource.children_level_1), v.parent_key)
-  }
 
+resource "aws_api_gateway_resource" "children_level_2" {
+  for_each    = local.level_2_children
   rest_api_id = aws_api_gateway_rest_api.project_apigateway.id
   parent_id   = aws_api_gateway_resource.children_level_1[each.value.parent_key].id
   path_part   = each.value.path_part
 }
 
-# $ Children of level 2
 resource "aws_api_gateway_resource" "children_level_3" {
-  for_each = {
-    for k, v in var.api_child_routes :
-    k => v if contains(keys(aws_api_gateway_resource.children_level_2), v.parent_key)
-  }
-
+  for_each    = local.level_3_children
   rest_api_id = aws_api_gateway_rest_api.project_apigateway.id
   parent_id   = aws_api_gateway_resource.children_level_2[each.value.parent_key].id
   path_part   = each.value.path_part
 }
 
-#$ [Step 4] : Methods Map
-locals {
-  all_routes = merge(
-    { for k, v in var.api_parent_routes : k => v },
-    { for k, v in var.api_child_routes : k => v }
-  )
 
-  # $ This is used to flatten the object when the variable is a nested object method = {GET = {
-  # $ lambda = "function-name", ""}
-
-  method_map = flatten([
-    for key, route in local.all_routes : [
-      for method, info in route.methods : { # rename lambda -> info
-        resource_name = key
-        http_method   = method
-        lambda_name   = info.lambda
-        authorization = info.authorization
-      }
-    ]
-  ])
-}
-
-#$ [Step 5] : Methods
+#$ [Step 4] : Methods
 resource "aws_api_gateway_method" "methods" {
   for_each = {
     for m in local.method_map :
@@ -96,7 +106,7 @@ resource "aws_api_gateway_method" "methods" {
   authorizer_id = each.value.authorization == "COGNITO_USER_POOLS" ? aws_api_gateway_authorizer.cognito.id : null
 }
 
-#$ [Step 6]: Integrations
+#$ [Step 5]: Integrations
 resource "aws_api_gateway_integration" "integrations" {
   for_each = {
     for m in local.method_map :

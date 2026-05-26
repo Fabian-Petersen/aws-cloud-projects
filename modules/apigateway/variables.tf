@@ -20,23 +20,30 @@ variable "api_name" {
 variable "api_parent_routes" {
   type = map(object({
     methods = optional(map(object({
-      lambda        = string
+      lambda        = optional(string)
       authorization = string
     })), {}) # default empty map
   }))
   default = {}
+  validation {
+    condition     = !contains(keys(var.api_parent_routes), "api")
+    error_message = "'api' must not exist in api_parent_routes because /api is reserved."
+  }
 }
+
 
 
 variable "api_child_routes" {
   type = map(object({
     parent_key = string
     path_part  = string
-    methods = map(object({
-      lambda        = string
+    level      = optional(number, 1)
+    methods = optional(map(object({
+      lambda        = optional(string)
       authorization = string
-    }))
+    })), {})
   }))
+  default = {}
 }
 
 

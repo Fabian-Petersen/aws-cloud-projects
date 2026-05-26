@@ -36,57 +36,63 @@ price_class  = "PriceClass_200"
 s3_origin_id = "s3-origin"
 
 ordered_cache_items = [
-  # The order below will give the precedence in the distribution config
-  # $ Jobs
   {
-    path_pattern    = "/jobs" # exact match
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
-  {
-    path_pattern    = "/jobs/*" # matches trailing slash or subpaths
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
-  # $ Assets
-  {
-    path_pattern    = "/assets-data"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    }, {
-    path_pattern    = "/assets-data/*"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
-  # $ Comments
-  {
-    path_pattern    = "/comments"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    }, {
-    path_pattern    = "/comments/*"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
-  {
-    path_pattern    = "/users"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    }, {
-    path_pattern    = "/users/*"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
-  {
-    path_pattern    = "/admin/*"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
-  {
-    path_pattern    = "/admin"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
-  {
-    path_pattern    = "/dashboard/*"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
-  {
-    path_pattern    = "/dashboard"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-  },
-
+    path_pattern    = "/api/*"
+    allowed_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]
+  }
 ]
+
+# ordered_cache_items = [
+#   # The order below will give the precedence in the distribution config
+#   # $ Jobs
+#   {
+#     path_pattern    = "/jobs" # exact match
+#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+#   },
+#   {
+#     path_pattern    = "/jobs/*" # matches trailing slash or subpaths
+#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+#   },
+#   # $ Assets
+#   {
+#     path_pattern    = "/assets-data"
+#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+#     }, {
+#     path_pattern    = "/assets-data/*"
+#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+#   },
+#   # $ Comments
+#   {
+#     path_pattern    = "/comments"
+#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+#     }, {
+#     path_pattern    = "/comments/*"
+#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+#   },
+#   {
+#     path_pattern    = "/users"
+#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+#     }, {
+#     path_pattern    = "/users/*"
+#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+#   },
+#   {
+#     path_pattern    = "/admin/*"
+#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+#   },
+#   {
+#     path_pattern    = "/admin"
+#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+#   },
+#   {
+#     path_pattern    = "/dashboard/*"
+#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+#   },
+#   {
+#     path_pattern    = "/dashboard"
+#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+#   },
+# ]
 
 #$ api gateway variables
 api_name = "crud-nosql-app-apigateway"
@@ -99,7 +105,7 @@ api_parent_routes = {
     }
   }
 
-  "assets-data" = {
+  "assets" = {
     methods = {
       GET = {
         lambda        = "getAssetsList"
@@ -131,7 +137,6 @@ api_parent_routes = {
       }
     }
   }
-
   users = {
     methods = {
       GET = {
@@ -172,8 +177,9 @@ api_parent_routes = {
 api_child_routes = {
   # $ Lambda get the request which have been created
   jobs-requests = {
-    parent_key = "jobs" # /jobs/requests/
+    parent_key = "jobs" # /api/jobs/requests/
     path_part  = "requests"
+    level      = 1
     methods = {
       GET = {
         lambda        = "getJobsList"
@@ -190,8 +196,9 @@ api_child_routes = {
   }
 
   jobs-completed = {
-    parent_key = "jobs" # /jobs/completed/
+    parent_key = "jobs" # /api/jobs/completed/
     path_part  = "completed"
+    level      = 1
     methods = {
       GET = {
         lambda        = "getJobsCompletedList"
@@ -204,8 +211,9 @@ api_child_routes = {
   }
 
   jobs-id = {
-    parent_key = "jobs" # /jobs/{id}
+    parent_key = "jobs" # /api/jobs/{id}
     path_part  = "{id}"
+    level      = 1
     methods = {
       # ! These functions are not yet created, enable GSI for status to handle the filtering for pending and approved jobs, and getJobsList will handle the GET request for individual job details
       GET = {
@@ -229,8 +237,9 @@ api_child_routes = {
   }
 
   jobs-approve = {
-    parent_key = "jobs-id" # /jobs/{id}/approve
+    parent_key = "jobs-id" # /api/jobs/{id}/approve
     path_part  = "approve"
+    level      = 2
     methods = {
       POST = {
         lambda        = "postApproveRequest"
@@ -243,8 +252,9 @@ api_child_routes = {
   }
 
   job-reject = {
-    parent_key = "jobs-id" # /jobs/{id}/reject
+    parent_key = "jobs-id" # /api/jobs/{id}/reject
     path_part  = "reject"
+    level      = 2
     methods = {
       POST = {
         lambda        = "postRejectRequest"
@@ -257,8 +267,9 @@ api_child_routes = {
   }
 
   jobs-actioned = {
-    parent_key = "jobs-id" # /jobs/{jobId}/action
+    parent_key = "jobs-id" # /api/jobs/{jobId}/action
     path_part  = "action"
+    level      = 2
     methods = {
       POST = {
         lambda        = "postJobAction"
@@ -271,8 +282,9 @@ api_child_routes = {
   }
 
   jobcard-id = {
-    parent_key = "jobs-id" # /jobs/{id}/jobcard
+    parent_key = "jobs-id" # /api/jobs/{id}/jobcard
     path_part  = "jobcard"
+    level      = 2
     methods = {
       GET = {
         lambda        = "getJobcardById"
@@ -285,8 +297,9 @@ api_child_routes = {
   }
 
   asset-id = {
-    parent_key = "assets-data" # /assets-data/{id}
+    parent_key = "assets" # /api/assets/{id}
     path_part  = "{id}"
+    level      = 1
     methods = {
       GET = {
         lambda        = "getAssetById"
@@ -306,8 +319,9 @@ api_child_routes = {
     }
   }
   asset-location = {
-    parent_key = "assets-data" # /assets-data/location
+    parent_key = "assets" # /api/assets/location
     path_part  = "location"
+    level      = 1
     methods = {
       GET = {
         lambda        = "getAssetsByLocation"
@@ -320,8 +334,9 @@ api_child_routes = {
   }
 
   asset-history = {
-    parent_key = "asset-id" # /assets-data/:id/history
+    parent_key = "asset-id" # /api/assets/:id/history
     path_part  = "history"
+    level      = 2
     methods = {
       GET = {
         lambda        = "getAssetJobsHistoryMetrics"
@@ -334,9 +349,10 @@ api_child_routes = {
   }
 
   comments-id = {
-    # path       = "/comments/{commentId}"
+    # path       = "/api/comments/{commentId}"
     parent_key = "comments"
     path_part  = "{id}"
+    level      = 1
     methods = {
       GET = {
         lambda        = "getCommentById"
@@ -349,8 +365,9 @@ api_child_routes = {
   }
 
   users-get-current-user = {
-    parent_key = "users" // path: admin/user/
+    parent_key = "users" // path: /api/admin/user/
     path_part  = "get-current-user"
+    level      = 1
     methods = {
       GET = {
         lambda        = "getUser"
@@ -362,8 +379,9 @@ api_child_routes = {
     }
   }
   users-id = {
-    parent_key = "users" // path: /users/userId
+    parent_key = "users" // path: /api//users/userId
     path_part  = "{id}"
+    level      = 1
     methods = {
       GET = {
         lambda        = "getUserById"
@@ -384,7 +402,8 @@ api_child_routes = {
   }
 
   users-technicians = {
-    parent_key = "users" # /users/technicians
+    parent_key = "users" # /api/users/technicians
+    level      = 1
     path_part  = "technicians"
     methods = {
       GET = {
@@ -397,8 +416,9 @@ api_child_routes = {
     }
   }
   users-contractors = {
-    parent_key = "users" # /users/contractors
+    parent_key = "users" # /api//users/contractors
     path_part  = "contractors"
+    level      = 1
     methods = {
       GET = {
         lambda        = "getContractorList"
@@ -415,8 +435,9 @@ api_child_routes = {
   }
 
   contractor-id = {
-    parent_key = "users-contractors" # /users/contractors/{contractorId}
+    parent_key = "users-contractors" # /api/users/contractors/{contractorId}
     path_part  = "{id}"
+    level      = 2
     methods = {
       GET = {
         lambda        = "getContractorById"
@@ -437,8 +458,9 @@ api_child_routes = {
   }
 
   admin-resend-temp-pwd = {
-    parent_key = "admin" // path: admin/resend-temp-password
+    parent_key = "admin" // path: /api/admin/resend-temp-password
     path_part  = "resend-temp-password"
+    level      = 1
     methods = {
       OPTIONS = {
         authorization = "NONE"
@@ -446,8 +468,9 @@ api_child_routes = {
     }
   }
   admin-resend-temp-pwd-id = {
-    parent_key = "admin-resend-temp-pwd" // path: admin/resend-temp-password/id
+    parent_key = "admin-resend-temp-pwd" // path: /api/admin/resend-temp-password/id
     path_part  = "{id}"
+    level      = 2
     methods = {
       POST = {
         lambda        = "postResendTempPassword"
@@ -459,8 +482,9 @@ api_child_routes = {
     }
   }
   admin-confirm-user-signup = {
-    parent_key = "admin" // path: admin/confirm-user-signup
+    parent_key = "admin" // path: /api/admin/confirm-user-signup
     path_part  = "confirm-user-signup"
+    level      = 1
     methods = {
       POST = {
         lambda        = "postConfirmationTrigger"
@@ -473,8 +497,9 @@ api_child_routes = {
   }
 
   dashboard-metrics = {
-    parent_key = "dashboard" // path: admin/confirm-user-signup
+    parent_key = "dashboard" // path: /api/admin/confirm-user-signup
     path_part  = "metrics"
+    level      = 1
     methods = {
       OPTIONS = {
         authorization = "NONE"
@@ -482,8 +507,9 @@ api_child_routes = {
     }
   }
   jobs-metrics = {
-    parent_key = "dashboard-metrics" // path: dashboard/metrics/jobs
+    parent_key = "dashboard-metrics" // path: api/dashboard/metrics/jobs
     path_part  = "jobs"
+    level      = 2
     methods = {
       GET = {
         lambda        = "getDashboardJobsMetrics"
@@ -495,8 +521,9 @@ api_child_routes = {
     }
   }
   charts-metrics = {
-    parent_key = "dashboard-metrics" // path: dashboard/metrics/charts
+    parent_key = "dashboard-metrics" // path: /api/dashboard/metrics/charts
     path_part  = "charts"
+    level      = 2
     methods = {
       GET = {
         lambda        = "getDashboardStoreJobsMetrics"
