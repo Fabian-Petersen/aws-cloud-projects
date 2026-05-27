@@ -326,8 +326,8 @@ def lambda_handler(event, context):
             "total_cost_parts": data["total_cost_parts"],
             "contractor": data["contractor"],
             "total_cost_contractor": data["total_cost_contractor"],
-            "invoices": data["invoices"],
-            "images": data["images"],
+            "invoices": [],
+            "images": [],
             "signedBy": normalize_string(data.get("signedBy")),
             # Will be updated by S3-triggered Lambda later
             "signature": data["signature"]

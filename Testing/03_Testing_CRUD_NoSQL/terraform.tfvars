@@ -539,16 +539,9 @@ api_child_routes = {
 // $ Must create a dynamic resource to add actions
 
 extra_policies = {
-  # postJobRequest = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  # postJobAction  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  # getJobsPendingById    = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  # getJobActionedById    = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  # deleteJobRequestById  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  # deleteJobActionedById = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  postCreateAsset = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  deleteAssetById = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  getJobcardById  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
-  // existing policy created for s3EventLambda to allow putObject on s3 bucket 
+  # postCreateAsset = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  # deleteAssetById = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
+  # getJobcardById  = "arn:aws:iam::157489943321:policy/s3EventLambda-lambda-policy"
 }
 
 lambda_policies = {
@@ -709,7 +702,7 @@ lambda_functions = {
     statements = [
       {
         actions   = ["s3:GetObject"]
-        resources = ["arn:aws:s3:::crud-nosql-app-images/maintenance/*"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/*"]
       },
       {
         actions   = ["s3:ListBucket"]
@@ -718,7 +711,7 @@ lambda_functions = {
           {
             test     = "StringLike"
             variable = "s3:prefix"
-            values   = ["maintenance/*"]
+            values   = ["maintenance/*", "maintenance_action/*", "invoices/*"]
           }
         ]
       }
@@ -954,6 +947,24 @@ lambda_functions = {
         allow_index_access = false
       }
     }
+
+    statements = [
+      {
+        actions   = ["s3:GetObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/assets/*"]
+      },
+      {
+        actions   = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images"]
+        conditions = [
+          {
+            test     = "StringLike"
+            variable = "s3:prefix"
+            values   = ["assets/*"]
+          }
+        ]
+      }
+    ]
   }
 
   getAssetsByLocation = {
@@ -987,6 +998,24 @@ lambda_functions = {
         allow_index_access = false
       }
     }
+    statements = [
+      {
+        actions   = ["s3:GetObject", "s3:PutObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/assets/*"]
+      },
+      {
+        actions   = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images"]
+        conditions = [
+          {
+            test     = "StringLike"
+            variable = "s3:prefix"
+            values   = ["assets/*"]
+          }
+        ]
+      }
+    ]
+
   }
 
   deleteAssetById = {
@@ -1001,6 +1030,24 @@ lambda_functions = {
         allow_index_access = false
       }
     }
+
+    statements = [
+      {
+        actions   = ["s3:GetObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/assets/*"]
+      },
+      {
+        actions   = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images"]
+        conditions = [
+          {
+            test     = "StringLike"
+            variable = "s3:prefix"
+            values   = ["assets/*"]
+          }
+        ]
+      }
+    ]
   }
 
   updateAssetById = {
@@ -1841,12 +1888,13 @@ user_groups = {
   }
 }
 
-# $ s3EventLambda - lambda triggers on s3 file upload
-file_name   = "s3EventLambda.py"
+# $ s3FileUploadLambda - lambda triggers on s3 file upload
+# % Module lambda/s3
+file_name   = "s3FileUploadLambda.py"
 table_names = ["crud-nosql-app-maintenance-request-table", "crud-nosql-app-maintenance-action-table", "crud-nosql-app-assets-table"]
 bucket_name = "crud-nosql-app-images"
-handler     = "s3EventLambda.lambda_handler"
-lambda_name = "s3EventLambda"
+handler     = "s3FileUploadLambda.lambda_handler"
+lambda_name = "s3FileUploadLambda"
 
 # $ pdf lambda
 # lambda_zip_path     = "dist/pdf-generator.zip"

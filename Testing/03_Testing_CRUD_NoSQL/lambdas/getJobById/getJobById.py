@@ -131,97 +131,172 @@ def handle_options_request(method, headers):
     return None
 
 
-def add_presigned_urls(item: dict) -> dict:
-    images = item.get("images", [])
-    if not isinstance(images, list):
-        return item
-    new_images = []
-    for img in images:
-        if not isinstance(img, dict):
-            new_images.append(img)
-            continue
-        bucket = img.get("bucket")
-        key = img.get("key")
-        new_img = {
-            "key": key,
-            "filename": img.get("filename") or (key.split("/")[-1] if key else None),
-            "url": None
+def add_presigned_urls(data):
+    """
+    Recursively traverse dictionaries/lists and add presigned URLs
+    to any object containing an S3 bucket/key pair.
+    """
+
+    # Handle dictionaries
+    if isinstance(data, dict):
+
+        # Detect S3 file object
+        if "bucket" in data and "key" in data:
+            bucket = data.get("bucket")
+            key = data.get("key")
+
+            new_data = {
+                "key": key,
+                "filename": data.get("filename")
+                or (key.split("/")[-1] if key else None),
+                "url": None,
+            }
+
+            if bucket and key:
+                try:
+                    new_data["url"] = s3.generate_presigned_url(
+                        ClientMethod="get_object",
+                        Params={
+                            "Bucket": bucket,
+                            "Key": key,
+                        },
+                        ExpiresIn=PRESIGN_EXPIRES_SECONDS,
+                    )
+                except Exception as e:
+                    print("Presign error:", e)
+
+            return new_data
+
+        # Recursively process nested dict values
+        return {
+            k: add_presigned_urls(v)
+            for k, v in data.items()
         }
-        if bucket and key:
-            try:
-                new_img["url"] = s3.generate_presigned_url(
-                    ClientMethod="get_object",
-                    Params={"Bucket": bucket, "Key": key},
-                    ExpiresIn=PRESIGN_EXPIRES_SECONDS,
-                )
-            except Exception as e:
-                print("Presign error:", e)
-        new_images.append(new_img)
-    item["images"] = new_images
-    return item
+
+    # Handle lists
+    if isinstance(data, list):
+        return [add_presigned_urls(item) for item in data]
+
+    # Return primitive values unchanged
+    return data
+
+    # =========================================================================
+    # Get the jobCreated ID for the SK
+    # =========================================================================
 
 
-def get_actionID(job_id: str) -> str | None:
-    result = request_table.query(
-        KeyConditionExpression=Key("id").eq(job_id)
+def get_job_created_by_id(table, request_id: str) -> str:
+    # jobCreated is the SK for the table
+    response = table.query(
+        KeyConditionExpression=Key("id").eq(request_id)
+    )
+    items = response.get("Items", [])
+    if not items:
+        raise ValueError("Item not found")
+    # If only one item per id, take the first
+    return items[0]["jobCreated"]
+
+    # =========================================================================
+    # Get the Action ID from the item in the request table
+    # =========================================================================
+
+
+def get_actionID(request_id: str) -> str | None:
+    response = request_table.query(
+        KeyConditionExpression=Key("id").eq(request_id)
     )
 
-    items = result.get("Items", [])
+    items = response.get("Items", [])
 
     if not items:
         return None
 
     return items[0].get("action_id")
 
+    # =========================================================================
+    # Get jobs requested with status (pending, in progress, rejected, complete)
+    # =========================================================================
 
-def get_request_job(job_id: str, status: str, headers) -> dict:
-    # 1. Base job (always from request table status = pending, rejected or in progress)
-    result = request_table.query(
-        KeyConditionExpression=Key("id").eq(job_id)
+
+def get_request_job(request_id: str, status: str, headers) -> dict:
+    """
+    The frontend send the request_id for the pending, in progress, rejected jobs
+    """
+    # $ 1. Base job (always from request table status = pending, rejected or in progress)
+    response = request_table.query(
+        KeyConditionExpression=Key("id").eq(request_id)
     )
-    items = result.get("Items", [])
+
+    items = response.get("Items", [])
     if not items:
         return _response(404, {"message": "Job not found"}, headers)
 
-    base_item = items[0]
+    item = items[0]
 
-    if base_item.get("status") != status:
+    if item.get("status") != status:
         return _response(404, {"message": "Job not found"}, headers)
+
+    if "jobCreated" in item:
+        item["jobCreated"] = to_human_date(item["jobCreated"])
+
+    # $ 2. If NOT complete → return base only
+    if status != "complete":
+        return _response(
+            200,
+            add_presigned_urls(item),
+            headers
+        )
+
+
+def get_complete_job(action_id: str, headers) -> dict:
+    """
+    Frontend sends action_id for complete jobs.
+    1. Query action_table to get request_id
+    2. Query request_table with request_id to get base job
+    3. Merge and return
+    """
+
+    # Step 1 — get request_id from action_table
+    action_result = action_table.query(
+        KeyConditionExpression=Key("id").eq(action_id)
+    )
+    action_items = action_result.get("Items", [])
+
+    if not action_items:
+        return _response(200, {"error": "NOT_FOUND", "message": "Completed job not found"}, headers)
+
+    action_data = action_items[0]
+    request_id = action_data.get("request_id")
+
+    if not request_id:
+        return _response(200, {"error": "NOT_FOUND", "message": "No request_id on action record"}, headers)
+
+    # Step 2 — get base job from request_table using request_id
+    req_result = request_table.query(
+        KeyConditionExpression=Key("id").eq(request_id)
+    )
+    req_items = req_result.get("Items", [])
+
+    if not req_items:
+        return _response(200, {"error": "NOT_FOUND", "message": "Base job not found"}, headers)
+
+    base_item = req_items[0]
 
     if "jobCreated" in base_item:
         base_item["jobCreated"] = to_human_date(base_item["jobCreated"])
 
-    # 3. If NOT complete → return base only
-    if status != "complete":
-        return _response(
-            200,
-            add_presigned_urls(base_item),
-            headers
-        )
-    # 4. Fetch action table data (completed job details)
-
-    action_id = get_actionID(job_id)
-    # print("action_id:", action_id)
-
-    action_result = action_table.query(
-        KeyConditionExpression=Key("id").eq(action_id)
-    )
-
-    action_items = action_result.get("Items", [])
-    action_data = action_items[0] if action_items else {}
-
-    # 5. Build merged response
-    merged = {
-        **base_item,
-        "completion": action_data,  # keep clean namespace
-        "status": "complete"
+    # Remove signature before returning to frontend
+    sanitized_action_data = {
+        k: v for k, v in action_data.items() if k != "signature"
     }
 
-    return _response(
-        200,
-        add_presigned_urls(merged),
-        headers
-    )
+    # Step 3 — merge and return
+    merged = {
+        **base_item,
+        "action_data": sanitized_action_data,
+    }
+
+    return _response(200, add_presigned_urls(merged), headers)
 
 
 def lambda_handler(event, context):
@@ -244,7 +319,12 @@ def lambda_handler(event, context):
         if not status or status not in VALID_STATUSES:
             return _response(400, {"message": f"Invalid or missing status. Must be one of: {', '.join(VALID_STATUSES)}"}, HEADERS)
 
-        return get_request_job(job_id, status, HEADERS)
+        if status == "complete":
+            # -> job_id is action_id here
+            return get_complete_job(job_id, HEADERS)
+        else:
+            # -> job_id is request_id here
+            return get_request_job(job_id, status, HEADERS)
 
     except Exception as exc:
         print("Error:", exc)

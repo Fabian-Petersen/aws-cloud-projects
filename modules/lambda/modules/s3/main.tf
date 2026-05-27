@@ -1,4 +1,5 @@
-# $ This lambda is invoked when an image is uploaded to the s3 bucket for /assets or /maintenance and store the metadata in dynamoDB for /assets and /maintenance
+#$ 
+#$ - This lambda is invoked when an image is uploaded to the s3 bucket for /assets, /maintenance and #$- store the metadata in dynamoDB for /assets, /maintenance, "/action"
 
 #$ [Step 1] : Zip the existing Lambda functions from /lambdas/<function_directory>
 data "archive_file" "lambda_zip" {
@@ -64,7 +65,10 @@ resource "aws_iam_policy" "lambda_policy" {
         ]
         Resource = [
           "${data.aws_s3_bucket.bucket.arn}/maintenance/*",
-        "${data.aws_s3_bucket.bucket.arn}/assets/*"]
+          "${data.aws_s3_bucket.bucket.arn}/assets/*",
+          "${data.aws_s3_bucket.bucket.arn}/invoices/*",
+          "${data.aws_s3_bucket.bucket.arn}/maintenance_action/*"
+        ]
       },
       # Logs
       {
@@ -133,6 +137,19 @@ resource "aws_s3_bucket_notification" "s3_notification" {
     lambda_function_arn = aws_lambda_function.s3_event_lambda.arn
     events              = ["s3:ObjectCreated:Put"]
     filter_prefix       = "assets/"
+  }
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.s3_event_lambda.arn
+    events              = ["s3:ObjectCreated:Put"]
+    filter_prefix       = "maintenance_action/"
+  }
+
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.s3_event_lambda.arn
+    events              = ["s3:ObjectCreated:Put"]
+    filter_prefix       = "invoices/"
   }
 
   depends_on = [aws_lambda_permission.allow_s3]
