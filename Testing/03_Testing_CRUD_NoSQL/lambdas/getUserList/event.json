@@ -1,8 +1,0 @@
-{
-  "httpMethod": "GET",
-  "path": "/admin",
-  "headers": {
-    "Authorization": "Bearer <JWT_TOKEN>"
-  },
-  "queryStringParameters": {}
-}

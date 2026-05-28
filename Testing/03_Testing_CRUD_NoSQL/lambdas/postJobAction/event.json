@@ -1,3 +1,0 @@
-{
-  "body": "{\"start_time\": \"2026-02-12T19:12:00Z\", \"end_time\": \"2026-02-12T19:14:00Z\", \"total_km\": \"20\", \"work_order_number\": \"123456\", \"work_completed\": \"changed the breaker\", \"status\": \"complete\", \"root_cause\": \"Operations halted\", \"findings\": \"breaker repaired\", \"images\": [], \"selectedRowId\": \"dc867c26-e32a-4024-be88-6b3f7b28de87\", \"signature\": \"signature\"}"
-}
