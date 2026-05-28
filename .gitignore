@@ -28,6 +28,8 @@ terraform.tfvars
 *.py[cod]
 *$py.class
 **/lambdas/lambda_layers/
+**/*lambda*/**/event.json
+**/*lambda*/**/test-event.json
 
 # Ignore virtual environments (anywhere in project)
 **/.venv/
@@ -61,3 +63,5 @@ coverage.xml
 *.swo
 *.bak
 *.tmp
+
+T
