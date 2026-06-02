@@ -249,6 +249,7 @@ variable "dynamodb_tables" {
   type = map(object({
     enable_gsi    = bool
     enable_stream = bool
+    stream_filter = optional(list(string), ["INSERT"])
 
     # Per-table primary key config
     pk = optional(string) # default "id" if not set
@@ -262,6 +263,35 @@ variable "dynamodb_tables" {
     })))
   }))
 }
+
+#$ ======================== Event Bridge ====================
+variable "event_subscriptions" {
+  type = map(object({
+    source      = string
+    detail_type = string
+
+    targets = list(object({
+      name        = string
+      arn         = string
+      target_type = string
+    }))
+  }))
+}
+
+variable "resource_permissions" {
+  description = "Generic list of resource permissions for EventBridge targets"
+  type = list(object({
+    service     = string # "lambda", "sqs", etc.
+    principal   = string # "events.amazonaws.com"
+    target_name = string # must match the name in event_subscriptions targets
+    target_arn  = string # ARN of the resource being invoked (e.g. Lambda ARN)
+    source_arn  = string # ARN of the EventBridge rule granting permission
+  }))
+  default = []
+}
+
+
+
 #$ ======================== Cognito ====================
 variable "prevent_user_existence" {
   type        = string

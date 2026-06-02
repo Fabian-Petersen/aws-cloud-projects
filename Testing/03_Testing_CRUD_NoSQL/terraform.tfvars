@@ -42,58 +42,6 @@ ordered_cache_items = [
   }
 ]
 
-# ordered_cache_items = [
-#   # The order below will give the precedence in the distribution config
-#   # $ Jobs
-#   {
-#     path_pattern    = "/jobs" # exact match
-#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-#   },
-#   {
-#     path_pattern    = "/jobs/*" # matches trailing slash or subpaths
-#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-#   },
-#   # $ Assets
-#   {
-#     path_pattern    = "/assets-data"
-#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-#     }, {
-#     path_pattern    = "/assets-data/*"
-#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-#   },
-#   # $ Comments
-#   {
-#     path_pattern    = "/comments"
-#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-#     }, {
-#     path_pattern    = "/comments/*"
-#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-#   },
-#   {
-#     path_pattern    = "/users"
-#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-#     }, {
-#     path_pattern    = "/users/*"
-#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-#   },
-#   {
-#     path_pattern    = "/admin/*"
-#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-#   },
-#   {
-#     path_pattern    = "/admin"
-#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-#   },
-#   {
-#     path_pattern    = "/dashboard/*"
-#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-#   },
-#   {
-#     path_pattern    = "/dashboard"
-#     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-#   },
-# ]
-
 #$ api gateway variables
 api_name = "crud-nosql-app-apigateway"
 api_parent_routes = {
@@ -342,6 +290,25 @@ api_child_routes = {
         lambda        = "getAssetJobsHistoryMetrics"
         authorization = "COGNITO_USER_POOLS"
       }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  asset-verify = {
+    parent_key = "asset-id" # /api/assets/:id/verify
+    path_part  = "verify"
+    level      = 2
+    methods = {
+      POST = {
+        lambda        = "postAssetVerify" // verify asset with barcode ID
+        authorization = "COGNITO_USER_POOLS"
+      }
+      PUT = {
+        lambda = "updateVerifyAssetStatus" // update asset verification status        authorization = "COGNITO_USER_POOLS"
+      }
+
       OPTIONS = {
         authorization = "NONE"
       }
@@ -1093,6 +1060,44 @@ lambda_functions = {
     }
   }
 
+  postAssetVerify = {
+    file_name = "postAssetVerify.py"
+    handler   = "postAssetVerify.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      users_table = {
+        table_name         = "crud-nosql-app-users-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+      assets_table = {
+        table_name         = "crud-nosql-app-assets-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  updateAssetVerifyStatus = {
+    file_name = "updateAssetVerifyStatus.py"
+    handler   = "updateAssetVerifyStatus.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      users_table = {
+        table_name         = "crud-nosql-app-users-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+      assets_table = {
+        table_name         = "crud-nosql-app-assets-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
   getJobcardById = {
     file_name = "getJobcardById.py"
     handler   = "getJobcardById.lambda_handler"
@@ -1744,7 +1749,6 @@ dynamodb_tables = {
         range_key       = "jobCreated"
         projection_type = "ALL"
       }
-
     }
   }
 
@@ -1762,7 +1766,7 @@ dynamodb_tables = {
   crud-nosql-app-assets = {
     pk            = "id"
     enable_gsi    = true
-    enable_stream = false
+    enable_stream = true // enable stream to trigger lambda for verification updates
     gsis = {
       "AssetIDIndex" = {
         hash_key        = "assetID"
@@ -1772,8 +1776,21 @@ dynamodb_tables = {
         hash_key        = "location"
         projection_type = "ALL"
       }
-
     }
+  }
+
+  crud-nosql-app-assets-verification = {
+    pk            = "assetID"
+    sk            = "verificationCreated"
+    enable_gsi    = false
+    enable_stream = true // enable stream to trigger lambda for verification updates
+  }
+
+  crud-nosql-app-assets-transfer = {
+    pk            = "assetID"
+    sk            = "transferCreated"
+    enable_gsi    = false
+    enable_stream = true // enable stream to trigger lambda for transfer created
   }
   crud-nosql-app-maintenance-action = {
     pk            = "id"
@@ -1939,3 +1956,17 @@ ses_filename       = "jobs-notify-admin.py"
 ses_lambda_handler = "jobs-notify-admin.lambda_handler"
 from_email         = "no-reply@crud-nosql.app.fabian-portfolio.net"
 # dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
+
+# $ Event Bridge - for triggering lambdas on specific events like asset verification or scanning
+event_subscriptions = {
+  asset_verified = {
+    source      = "asset-verify-service"
+    detail_type = "AssetVerified"
+    targets = [
+      {
+        name        = "asset-verify-lambda"
+        target_type = "lambda"
+      }
+    ]
+  }
+}

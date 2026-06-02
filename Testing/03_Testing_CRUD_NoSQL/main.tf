@@ -251,3 +251,26 @@ module "ses" {
   zone_id        = data.aws_route53_zone.hosted_zone.zone_id
   subdomain_name = var.subdomain_name
 }
+
+#$ // ========================= Event Bridge ======================== //
+
+module "eventbridge" {
+  source = "../../modules/eventBridge"
+  env    = var.env
+
+  project_name         = var.project_name
+  region               = var.region
+  dynamodb_tables      = var.dynamodb_tables
+  event_subscriptions  = var.event_subscriptions
+  dynamodb_stream_arns = module.dynamodb_tables.dynamodb_stream_arns
+
+  resource_permissions = [
+    {
+      service     = "lambda"
+      principal   = "events.amazonaws.com"
+      target_name = "asset-verify-lambda" # matches event_subscriptions target name
+      source_arn  = "arn:aws:events:${var.region}:${data.aws_caller_identity.current.account_id}:rule/${var.project_name}-asset_verified-rule"
+      target_arn  = module.lambda["postAssetVerify"].arn
+    }
+  ]
+}

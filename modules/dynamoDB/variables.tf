@@ -8,6 +8,7 @@ variable "dynamodb_tables" {
   type = map(object({
     enable_gsi    = bool
     enable_stream = bool
+    stream_filter = optional(list(string), ["INSERT"])
 
     # Per-table primary key config
     pk = optional(string) # default "id" if not set
