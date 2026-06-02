@@ -263,14 +263,16 @@ module "eventbridge" {
   dynamodb_tables      = var.dynamodb_tables
   event_subscriptions  = var.event_subscriptions
   dynamodb_stream_arns = module.dynamodb_tables.dynamodb_stream_arns
+  profile_2_account_id = var.profile_2_account_id
 
   resource_permissions = [
     {
       service     = "lambda"
       principal   = "events.amazonaws.com"
       target_name = "asset-verify-lambda" # matches event_subscriptions target name
-      source_arn  = "arn:aws:events:${var.region}:${data.aws_caller_identity.current.account_id}:rule/${var.project_name}-asset_verified-rule"
-      target_arn  = module.lambda["postAssetVerify"].arn
+      source_arn  = "arn:aws:events:${var.region}:${var.profile_2_account_id}:rule/${var.project_name}-asset_verified-rule"
+      target_arn  = module.lambda.lambda_arns["updateAssetVerifyStatus"] # Look up the ARN for this target from the lambda module output
     }
   ]
 }
+# module.lambda.lambda_invoke_arns

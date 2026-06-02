@@ -306,7 +306,8 @@ api_child_routes = {
         authorization = "COGNITO_USER_POOLS"
       }
       PUT = {
-        lambda = "updateVerifyAssetStatus" // update asset verification status        authorization = "COGNITO_USER_POOLS"
+        lambda        = "updateAssetVerifyStatus" // update asset verification status        authorization = "COGNITO_USER_POOLS"
+        authorization = "COGNITO_USER_POOLS"
       }
 
       OPTIONS = {
@@ -1073,6 +1074,11 @@ lambda_functions = {
       }
       assets_table = {
         table_name         = "crud-nosql-app-assets-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+      assets_table = {
+        table_name         = "crud-nosql-app-assets-verification-table"
         actions            = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = false
       }

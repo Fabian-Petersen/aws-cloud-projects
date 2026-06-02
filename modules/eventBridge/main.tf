@@ -17,7 +17,7 @@ locals {
       for target in rule.targets : {
         rule_name   = rule_name
         target_name = target.name
-        target_arn  = local.permission_arn_map[target.name] != null ? local.permission_arn_map[target.name] : "" # Look up the ARN for this target from the resource_permissions variable
+        target_arn  = lookup(local.permission_arn_map, target.name, null) # Look up the ARN for this target from the resource_permissions variable
         target_type = target.target_type
       }
     ]
@@ -73,7 +73,7 @@ resource "aws_iam_role_policy" "pipe_policy" {
           "dynamodb:DescribeStream",
           "dynamodb:ListStreams"
         ]
-        Resource = [var.dynamodb_stream_arns[each.key].stream_arn] //dynamodb_streams_arns[each.key].stream_arn
+        Resource = [var.dynamodb_stream_arns[each.key]] //dynamodb_streams_arns[each.key].stream_arn
       },
       {
         Effect   = "Allow"
@@ -91,7 +91,7 @@ resource "aws_pipes_pipe" "dynamoDB_to_eventbridge" {
   name     = "${var.project_name}-${each.key}-pipe"
   role_arn = aws_iam_role.pipe_role[each.key].arn
 
-  source = var.dynamodb_stream_arns[each.key].stream_arn
+  source = var.dynamodb_stream_arns[each.key]
   target = aws_cloudwatch_event_bus.custom_event_bus.arn
 
   # Native filtering: Only pass INSERT (Create Item) events to the bus

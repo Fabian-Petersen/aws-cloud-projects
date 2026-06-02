@@ -14,6 +14,13 @@ variable "env" {
   type        = string
 }
 
+variable "profile_2_account_id" {
+  # default     = "157489943321"
+  description = "free tier account id"
+  type        = string
+}
+
+
 variable "dynamodb_tables" {
   type = map(object({
     enable_gsi    = bool

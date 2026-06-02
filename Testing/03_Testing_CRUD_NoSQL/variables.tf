@@ -269,14 +269,13 @@ variable "event_subscriptions" {
   type = map(object({
     source      = string
     detail_type = string
-
     targets = list(object({
       name        = string
-      arn         = string
       target_type = string
     }))
   }))
 }
+
 
 variable "resource_permissions" {
   description = "Generic list of resource permissions for EventBridge targets"
