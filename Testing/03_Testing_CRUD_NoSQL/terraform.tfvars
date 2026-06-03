@@ -305,10 +305,6 @@ api_child_routes = {
         lambda        = "postAssetVerify" // verify asset with barcode ID
         authorization = "COGNITO_USER_POOLS"
       }
-      PUT = {
-        lambda        = "updateAssetVerifyStatus" // update asset verification status        authorization = "COGNITO_USER_POOLS"
-        authorization = "COGNITO_USER_POOLS"
-      }
 
       OPTIONS = {
         authorization = "NONE"
@@ -1091,11 +1087,6 @@ lambda_functions = {
     runtime   = "python3.12"
 
     dynamodb_permissions = {
-      users_table = {
-        table_name         = "crud-nosql-app-users-table"
-        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-        allow_index_access = false
-      }
       assets_table = {
         table_name         = "crud-nosql-app-assets-table"
         actions            = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
@@ -1816,6 +1807,12 @@ dynamodb_tables = {
         projection_type = "ALL"
       }
     }
+  }
+
+  crud-nosql-app-locations = {
+    pk            = "location"
+    enable_gsi    = false
+    enable_stream = false
   }
 
   # request_id for comments by job and + createdAt for sorting

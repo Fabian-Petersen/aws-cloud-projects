@@ -17,12 +17,11 @@ s3 = boto3.client(
     )
 )
 
-TABLE_NAME = "crud-nosql-app-maintenance-action-table"
-TABLE_NAME_REQUESTS = "crud-nosql-app-maintenance-request-table"
-BUCKET_NAME = "crud-nosql-app-images"
+TABLE_ASSETS = "crud-nosql-app-assets-table"
+TABLE_VERIFICATIONS = "crud-nosql-app-assets-verification-table"
 
-table = dynamodb.Table(TABLE_NAME)
-table_requests = dynamodb.Table(TABLE_NAME_REQUESTS)
+table_assets = dynamodb.Table(TABLE_ASSETS)
+table_verifications = dynamodb.Table(TABLE_VERIFICATIONS)
 
 HEADERS = {
     "Content-Type": "application/json",
@@ -122,118 +121,64 @@ def handle_options_request(method, headers):
         return _response(200, {"message": "Success"}, headers)
     return None
 
-# $ Function to get the location and requested_by from requests table
+# $  1. Update asset verified by barcode with an dynamodb event stream to eventbridge
 
 
-def get_request_fields_by_id(table, request_id: str) -> dict:
-    """
-    Get request fields by partition key id.
-    Assumes table PK is 'id' and SK is 'jobCreated'.
-    Returns {} if not found.
-    """
-    res = table.query(
-        KeyConditionExpression=Key("id").eq(request_id),
-        ProjectionExpression="id, jobCreated, #loc, #rb, #asset, #brkt, #job",
-        ExpressionAttributeNames={
-            "#loc": "location",
-            "#rb": "requested_by",
-            "#asset": "assetID",
-            "#brkt": "breakdown_time",
-            "#job": "jobcardNumber",
-        },
-        Limit=1
+def update_assets_table(
+    table_assets,
+    asset_id: str,
+    verification_time: str,
+    verifier_name: str,
+    position: dict,
+):
+    # Find asset using AssetIDIndex
+    response = table_assets.query(
+        IndexName="AssetIDIndex",
+        KeyConditionExpression=Key("assetID").eq(asset_id),
+        Limit=1,
     )
 
-    items = res.get("Items", [])
+    items = response.get("Items", [])
+
     if not items:
-        return {}
+        raise Exception(f"Asset not found for assetID {asset_id}")
 
-    item = items[0]
+    asset = items[0]
+
+    table_assets.update_item(
+        Key={"id": asset["id"]},
+        UpdateExpression="""
+            SET verified = :verified,
+                last_verified = :time,
+                verified_by = :user,
+                verified_location = :location
+        """,
+        ExpressionAttributeValues={
+            ":verified": "verified",
+            ":time": verification_time,
+            ":user": verifier_name,
+            ":location": position,
+        },
+    )
+
     return {
-        "id": item.get("id"),
-        "jobCreated": item.get("jobCreated"),
-        "location": item.get("location"),
-        "requested_by": item.get("requested_by"),
-        "assetID": item.get("assetID"),
-        "breakdown_time": item.get("breakdown_time"),
-        "jobcardNumber": item.get("jobcardNumber"),
+        "asset_id": asset_id,
+        "status": "verified",
     }
 
+# This function are invoked periodically to check the status of the assets and update their status according to the last_verification date
 
-def generate_test_event(event: dict) -> str:
-    """
-    Serialises a Lambda event into a compact JSON string suitable for reuse as a test fixture.
 
-    This function converts the incoming event dictionary into a single-line JSON string
-    without extra whitespace, making it easy to copy from logs (e.g. CloudWatch) and
-    reuse directly in event.json files or API Gateway test payloads.
-
-    Args:
-        event (dict): The Lambda event object received from API Gateway or another source.
-
-    Returns:
-        str: A compact JSON string representation of the event, formatted for test reuse.
-
-    Use:
-    The output of this function can be printed in the Lambda logs to capture the exact event structure for testing.
-    For example, you can run this function in your Lambda handler to print the event:
-
-    print("COPY_EVENT:", generate_test_event(event))
-    return {
-        "statusCode": 200,
-        "body": json.dumps({"message": "ok"})
-    }
-    """
-    return json.dumps(event, separators=(",", ":"))
+# def check_asset_verification_status():
+#     VERIFCATION_STATUS = ["verified", "pending", "overdue", "due soon"]
+#     print(VERIFCATION_STATUS)
 
 
 def normalize_string(value: str | None) -> str:
     return str(value or "").strip().lower()
 
 
-# Generate the presigned url for the images and invoices
-ACCEPTED_TYPES = {
-    "images": ["image/jpeg", "image/png", "image/webp", "image/gif"],
-    # invoices can be pdf or image
-    "invoices": ["application/pdf", "image/jpeg", "image/png"]
-}
-
-
-def generate_url(prefix: str, file_info: dict, accepted_types: list[str], item_id: str) -> dict | None:
-    filename = file_info.get("filename")
-    content_type = file_info.get("content_type", "application/octet-stream")
-
-    if not filename:
-        return None
-
-    # Validate content type
-    if content_type not in accepted_types:
-        raise Exception(
-            f"Invalid file type '{content_type}' for prefix '{prefix}'. Accepted: {accepted_types}")
-
-    key = f"{prefix}/{item_id}/{filename}"
-    url = s3.generate_presigned_url(
-        "put_object",
-        Params={"Bucket": BUCKET_NAME, "Key": key,
-                "ContentType": content_type},
-        ExpiresIn=3600
-    )
-
-    if "s3.af-south-1.amazonaws.com" not in url:
-        raise Exception("Presigned URL generated with incorrect S3 endpoint")
-
-    return {"filename": filename, "url": url, "key": key, "content_type": content_type}
-
-
 def lambda_handler(event, context):
-    # Run to capture a event.json to test the function code
-    # print("COPY_EVENT:", generate_test_event(event))
-
-    # return {
-    #     "statusCode": 200,
-    #     "body": json.dumps({"message": "ok"})
-    # }
-
     print("event:", event)
     method, HEADERS = handle_request_metadata(event)
 
@@ -245,111 +190,22 @@ def lambda_handler(event, context):
         if not event.get("body"):
             return _response(400, {"message": "Missing request body"}, HEADERS)
 
-        data = json.loads(event["body"])
-        # Get the user information from the authoriser token.
-        claims = event.get("requestContext", {}).get(
-            "authorizer", {}).get("claims", {})
+        new_image = event["detail"]["dynamodb"]["NewImage"]
 
-        # Validate required fields
-        required_fields = ["start_time", "end_time", "total_km", "work_order_number", "work_completed",
-                           "status", "root_cause", "findings", "signature", "selectedRowId", "signedBy"]
-        for field in required_fields:
-            if field not in data:
-                return _response(400, {"message": f"Missing field: {field}"}, HEADERS)
-
-        # $ Create backend meta data
-        item_id = str(uuid.uuid4())
-
-        SAST = timezone(timedelta(hours=2))
-        created_at = datetime.now(timezone.utc).astimezone(SAST).isoformat()
-
-        # $ Get the location and requested_by from the requests-table
-        request_id = data['selectedRowId']
-        # print('request_id:', request_id)
-        request_info = get_request_fields_by_id(table_requests, request_id)
-        if not request_info:
-            return _response(404, {"message": "Request not found"}, HEADERS)
-
-        location = normalize_string(request_info.get("location"))
-        requested_by = normalize_string(request_info.get("requested_by"))
-        jobcardNumber = request_info.get("jobcardNumber", "")
-        job_created = request_info.get("jobCreated")
-        assetID = request_info.get("assetID", "")
-        breakdown_time = request_info.get("breakdown_time", "")
-
-        # data from the cognito user sign-in
-        user_id = claims.get("sub")
-        actioned_by = normalize_string(
-            f'{claims.get("name", "")} {claims.get("family_name", "")}')
-
-        # Check if the request was completed, if yes add a completed date.
-        status = normalize_string(data.get("status") or "")
-        if status == "complete":
-            completed_at = datetime.now(timezone.utc).isoformat()
-        else:
-            completed_at = ""
-
-        presigned_urls = []
-
-        for file_info in data.get("images", []):
-            if result := generate_url("maintenance_action", file_info, ACCEPTED_TYPES["images"], item_id):
-                presigned_urls.append(result)
-
-        for file_info in data.get("invoices", []):
-            if result := generate_url("invoices", file_info, ACCEPTED_TYPES["invoices"], item_id):
-                presigned_urls.append(result)
-
-        # Save metadata to DynamoDB
-        item = {
-            "id": item_id,  # $ created on backend
-            "actionCreated": created_at,  # $ created on backend
-            "request_id": data["selectedRowId"],  # $ created on backend
-            "action_sub": user_id,  # $ created on backend
-            "actioned_by": actioned_by,  # $ created on backend
-            "completed_at": completed_at,  # $ created on backend
-            "requested_by": requested_by,  # % from requests-table
-            "location": location,  # % from requests-table
-            "jobcardNumber": jobcardNumber,  # % from requests-table
-            "assetID": assetID,  # % from the requests-table
-            "breakdown_time": breakdown_time,  # % from the requests-table
-            "start_time": data["start_time"],
-            "end_time": data["end_time"],
-            "total_km": data["total_km"],
-            "work_order_number": data["work_order_number"],
-            "status": normalize_string(data.get("status")),
-            "root_cause": data["root_cause"],
-            "work_completed": data["work_completed"],
-            "findings": data["findings"],
-            "sundries": data["sundries"],
-            "total_cost_sundries": data["total_cost_sundries"],
-            "parts": data["parts"],
-            "total_cost_parts": data["total_cost_parts"],
-            "contractor": data["contractor"],
-            "total_cost_contractor": data["total_cost_contractor"],
-            "invoices": [],
-            "images": [],
-            "signedBy": normalize_string(data.get("signedBy")),
-            # Will be updated by S3-triggered Lambda later
-            "signature": data["signature"]
-        }
-
-        # $ Upddate the status of the request created status
-        table_requests.update_item(
-            Key={"id": data["selectedRowId"],
-                 "jobCreated": job_created},
-            UpdateExpression="SET #s = :status, action_id = :action_id",
-            ExpressionAttributeNames={"#s": "status"},
-            ExpressionAttributeValues={
-                ":status": data["status"],
-                # $ id passed to the request table to link the 'request made & action taken'
-                ":action_id": item_id
+        update_assets_table(
+            table_assets=table_assets,
+            asset_id=new_image["assetID"]["S"],
+            verification_time=new_image["verificationCreated"]["S"],
+            verifier_name=new_image["verified_by"]["S"],
+            position={
+                "latitude": Decimal(
+                    new_image["position"]["M"]["latitude"]["N"]
+                ),
+                "longitude": Decimal(
+                    new_image["position"]["M"]["longitude"]["N"]
+                ),
             },
-            ConditionExpression="attribute_exists(id) AND attribute_exists(jobCreated)"
         )
-
-        table.put_item(Item=item)
-
-        return _response(200, {"data": item, "presigned_urls": presigned_urls}, HEADERS)
 
     except Exception as exc:
         print("Error:", exc)

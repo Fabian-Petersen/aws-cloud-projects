@@ -38,6 +38,20 @@ def _response(status_code, body, headers=HEADERS):
     }
 
 
+def asset_exists(asset_id: str) -> dict | None:
+    """
+    Returns asset item if exists, otherwise None
+    """
+    res = table_assets.query(
+        IndexName="AssetIDIndex",
+        KeyConditionExpression=Key("assetID").eq(asset_id),
+        Limit=1,
+    )
+
+    items = res.get("Items", [])
+    return items[0] if items else None
+
+
 def get_user_name(user_id: str) -> str:
     """
     Fetch full name from Users table using Cognito sub (user_id)
@@ -53,7 +67,7 @@ def get_user_name(user_id: str) -> str:
 
 def lambda_handler(event, context):
     try:
-        # OPTIONS support
+        # $ OPTIONS support
         if event.get("httpMethod") == "OPTIONS":
             return _response(200, {"message": "OK"})
 
@@ -62,12 +76,12 @@ def lambda_handler(event, context):
 
         body = json.loads(event["body"])
 
-        # Path param: api/assets/{id}/verify
+        # $ Path param: api/assets/{id}/verify
         asset_id = event.get("pathParameters", {}).get("id")
         if not asset_id:
             return _response(400, {"message": "Missing asset id"})
 
-        # Cognito claims
+        # $ Cognito claims
         claims = event.get("requestContext", {}).get(
             "authorizer", {}).get("claims", {})
         user_id = claims.get("sub")
@@ -77,36 +91,27 @@ def lambda_handler(event, context):
 
         verifier_name = get_user_name(user_id)
 
-        # required payload fields
+        # $ required payload fields
         required = ["latitude", "longitude"]
         for f in required:
             if f not in body:
                 return _response(400, {"message": f"Missing field: {f}"})
 
+        # $ STEP 1: Validate asset exists BEFORE writing anything
+        asset = asset_exists(asset_id)
+
+        if not asset:
+            return _response(
+                404,
+                {"message": "Asset not registered in the database"}
+            )
+
+        # $ STEP 2. Proceed with verification write (audit trail)
         verification_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone(timedelta(hours=2))).isoformat()
         latitude = Decimal(str(body["latitude"]))
         longitude = Decimal(str(body["longitude"]))
 
-        # $  1. Update asset status: This will be done by the updateAssetVerificationStatus lambda
-        # table_assets.update_item(
-        #     Key={"id": asset_id},
-        #     UpdateExpression="""
-        #         SET #s = :status,
-        #             verified = :verified,
-        #             last_verified = :time,
-        #             verified_by = :user
-        #     """,
-        #     ExpressionAttributeNames={"#s": "status"},
-        #     ExpressionAttributeValues={
-        #         ":status": "verified",
-        #         ":verified": True,
-        #         ":time": now,
-        #         ":user": verifier_name,
-        #     },
-        # )
-
-        # 2. Write verification record (audit trail)
         verification_item = {
             "assetID": asset_id,  # PK
             "verificationCreated": now,  # SK
@@ -125,6 +130,9 @@ def lambda_handler(event, context):
             200,
             {
                 "message": "Asset verified successfully",
+                "assetID": asset_id,
+                "verified_by": verifier_name,
+                "verificationCreated": now
             },
         )
 
