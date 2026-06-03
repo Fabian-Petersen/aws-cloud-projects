@@ -37,7 +37,6 @@ def _response(status_code, body, headers=HEADERS):
         "body": json.dumps(body, default=decimal_serializer),
     }
 
-
 def asset_exists(asset_id: str) -> dict | None:
     """
     Returns asset item if exists, otherwise None

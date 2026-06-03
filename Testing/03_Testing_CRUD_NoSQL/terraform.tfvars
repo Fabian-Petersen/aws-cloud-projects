@@ -959,7 +959,7 @@ lambda_functions = {
       assets_table = {
         table_name         = "crud-nosql-app-assets-table"
         actions            = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
-        allow_index_access = false
+        allow_index_access = true
       }
     }
     statements = [
@@ -1071,24 +1071,10 @@ lambda_functions = {
       assets_table = {
         table_name         = "crud-nosql-app-assets-table"
         actions            = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
-        allow_index_access = false
+        allow_index_access = true
       }
-      assets_table = {
+      verification_table = {
         table_name         = "crud-nosql-app-assets-verification-table"
-        actions            = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
-        allow_index_access = false
-      }
-    }
-  }
-
-  updateAssetVerifyStatus = {
-    file_name = "updateAssetVerifyStatus.py"
-    handler   = "updateAssetVerifyStatus.lambda_handler"
-    runtime   = "python3.12"
-
-    dynamodb_permissions = {
-      assets_table = {
-        table_name         = "crud-nosql-app-assets-table"
         actions            = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = false
       }
@@ -1708,6 +1694,41 @@ lambda_functions_custom = {
 
     managed_policy_arns = []
   }
+
+  updateAssetVerifyStatus = {
+    file_name = "updateAssetVerifyStatus.py"
+    handler   = "updateAssetVerifyStatus.lambda_handler"
+    runtime   = "python3.12"
+
+    # Inline policies required for Lambda
+    inline_policy_statements = [
+      {
+        sid = "DynamoDBAssetTableAccess"
+        actions = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-assets-table",
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-assets-table/index/*"
+        ]
+      },
+      {
+        sid = "DynamoDBLocationTableAccess"
+        actions = [
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-locations-table"
+        ]
+      }
+    ]
+    managed_policy_arns = []
+  }
 }
 
 # $ // ================================================================================ // 
@@ -1760,6 +1781,8 @@ dynamodb_tables = {
     enable_gsi    = false
     enable_stream = false
   }
+
+  /* # $ ------------------------------ Assets Table ------------------------------ */
   crud-nosql-app-assets = {
     pk            = "id"
     enable_gsi    = true
@@ -1769,13 +1792,18 @@ dynamodb_tables = {
         hash_key        = "assetID"
         projection_type = "ALL"
       }
+      "SerialNumberIndex" = {
+        hash_key           = "serialNumber"
+        projection_type    = "INCLUDE"
+        non_key_attributes = ["assetID", "id", "location"]
+      }
       "LocationIndex" = {
         hash_key        = "location"
         projection_type = "ALL"
       }
     }
   }
-
+  /* # $ ------------------------------ Assets Verification Table ------------------------------ */
   crud-nosql-app-assets-verification = {
     pk            = "assetID"
     sk            = "verificationCreated"
@@ -1962,12 +1990,12 @@ from_email         = "no-reply@crud-nosql.app.fabian-portfolio.net"
 
 # $ Event Bridge - for triggering lambdas on specific events like asset verification or scanning
 event_subscriptions = {
-  asset_verified = {
+  asset-verification = {
     source      = "asset-verify-service"
     detail_type = "AssetVerified"
     targets = [
       {
-        name        = "asset-verify-lambda"
+        name        = "updateAssetVerifyStatus"
         target_type = "lambda"
       }
     ]

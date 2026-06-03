@@ -164,6 +164,7 @@ module "dynamodb_tables" {
   source = "../../modules/dynamoDB"
   # dynamoDB_table_names = var.dynamoDB_table_names # % List variable - "constrained to only name"
   env             = var.env
+  project_name    = var.project_name
   dynamodb_tables = var.dynamodb_tables # % Map variable - added features can be passed in map
 }
 
@@ -269,9 +270,9 @@ module "eventbridge" {
     {
       service     = "lambda"
       principal   = "events.amazonaws.com"
-      target_name = "asset-verify-lambda" # matches event_subscriptions target name
-      source_arn  = "arn:aws:events:${var.region}:${var.profile_2_account_id}:rule/${var.project_name}-asset_verified-rule"
-      target_arn  = module.lambda.lambda_arns["updateAssetVerifyStatus"] # Look up the ARN for this target from the lambda module output
+      target_name = "updateAssetVerifyStatus" # matches event_subscriptions target name
+      source_arn  = "arn:aws:events:${var.region}:${var.profile_2_account_id}:rule/${var.project_name}-asset-verification-rule"
+      target_arn  = module.cognito_lambda.custom_lambda_arns["updateAssetVerifyStatus"] # Look up the ARN for this target from the lambda module output. cognito_lambda is the resource where the custom lambda function will be generated
     }
   ]
 }

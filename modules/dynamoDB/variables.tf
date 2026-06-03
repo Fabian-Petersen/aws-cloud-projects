@@ -27,6 +27,12 @@ variable "env" {
   type = string
 }
 
+variable "project_name" {
+  description = "The name of the project"
+  type        = string
+}
+
+
 # Optional GSI map: key = table_name, value = GSI config
 # variable "table_gsi_map" {
 #   type = map(object({
