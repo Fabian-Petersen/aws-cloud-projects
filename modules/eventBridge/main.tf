@@ -1,4 +1,5 @@
 locals {
+  # Return map of tables where enable_stream is true
   stream_tables = {
     for name, table in var.dynamodb_tables :
     name => table

@@ -4,3 +4,7 @@ output "rule_arns" {
     k => rule.arn
   }
 }
+
+output "debug_stream_tables" {
+  value = local.stream_tables
+}

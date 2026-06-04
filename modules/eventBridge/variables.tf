@@ -23,14 +23,13 @@ variable "profile_2_account_id" {
 
 variable "dynamodb_tables" {
   type = map(object({
-    enable_gsi    = bool
-    enable_stream = bool
-    stream_filter = optional(list(string), ["INSERT"])
-
-    # Per-table primary key config
-    pk = optional(string) # default "id" if not set
-    sk = optional(string) # only set if you want a sort key
-
+    enable_gsi        = bool
+    enable_stream     = bool
+    stream_filter     = optional(list(string), ["INSERT"])
+    event_source      = optional(string)
+    event_detail_type = optional(string)
+    pk                = optional(string)
+    sk                = optional(string)
     gsis = optional(map(object({
       hash_key           = string
       range_key          = optional(string)
@@ -39,7 +38,6 @@ variable "dynamodb_tables" {
     })))
   }))
 }
-
 variable "event_subscriptions" {
   type = map(object({
     source      = string

@@ -255,6 +255,10 @@ module "ses" {
 
 #$ // ========================= Event Bridge ======================== //
 
+# output "debug_stream_tables" {
+#   value = module.eventbridge.debug_stream_tables
+# }
+
 module "eventbridge" {
   source = "../../modules/eventBridge"
   env    = var.env

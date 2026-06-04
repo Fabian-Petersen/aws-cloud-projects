@@ -1707,6 +1707,7 @@ lambda_functions_custom = {
         actions = [
           "dynamodb:GetItem",
           "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
           "dynamodb:Scan",
           "dynamodb:Query",
         ]
