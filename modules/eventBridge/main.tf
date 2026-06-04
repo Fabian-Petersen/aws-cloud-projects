@@ -110,6 +110,12 @@ resource "aws_pipes_pipe" "dynamoDB_to_eventbridge" {
       }
     }
   }
+  target_parameters {
+    eventbridge_event_bus_parameters {
+      source      = each.value.event_source
+      detail_type = each.value.event_detail_type
+    }
+  }
 
   tags = {
     Project     = var.project_name
@@ -166,4 +172,75 @@ resource "aws_lambda_permission" "allow_eventbridge" {
   function_name = each.value.target_arn
   principal     = each.value.principal
   source_arn    = each.value.source_arn
+
+  depends_on = [aws_cloudwatch_event_rule.rules]
+}
+
+# Eventbridge Cloudwatch Logs 
+resource "aws_cloudwatch_log_group" "event_bus_logs" {
+  name              = "/aws/events/${var.project_name}-event-bus"
+  retention_in_days = 3 # adjust per env
+
+  tags = {
+    Project     = var.project_name
+    Module      = "EventBridge"
+    Environment = var.env
+  }
+}
+
+
+resource "aws_cloudwatch_log_resource_policy" "eventbridge_log_policy" {
+  policy_name = "${var.project_name}-eventbridge-log-policy"
+
+  policy_document = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = ["delivery.logs.amazonaws.com", "events.amazonaws.com"]
+      }
+      Action = [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ]
+      Resource = "${aws_cloudwatch_log_group.event_bus_logs.arn}:*"
+    }]
+  })
+}
+
+# Add a Catch-All Rule + Log Target
+resource "aws_cloudwatch_event_rule" "log_all_events" {
+  name           = "${var.project_name}-log-all-events"
+  event_bus_name = aws_cloudwatch_event_bus.custom_event_bus.name
+  description    = "Catch-all rule to log every event to CloudWatch"
+
+  event_pattern = jsonencode({
+    source = [{ "prefix" = "" }] # source = ["your.source.name"]  # e.g. "com.myapp.orders" for specific logs
+  })
+}
+# For specific logs and detail type
+# event_pattern = jsonencode({
+#   source      = ["your.source.name"]
+#   detail-type = ["YourDetailType"]
+# })
+# event_subscriptions = {
+#   my_rule = {
+#     source      = "com.myapp.orders"
+#     detail_type = "OrderCreated"
+#     ...
+#   }
+# }
+
+resource "aws_cloudwatch_event_target" "log_target" {
+  rule           = aws_cloudwatch_event_rule.log_all_events.name
+  event_bus_name = aws_cloudwatch_event_bus.custom_event_bus.name
+  target_id      = "cloudwatch-log-target"
+  arn            = aws_cloudwatch_log_group.event_bus_logs.arn
+}
+
+# If you also want to replay events (useful for debugging or re-processing), add an archive:
+resource "aws_cloudwatch_event_archive" "event_bus_archive" {
+  name             = "${var.project_name}-event-archive"
+  event_source_arn = aws_cloudwatch_event_bus.custom_event_bus.arn
+  retention_days   = 3
 }

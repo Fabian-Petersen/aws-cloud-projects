@@ -271,9 +271,9 @@ module "eventbridge" {
       service     = "lambda"
       principal   = "events.amazonaws.com"
       target_name = "updateAssetVerifyStatus" # matches event_subscriptions target name
-      source_arn  = "arn:aws:events:${var.region}:${var.profile_2_account_id}:rule/${var.project_name}-asset-verification-rule"
+      source_arn  = module.eventbridge.rule_arns["asset-verification"]
       target_arn  = module.cognito_lambda.custom_lambda_arns["updateAssetVerifyStatus"] # Look up the ARN for this target from the lambda module output. cognito_lambda is the resource where the custom lambda function will be generated
     }
   ]
 }
-# module.lambda.lambda_invoke_arns
+

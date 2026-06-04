@@ -6,10 +6,11 @@
 # $ Map variable makes the code easier for specific features.
 variable "dynamodb_tables" {
   type = map(object({
-    enable_gsi    = bool
-    enable_stream = bool
-    stream_filter = optional(list(string), ["INSERT"])
-
+    enable_gsi        = bool
+    enable_stream     = bool
+    stream_filter     = optional(list(string), ["INSERT"])
+    event_source      = optional(string)
+    event_detail_type = optional(string)
     # Per-table primary key config
     pk = optional(string) # default "id" if not set
     sk = optional(string) # only set if you want a sort key
@@ -22,7 +23,6 @@ variable "dynamodb_tables" {
     })))
   }))
 }
-
 variable "env" {
   type = string
 }

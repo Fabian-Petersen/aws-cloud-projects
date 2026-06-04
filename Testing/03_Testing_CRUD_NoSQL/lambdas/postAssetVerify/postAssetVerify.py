@@ -37,6 +37,7 @@ def _response(status_code, body, headers=HEADERS):
         "body": json.dumps(body, default=decimal_serializer),
     }
 
+
 def asset_exists(asset_id: str) -> dict | None:
     """
     Returns asset item if exists, otherwise None
@@ -74,11 +75,13 @@ def lambda_handler(event, context):
             return _response(400, {"message": "Missing body"})
 
         body = json.loads(event["body"])
+        print("body:", body)
 
         # $ Path param: api/assets/{id}/verify
         asset_id = event.get("pathParameters", {}).get("id")
         if not asset_id:
             return _response(400, {"message": "Missing asset id"})
+        print(f"Asset ID: {asset_id}")
 
         # $ Cognito claims
         claims = event.get("requestContext", {}).get(
@@ -94,16 +97,19 @@ def lambda_handler(event, context):
         required = ["latitude", "longitude"]
         for f in required:
             if f not in body:
-                return _response(400, {"message": f"Missing field: {f}"})
+                return _response(400, {"message": f"Missing position coordinates field: {f}"})
 
         # $ STEP 1: Validate asset exists BEFORE writing anything
         asset = asset_exists(asset_id)
 
         if not asset:
-            return _response(
+            response = _response(
                 404,
-                {"message": "Asset not registered in the database"}
+                {"message": f"Asset {asset_id} not registered in the database"}
             )
+
+            print("response:", response)
+            return response
 
         # $ STEP 2. Proceed with verification write (audit trail)
         verification_id = str(uuid.uuid4())
@@ -112,7 +118,7 @@ def lambda_handler(event, context):
         longitude = Decimal(str(body["longitude"]))
 
         verification_item = {
-            "assetID": asset_id,  # PK
+            "assetID": asset_id,  # PKs
             "verificationCreated": now,  # SK
             "id": verification_id,
             "verified_by": verifier_name,
@@ -128,10 +134,7 @@ def lambda_handler(event, context):
         return _response(
             200,
             {
-                "message": "Asset verified successfully",
-                "assetID": asset_id,
-                "verified_by": verifier_name,
-                "verificationCreated": now
+                "message": f"Asset {asset_id} successfully verified",
             },
         )
 

@@ -1805,10 +1805,13 @@ dynamodb_tables = {
   }
   /* # $ ------------------------------ Assets Verification Table ------------------------------ */
   crud-nosql-app-assets-verification = {
-    pk            = "assetID"
-    sk            = "verificationCreated"
-    enable_gsi    = false
-    enable_stream = true // enable stream to trigger lambda for verification updates
+    pk                = "assetID"
+    sk                = "verificationCreated"
+    enable_gsi        = false
+    enable_stream     = true // enable stream to trigger lambda for verification updates
+    stream_filter     = ["INSERT"]
+    event_source      = "asset-verify-service" # matches your rule
+    event_detail_type = "AssetVerified"
   }
 
   crud-nosql-app-assets-transfer = {
