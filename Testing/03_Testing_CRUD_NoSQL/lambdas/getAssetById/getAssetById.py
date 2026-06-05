@@ -8,8 +8,13 @@ from boto3.dynamodb.conditions import Key
 
 dynamodb = boto3.resource("dynamodb")
 assets_table = dynamodb.Table("crud-nosql-app-assets-table")
+
 maintenance_table = dynamodb.Table(
     "crud-nosql-app-maintenance-action-table"
+)
+
+request_table = dynamodb.Table(
+    "crud-nosql-app-maintenance-request-table"
 )
 
 transfer_table = dynamodb.Table(
@@ -105,6 +110,30 @@ def convert_decimals(obj):
 ##############################################################
 
 
+def get_job_description(asset_id: str, job_id: str) -> str:
+    try:
+        response = request_table.query(
+            IndexName="AssetIdIndex",
+            KeyConditionExpression=Key("assetID").eq(asset_id)
+        )
+
+        items = response.get("Items", [])
+
+        if not items:
+            return ""
+
+        # find the exact job/request record
+        for item in items:
+            if item.get("id") == job_id:
+                return item.get("description", "")
+
+        return ""
+
+    except Exception as exc:
+        print(f"Error retrieving job description: {exc}")
+        return ""
+
+
 def get_maintenance_history(asset_id: str) -> list:
     try:
         response = maintenance_table.query(
@@ -121,10 +150,10 @@ def get_maintenance_history(asset_id: str) -> list:
             {
                 "id": item.get("id"),
                 "jobcardNumber": item.get("jobcardNumber"),
-                "description": item.get("description"),
+                "description": get_job_description(item.get("assetID"), item.get("request_id")),
                 "completedAt": (
-                    to_human_date(item["completedAt"])
-                    if item.get("completedAt")
+                    to_human_date(item["completed_at"])
+                    if item.get("completed_at")
                     else None
                 ),
                 "actioned_by": item.get("actioned_by"),
@@ -227,7 +256,6 @@ def _response(status_code, body):
         "headers": HEADERS,
         "body": json.dumps(body),
     }
-
 
     # Run the lambda locally with the events.json file to test
 if __name__ == "__main__":
