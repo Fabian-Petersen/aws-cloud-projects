@@ -4,9 +4,18 @@ import boto3
 import os
 from datetime import datetime
 from botocore.config import Config
+from boto3.dynamodb.conditions import Key
 
 dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table("crud-nosql-app-assets-table")
+assets_table = dynamodb.Table("crud-nosql-app-assets-table")
+maintenance_table = dynamodb.Table(
+    "crud-nosql-app-maintenance-action-table"
+)
+
+transfer_table = dynamodb.Table(
+    "crud-nosql-app-assets-transfer-table"
+)
+
 s3 = boto3.client(
     "s3",
     region_name="af-south-1",
@@ -76,6 +85,93 @@ def add_presigned_urls(item: dict) -> dict:
     return item
 
 
+def convert_decimals(obj):
+    """Recursively convert DynamoDB Decimals to JSON-serializable types."""
+
+    if isinstance(obj, list):
+        return [convert_decimals(item) for item in obj]
+
+    if isinstance(obj, dict):
+        return {key: convert_decimals(value) for key, value in obj.items()}
+
+    if isinstance(obj, Decimal):
+        # Return int if it's a whole number, otherwise float
+        return int(obj) if obj % 1 == 0 else float(obj)
+
+    return obj
+
+##############################################################
+############# GET ASSET MAINTENANCE HISTORY ##################
+##############################################################
+
+
+def get_maintenance_history(asset_id: str) -> list:
+    try:
+        response = maintenance_table.query(
+            IndexName="AssetIdIndex",
+            KeyConditionExpression=Key("assetID").eq(asset_id)
+        )
+
+        items = response.get("Items", [])
+
+        if not items:
+            return []
+
+        return [
+            {
+                "id": item.get("id"),
+                "jobcardNumber": item.get("jobcardNumber"),
+                "description": item.get("description"),
+                "completedAt": (
+                    to_human_date(item["completedAt"])
+                    if item.get("completedAt")
+                    else None
+                ),
+                "actioned_by": item.get("actioned_by"),
+            }
+            for item in items
+        ]
+
+    except Exception as exc:
+        print(f"Error loading maintenance history: {exc}")
+        return []
+
+##############################################################
+################ GET ASSET TRANSFER HISTORY ##################
+##############################################################
+
+
+def get_transfer_history(asset_id: str) -> list:
+    try:
+        response = transfer_table.get_item(
+            Key={"id": asset_id}
+        )
+
+        items = response.get("Items", [])
+
+        if not items:
+            return []
+
+        return [
+            {
+                "id": item.get("id"),
+                "fromLocation": item.get("fromLocation"),
+                "toLocation": item.get("toLocation"),
+                "transferredAt": (
+                    to_human_date(item["transferredAt"])
+                    if item.get("transferredAt")
+                    else None
+                ),
+                "transferredBy": item.get("transferredBy"),
+            }
+            for item in items
+        ]
+
+    except Exception as exc:
+        print(f"Error loading transfer history: {exc}")
+        return []
+
+
 def lambda_handler(event, context):
     try:
         # Path param from API Gateway
@@ -85,7 +181,7 @@ def lambda_handler(event, context):
             return _response(400, {"message": "Missing request id"})
 
         # Use GetItem (fast, exact match)
-        result = table.get_item(
+        result = assets_table.get_item(
             Key={"id": request_id}
         )
 
@@ -100,10 +196,25 @@ def lambda_handler(event, context):
         if "createdAt" in item:
             item["createdAt"] = to_human_date(item["createdAt"])
 
+         # $ Asset history
+        asset_id = item.get("assetID")
+
+        item["maintenanceHistory"] = (
+            get_maintenance_history(asset_id)
+            if asset_id
+            else []
+        )
+
+        item["transferHistory"] = (
+            get_transfer_history(asset_id)
+            if asset_id
+            else []
+        )
+
         # ✅ Add presigned URLs to each image
         item = add_presigned_urls(item)
         print("item:", item)
-        return _response(200, item)
+        return _response(200, convert_decimals(item))
 
     except Exception as exc:
         print("Error:", exc)

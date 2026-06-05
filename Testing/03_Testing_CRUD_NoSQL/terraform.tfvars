@@ -910,6 +910,16 @@ lambda_functions = {
         actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = false
       }
+      jobs_table = {
+        table_name         = "crud-nosql-app-maintenance-action-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+      transfer_table = {
+        table_name         = "crud-nosql-app-assets-transfer-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
     }
 
     statements = [
@@ -1821,6 +1831,8 @@ dynamodb_tables = {
     enable_gsi    = false
     enable_stream = true // enable stream to trigger lambda for transfer created
   }
+
+  /* # $ ----------------------------------- Job Action Table ----------------------------------- */
   crud-nosql-app-maintenance-action = {
     pk            = "id"
     sk            = "actionCreated"
