@@ -1096,6 +1096,117 @@ lambda_functions = {
     }
   }
 
+  # $ // ========================== START: Asset Transfer Lambdas ============================== //
+  postTransferRequest = {
+    file_name = "postTransferRequest.py"
+    handler   = "postTransferRequest.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      asset_transfer_table = {
+        table_name         = "crud-nosql-app-assets-transfer-table"
+        actions            = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  postTransferApproval = {
+    file_name = "postTransferApproval.py"
+    handler   = "postTransferApproval.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      asset_transfer_table = {
+        table_name         = "crud-nosql-app-assets-transfer-table"
+        actions            = ["dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  postTransferReceipt = {
+    file_name = "postTransferReceipt.py"
+    handler   = "postTransferReceipt.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      asset_transfer_table = {
+        table_name         = "crud-nosql-app-assets-transfer-table"
+        actions            = ["dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  postTransferTransit = {
+    file_name = "postTransferTransit.py"
+    handler   = "postTransferTransit.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      asset_transfer_table = {
+        table_name         = "crud-nosql-app-assets-transfer-table"
+        actions            = ["dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  postTransferCancel = {
+    file_name = "postTransferCancel.py"
+    handler   = "postTransferCancel.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      asset_transfer_table = {
+        table_name         = "crud-nosql-app-assets-transfer-table"
+        actions            = ["dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  // Lamnda not invoked by API Gateway - Move to custom lambda's
+  // Lambda invoked by EventBridge Schedule.
+  checkApprovalTimeout = {
+    file_name = "checkApprovalTimeout.py"
+    handler   = "checkApprovalTimeout.lambda_handler"
+    runtime   = "python3.12"
+
+    dynamodb_permissions = {
+      asset_transfer_table = {
+        table_name         = "crud-nosql-app-assets-transfer-table"
+        actions            = ["dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+
+    // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
+    statements = [
+      # {
+      #   actions   = ["s3:GetObject"]
+      #   resources = ["arn:aws:s3:::crud-nosql-app-images/jobcards/*"]
+      # },
+      # {
+      #   actions   = ["s3:ListBucket"]
+      #   resources = ["arn:aws:s3:::crud-nosql-app-images"]
+      #   conditions = [
+      #     {
+      #       test     = "StringLike"
+      #       variable = "s3:prefix"
+      #       values   = ["jobcards/*"]
+      #     }
+      #   ]
+      # }
+    ]
+  }
+
+
+
+
+  # % // ============================ END: Asset Transfer Lambdas ============================== // 
+
   getJobcardById = {
     file_name = "getJobcardById.py"
     handler   = "getJobcardById.lambda_handler"
@@ -1830,11 +1941,36 @@ dynamodb_tables = {
     event_detail_type = "AssetVerified"
   }
 
+
+  /* # $ ---------------------------- Assets Transfer Table --------------------------------- */
+
   crud-nosql-app-assets-transfer = {
-    pk            = "assetID"
-    sk            = "transferCreated"
-    enable_gsi    = false
-    enable_stream = true // enable stream to trigger lambda for transfer created
+    pk                = "assetID"
+    sk                = "transferCreated"
+    enable_gsi        = true
+    enable_stream     = true // enable stream to trigger lambda for transfer created
+    stream_filter     = ["INSERT", "MODIFY"]
+    event_source      = "asset-transfer-service" # matches your rule
+    event_detail_type = "TransferRequest"
+    gsis = {
+      "TransferStatusIndex" = {
+        hash_key        = "status"
+        range_key       = "transferCreated"
+        projection_type = "ALL"
+      }
+      "RequestorIndex" = {
+        hash_key           = "requestorSub"
+        range_key          = "transferCreated"
+        projection_type    = "INCLUDE"
+        non_key_attributes = ["status", "assetID", "locationFrom", "locationTo", "transferReason"]
+      }
+      "ApproverIndex" = {
+        hash_key           = "approvedBySub"
+        range_key          = "transferCreated"
+        projection_type    = "INCLUDE"
+        non_key_attributes = ["status", "assetID", "dateApproved", "locationFrom", "locationTo", "transferReason", "transportCost", "transportName"]
+      }
+    }
   }
 
   /* # $ ----------------------------------- Job Action Table ----------------------------------- */
@@ -2017,6 +2153,29 @@ event_subscriptions = {
     targets = [
       {
         name        = "updateAssetVerifyStatus"
+        target_type = "lambda"
+      }
+    ]
+  }
+
+  asset-transfer = {
+    source      = "asset-transfer-service"
+    detail_type = "TransferRequest"
+    targets = [
+      {
+        name        = "assetTransferRequest"
+        target_type = "lambda"
+      },
+      {
+        name        = "assetTransferApproval"
+        target_type = "lambda"
+      },
+      {
+        name        = "assetTransferReceipt"
+        target_type = "lambda"
+      },
+      {
+        name        = "assetTransferTransit"
         target_type = "lambda"
       }
     ]
