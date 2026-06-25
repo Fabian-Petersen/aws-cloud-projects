@@ -1167,43 +1167,6 @@ lambda_functions = {
     }
   }
 
-  // Lamnda not invoked by API Gateway - Move to custom lambda's
-  // Lambda invoked by EventBridge Schedule.
-  checkApprovalTimeout = {
-    file_name = "checkApprovalTimeout.py"
-    handler   = "checkApprovalTimeout.lambda_handler"
-    runtime   = "python3.12"
-
-    dynamodb_permissions = {
-      asset_transfer_table = {
-        table_name         = "crud-nosql-app-assets-transfer-table"
-        actions            = ["dynamodb:Query", "dynamodb:Scan"]
-        allow_index_access = false
-      }
-    }
-
-    // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
-    statements = [
-      # {
-      #   actions   = ["s3:GetObject"]
-      #   resources = ["arn:aws:s3:::crud-nosql-app-images/jobcards/*"]
-      # },
-      # {
-      #   actions   = ["s3:ListBucket"]
-      #   resources = ["arn:aws:s3:::crud-nosql-app-images"]
-      #   conditions = [
-      #     {
-      #       test     = "StringLike"
-      #       variable = "s3:prefix"
-      #       values   = ["jobcards/*"]
-      #     }
-      #   ]
-      # }
-    ]
-  }
-
-
-
 
   # % // ============================ END: Asset Transfer Lambdas ============================== // 
 
@@ -1855,6 +1818,48 @@ lambda_functions_custom = {
       }
     ]
     managed_policy_arns = []
+  }
+
+  // Lamnda not invoked by API Gateway - Move to custom lambda's
+  // Lambda invoked by EventBridge Schedule.
+  checkApprovalTimeout = {
+    file_name = "checkApprovalTimeout.py"
+    handler   = "checkApprovalTimeout.lambda_handler"
+    runtime   = "python3.12"
+
+    // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
+    inline_policy_statements = [
+      {
+        sid = "DynamoDBAssetTransferTableAccess"
+        actions = [
+          "dynamodb:UpdateItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-assets-transfer-table",
+          # "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-assets-transfer-table/index/*" - add this later if necessary
+        ]
+      },
+      {
+        sid = "TransferApprovalTopicAccess"
+        actions = [
+          "sns:Publish"
+        ]
+        resources = [
+          "arn:aws:sns:af-south-1:157489943321:asset-transfer-approval-topic"
+        ]
+      },
+      {
+        sid = "TransferSchedulerAccess"
+        actions = [
+          "scheduler:DeleteSchedule"
+        ]
+        resources = [
+          "arn:aws:scheduler:af-south-1:157489943321:schedule/*/transfer-*-timeout"
+        ]
+      }
+    ]
   }
 }
 
