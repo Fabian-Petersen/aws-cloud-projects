@@ -23,12 +23,14 @@ resource "aws_sqs_queue" "dlq" {
     if try(v.create_dlq, true)
   }
 
-  name = "${each.value.name}-dlq"
+  name = try(v.fifo, false) ? "${v.name}-dlq.fifo" : "${v.name}-dlq"
 }
+
+
 
 // This connects SQS to Lambda Functions
 resource "aws_lambda_event_source_mapping" "this" {
-  for_each = var.lambda_triggers
+  for_each = var.sqs_lambda_triggers
 
   event_source_arn = aws_sqs_queue.queue[each.key].arn
   function_name    = each.value.function_name

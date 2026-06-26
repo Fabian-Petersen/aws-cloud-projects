@@ -191,6 +191,8 @@ variable "lambda_functions_custom" {
 
     environment_variables = optional(map(string), {})
 
+    sns_publish_topics = optional(list(string), [])
+
     inline_policy_statements = optional(list(object({
       sid       = optional(string)
       effect    = optional(string, "Allow")
@@ -402,7 +404,50 @@ variable "parameters" {
 # $ SES Variables
 variable "from_email" { type = string } # for SES identity
 
-#$ lambda packaging
+# $ lambda packaging
 variable "ses_function_name" { type = string }
 variable "ses_lambda_handler" { type = string }
 variable "ses_filename" {}
+
+# $ SQS Variables
+variable "queues" {
+  type = map(object({
+    name = string
+    fifo = optional(bool, false)
+
+    visibility_timeout = optional(number, 30)
+    max_receive_count  = optional(number, 3)
+    create_dlq         = optional(bool, true)
+
+    content_deduplication = optional(bool, true)
+  }))
+}
+
+variable "sqs_lambda_triggers" {
+  type = map(object({
+    function_name                      = string
+    batch_size                         = optional(number, 10)
+    enabled                            = optional(bool, true)
+    maximum_batching_window_in_seconds = optional(number, 0)
+  }))
+  default = {}
+}
+
+
+# $ SNS Variables
+variable "allowed_lambda_arns" {
+  type = map(string)
+}
+variable "topics" {
+  type = map(object({
+    name = string
+
+    email_subscriptions = optional(list(string), [])
+    sms_subscriptions   = optional(list(string), [])
+
+    enable_push = optional(bool, false)
+  }))
+}
+
+variable "fcm_key" {}
+

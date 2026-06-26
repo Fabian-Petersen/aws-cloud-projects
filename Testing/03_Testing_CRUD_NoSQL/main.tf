@@ -151,7 +151,7 @@ module "s3_event_lambda" {
   depends_on = [module.dynamodb_tables]
 }
 
-#$ // =========================== Technicians Lambda with Cognito ============================== //
+#$ // ============ Technicians Lambda with Cognito (custom lambdas) =================== //
 module "cognito_lambda" {
   source                  = "../../modules/lambda/modules/lambda"
   lambda_functions_custom = var.lambda_functions_custom
@@ -281,3 +281,10 @@ module "eventbridge" {
   ]
 }
 
+#$ // ========================= SQS ======================== //
+
+module "sqs" {
+  source              = "../../modules/sqs"
+  queues              = var.queues
+  sqs_lambda_triggers = var.sqs_lambda_triggers
+}

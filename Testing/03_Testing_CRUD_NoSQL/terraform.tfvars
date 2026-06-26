@@ -1823,9 +1823,10 @@ lambda_functions_custom = {
   // Lamnda not invoked by API Gateway - Move to custom lambda's
   // Lambda invoked by EventBridge Schedule.
   checkApprovalTimeout = {
-    file_name = "checkApprovalTimeout.py"
-    handler   = "checkApprovalTimeout.lambda_handler"
-    runtime   = "python3.12"
+    file_name          = "checkApprovalTimeout.py"
+    handler            = "checkApprovalTimeout.lambda_handler"
+    runtime            = "python3.12"
+    sns_publish_topics = ["asset-transfer-request-topic"]
 
     // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
     inline_policy_statements = [
@@ -1842,12 +1843,12 @@ lambda_functions_custom = {
         ]
       },
       {
-        sid = "TransferApprovalTopicAccess"
+        sid = "TransferTimeOutEvent"
         actions = [
-          "sns:Publish"
+          "sqs:SendMessage"
         ]
         resources = [
-          "arn:aws:sns:af-south-1:157489943321:asset-transfer-approval-topic"
+          "arn:aws:sqs:af-south-1:157489943321:asset-transfer-notifications-queue"
         ]
       },
       {
@@ -1860,6 +1861,159 @@ lambda_functions_custom = {
         ]
       }
     ]
+  }
+
+  assetTransferTransit = {
+    file_name = "assetTransferTransit.py"
+    handler   = "assetTransferTransit.lambda_handler"
+    runtime   = "python3.12"
+
+    // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
+    inline_policy_statements = [
+      {
+        sid = "TransferTransitEvent"
+        actions = [
+          "sqs:SendMessage"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-transfer-notifications-queue"
+        ]
+      },
+    ]
+  }
+
+  assetTransferRequest = {
+    file_name = "assetTransferRequest.py"
+    handler   = "assetTransferRequest.lambda_handler"
+    runtime   = "python3.12"
+
+    // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
+    inline_policy_statements = [
+      {
+        sid = "TransferRequestEvent"
+        actions = [
+          "sqs:SendMessage"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-transfer-notifications-queue"
+        ]
+      },
+    ]
+  }
+
+  assetTransferApproval = {
+    file_name = "assetTransferApproval.py"
+    handler   = "assetTransferApproval.lambda_handler"
+    runtime   = "python3.12"
+
+    # sns_publish_topics = ["asset-transfer-approval-topic"]
+
+    // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
+    inline_policy_statements = [
+      {
+        sid = "TransferApprovalEvent"
+        actions = [
+          "sqs:SendMessage"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-transfer-notifications-queue"
+        ]
+      },
+    ]
+  }
+
+  assetTransferReceipt = {
+    file_name = "assetTransferReceipt.py"
+    handler   = "assetTransferReceipt.lambda_handler"
+    runtime   = "python3.12"
+
+    # sns_publish_topics = ["asset-transfer-receipt-topic"]
+
+    // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
+    inline_policy_statements = [
+      {
+        sid = "TransferReceiptEvent"
+        actions = [
+          "sqs:SendMessage"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-transfer-notifications-queue"
+        ]
+      },
+    ]
+  }
+}
+
+# $ // ================================================================================ // 
+# $ //                            SQS Queues                                            // 
+# $ // ================================================================================ // 
+
+
+queues = {
+  transfer_transit_events = {
+    name              = "asset-transfer-transit-queue"
+    max_receive_count = 3
+    create_dlq        = true
+  }
+
+  transfer_request_events = {
+    name              = "asset-transfer-request-queue"
+    max_receive_count = 3
+    create_dlq        = true
+  }
+
+  transfer_approval_events = {
+    name              = "asset-transfer-approval-queue"
+    max_receive_count = 3
+    create_dlq        = true
+  }
+
+  transfer_receipt_events = {
+    name              = "asset-transfer-receipt-queue"
+    max_receive_count = 3
+    create_dlq        = true
+  }
+
+  notification_events = {
+    name = "asset-transfer-notifications-queue"
+  }
+}
+
+sqs_lambda_triggers = {
+  transfer_transit_events = {
+    function_name = "assetTransferTransit"
+    batch_size    = 5
+  }
+
+  transfer_request_events = {
+    function_name = "assetTransferRequest"
+    batch_size    = 5
+  }
+
+  transfer_approval_events = {
+    function_name = "assetTransferApproval"
+    batch_size    = 5
+  }
+
+  transfer_receipt_events = {
+    function_name = "assetTransferReceipt"
+    batch_size    = 5
+  }
+
+  notification_events = {
+    function_name = "handleNotifications"
+  }
+}
+
+
+# $ // ================================================================================ // 
+# $ //                            SNS Queues                                            // 
+# $ // ================================================================================ // 
+
+
+topics = {
+  asset_transfer_request = {
+    name = "asset-transfer-request-topic"
   }
 }
 
@@ -1974,6 +2128,12 @@ dynamodb_tables = {
         range_key          = "transferCreated"
         projection_type    = "INCLUDE"
         non_key_attributes = ["status", "assetID", "dateApproved", "locationFrom", "locationTo", "transferReason", "transportCost", "transportName"]
+      }
+      "RecipientIndex" = {
+        hash_key           = "receivedBySub"
+        range_key          = "transferCreated"
+        projection_type    = "INCLUDE"
+        non_key_attributes = ["condition", "damageDetails", "assetID", "dateReceived", "locationFrom", "locationTo", "transferReason", "deliveryNoteUrl", "imageUrls"]
       }
     }
   }

@@ -6,6 +6,7 @@ variable "lambda_functions_custom" {
     timeout   = optional(number, 15)
 
     environment_variables = optional(map(string), {})
+    sns_publish_topics    = optional(list(string), [])
 
     inline_policy_statements = optional(list(object({
       sid       = optional(string)

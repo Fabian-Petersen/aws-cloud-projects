@@ -12,3 +12,12 @@ output "custom_lambda_arns" {
     k => v.arn
   }
 }
+
+# $ Return map of lambdas that publish to SNS topic
+output "allowed_lambda_arns" {
+  value = {
+    for k, v in aws_lambda_function.lambda_function :
+    k => v.arn
+    if try(var.lambda_functions_custom[k].publish_sns, false)
+  }
+}

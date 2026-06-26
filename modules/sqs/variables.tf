@@ -11,7 +11,7 @@ variable "queues" {
   }))
 }
 
-variable "lambda_triggers" {
+variable "sqs_lambda_triggers" {
   type = map(object({
     function_name                      = string
     batch_size                         = optional(number, 10)
