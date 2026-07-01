@@ -160,6 +160,7 @@ variable "lambda_functions" {
     file_name = string
     handler   = string
     runtime   = string
+    path      = optional(string)
 
     dynamodb_permissions = map(object({
       table_name         = string
@@ -187,6 +188,7 @@ variable "lambda_functions_custom" {
     file_name = string
     handler   = string
     runtime   = string
+    path      = optional(string)
     timeout   = optional(number, 15)
 
     environment_variables = optional(map(string), {})

@@ -70,6 +70,24 @@ api_parent_routes = {
     }
   }
 
+  "transfers" = {
+    methods = {
+      GET = {
+        lambda        = "getTransferList"
+        authorization = "COGNITO_USER_POOLS"
+      }
+
+      POST = {
+        lambda        = "postTransferRequest"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+
   comments = {
     methods = {
       GET = {
@@ -113,6 +131,17 @@ api_parent_routes = {
     methods = {
       GET = {
         lambda        = "getDashboardJobsMetrics"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+  notifications = {
+    methods = {
+      GET = {
+        lambda        = "getNotificationsList"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -312,6 +341,29 @@ api_child_routes = {
     }
   }
 
+  transfer-id = {
+    parent_key = "transfers" # /api/transfers/{id}
+    path_part  = "{id}"
+    level      = 2
+    methods = {
+      GET = {
+        lambda        = "getTransferById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      PUT = {
+        lambda        = "updateTransferById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      DELETE = {
+        lambda        = "deleteTransferById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
   comments-id = {
     # path       = "/api/comments/{commentId}"
     parent_key = "comments"
@@ -491,6 +543,21 @@ api_child_routes = {
     methods = {
       GET = {
         lambda        = "getDashboardStoreJobsMetrics"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  transfers-metrics = {
+    parent_key = "dashboard-metrics" // path: /api/dashboard/metrics/transfers
+    path_part  = "transfers"
+    level      = 2
+    methods = {
+      GET = {
+        lambda        = "getTransferMetrics"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -1101,6 +1168,7 @@ lambda_functions = {
     file_name = "postTransferRequest.py"
     handler   = "postTransferRequest.lambda_handler"
     runtime   = "python3.12"
+    path      = "transfers/postTransferRequest"
 
     dynamodb_permissions = {
       asset_transfer_table = {
@@ -1115,7 +1183,7 @@ lambda_functions = {
     file_name = "postTransferApproval.py"
     handler   = "postTransferApproval.lambda_handler"
     runtime   = "python3.12"
-
+    path      = "transfers/postTransferApproval"
     dynamodb_permissions = {
       asset_transfer_table = {
         table_name         = "crud-nosql-app-assets-transfer-table"
@@ -1129,7 +1197,7 @@ lambda_functions = {
     file_name = "postTransferReceipt.py"
     handler   = "postTransferReceipt.lambda_handler"
     runtime   = "python3.12"
-
+    path      = "transfers/postTransferReceipt"
     dynamodb_permissions = {
       asset_transfer_table = {
         table_name         = "crud-nosql-app-assets-transfer-table"
@@ -1143,7 +1211,7 @@ lambda_functions = {
     file_name = "postTransferTransit.py"
     handler   = "postTransferTransit.lambda_handler"
     runtime   = "python3.12"
-
+    path      = "transfers/postTransferTransit"
     dynamodb_permissions = {
       asset_transfer_table = {
         table_name         = "crud-nosql-app-assets-transfer-table"
@@ -1153,10 +1221,26 @@ lambda_functions = {
     }
   }
 
-  postTransferCancel = {
-    file_name = "postTransferCancel.py"
-    handler   = "postTransferCancel.lambda_handler"
+  deleteTransferById = {
+    file_name = "deleteTransferById.py"
+    handler   = "deleteTransferById.lambda_handler"
     runtime   = "python3.12"
+    path      = "transfers/deleteTransferById"
+
+    dynamodb_permissions = {
+      asset_transfer_table = {
+        table_name         = "crud-nosql-app-assets-transfer-table"
+        actions            = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  updateTransferById = {
+    file_name = "updateTransferById.py"
+    handler   = "updateTransferById.lambda_handler"
+    runtime   = "python3.12"
+    path      = "transfers/updateTransferById"
 
     dynamodb_permissions = {
       asset_transfer_table = {
@@ -1165,6 +1249,89 @@ lambda_functions = {
         allow_index_access = false
       }
     }
+
+    statements = [
+      {
+        actions   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/transfers/*"]
+      },
+      {
+        actions   = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images"]
+        conditions = [
+          {
+            test     = "StringLike"
+            variable = "s3:prefix"
+            values   = ["transfers/*"]
+          }
+        ]
+      }
+    ]
+  }
+  getTransferList = {
+    file_name = "getTransferList.py"
+    handler   = "getTransferList.lambda_handler"
+    runtime   = "python3.12"
+    path      = "transfers/getTransferList"
+
+    dynamodb_permissions = {
+      asset_transfer_table = {
+        table_name         = "crud-nosql-app-assets-transfer-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+    }
+
+    statements = [
+      {
+        actions   = ["s3:GetObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/transfers/*"]
+      },
+      {
+        actions   = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images"]
+        conditions = [
+          {
+            test     = "StringLike"
+            variable = "s3:prefix"
+            values   = ["transfers/*"]
+          }
+        ]
+      }
+    ]
+  }
+
+  getTransferById = {
+    file_name = "getTransferById.py"
+    handler   = "getTransferById.lambda_handler"
+    runtime   = "python3.12"
+    path      = "transfers/getTransferById"
+
+    dynamodb_permissions = {
+      asset_transfer_table = {
+        table_name         = "crud-nosql-app-assets-transfer-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+    }
+
+    statements = [
+      {
+        actions   = ["s3:GetObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/transfers/*"]
+      },
+      {
+        actions   = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images"]
+        conditions = [
+          {
+            test     = "StringLike"
+            variable = "s3:prefix"
+            values   = ["transfers/*"]
+          }
+        ]
+      }
+    ]
   }
 
 
@@ -1431,7 +1598,23 @@ lambda_functions = {
       }
     }
   }
+  # $ // -------------------------------- Notifications ------------------------------- */
+  getNotificationsList = {
+    file_name = "getNotificationsList.py"
+    handler   = "getNotificationsList.lambda_handler"
+    runtime   = "python3.12"
+    path      = "notifications/getNotificationsList"
+
+    dynamodb_permissions = {
+      actions_table = {
+        table_name         = "crud-nosql-app-notifications-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+    }
+  }
 }
+
 
 # $ // ================================================================================ // 
 # $ //                            Custom lambda Functions                               // 
@@ -1633,7 +1816,6 @@ lambda_functions_custom = {
     managed_policy_arns = []
   }
 
-
   updateUserById = {
     file_name = "updateUserById.py"
     handler   = "updateUserById.lambda_handler"
@@ -1827,6 +2009,7 @@ lambda_functions_custom = {
     handler            = "checkApprovalTimeout.lambda_handler"
     runtime            = "python3.12"
     sns_publish_topics = ["asset-transfer-request-topic"]
+    path               = "transfers/checkApprovalTimeout"
 
     // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
     inline_policy_statements = [
@@ -1867,6 +2050,7 @@ lambda_functions_custom = {
     file_name = "assetTransferTransit.py"
     handler   = "assetTransferTransit.lambda_handler"
     runtime   = "python3.12"
+    path      = "transfers/assetTransferTransit"
 
     // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
     inline_policy_statements = [
@@ -1886,6 +2070,7 @@ lambda_functions_custom = {
     file_name = "assetTransferRequest.py"
     handler   = "assetTransferRequest.lambda_handler"
     runtime   = "python3.12"
+    path      = "transfers/assetTransferRequest"
 
     // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
     inline_policy_statements = [
@@ -1905,6 +2090,7 @@ lambda_functions_custom = {
     file_name = "assetTransferApproval.py"
     handler   = "assetTransferApproval.lambda_handler"
     runtime   = "python3.12"
+    path      = "transfers/assetTransferApproval"
 
     # sns_publish_topics = ["asset-transfer-approval-topic"]
 
@@ -1926,6 +2112,7 @@ lambda_functions_custom = {
     file_name = "assetTransferReceipt.py"
     handler   = "assetTransferReceipt.lambda_handler"
     runtime   = "python3.12"
+    path      = "transfers/assetTransferReceipt"
 
     # sns_publish_topics = ["asset-transfer-receipt-topic"]
 
@@ -1938,6 +2125,31 @@ lambda_functions_custom = {
         ]
         resources = [
           "arn:aws:sqs:af-south-1:157489943321:asset-transfer-notifications-queue"
+        ]
+      },
+    ]
+  }
+
+  handleTransferNotifications = {
+    file_name = "handleTransferNotifications.py"
+    handler   = "handleTransferNotifications.lambda_handler"
+    runtime   = "python3.12"
+    path      = "transfers/handleTransferNotifications"
+
+    // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
+    # Inline policies required for Lambda
+    inline_policy_statements = [
+      {
+        sid = "DynamoDBNotificationsTableAccess"
+        actions = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-notifications-table"
         ]
       },
     ]
@@ -2159,6 +2371,26 @@ dynamodb_tables = {
     }
   }
 
+  /* # $ -------------------------------- Notifications Table --------------------------------- */
+
+  crud-nosql-app-notifications = {
+    pk            = "recipientSub"
+    sk            = "notificationCreated"
+    enable_gsi    = true
+    enable_stream = false
+    gsis = {
+      "EntityIndex" = {
+        hash_key        = "entityReference" # e.g. "JOB#<request_id>" or "TRANSFER#<transfer_id>"
+        range_key       = "notificationCreated"
+        projection_type = "ALL"
+      }
+      "StatusIndex" = {
+        hash_key        = "recipientStatus" # e.g. "user123#UNREAD" or "user123#READ"
+        range_key       = "notificationCreated"
+        projection_type = "ALL"
+      }
+    }
+  }
   crud-nosql-app-locations = {
     pk            = "location"
     enable_gsi    = false

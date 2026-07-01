@@ -1,8 +1,12 @@
 #$ [Step 1] : Zip the existing Lambda functions from /lambdas/<function_directory>
 data "archive_file" "lambda_zip" {
-  for_each    = var.lambda_functions
-  type        = "zip"
-  source_file = "${path.root}/lambdas/${each.key}/${each.value.file_name}"
+  for_each = var.lambda_functions
+  type     = "zip"
+  source_file = (
+    try(each.value.path, null) != null
+    ? "${path.root}/lambdas/${each.value.path}/${each.value.file_name}"
+    : "${path.root}/lambdas/${each.key}/${each.value.file_name}"
+  )
   output_path = "${path.root}/lambdas/${each.key}/${replace(each.value.file_name, ".py", ".zip")}"
 }
 
