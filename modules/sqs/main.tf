@@ -23,7 +23,11 @@ resource "aws_sqs_queue" "dlq" {
     if try(v.create_dlq, true)
   }
 
-  name = try(v.fifo, false) ? "${v.name}-dlq.fifo" : "${v.name}-dlq"
+  name = try(each.value.fifo, false) ? "${each.value.name}-dlq.fifo" : "${each.value.name}-dlq"
+
+  fifo_queue = try(each.value.fifo, false)
+
+  content_based_deduplication = try(each.value.fifo, false) ? try(each.value.content_deduplication, true) : null
 }
 
 

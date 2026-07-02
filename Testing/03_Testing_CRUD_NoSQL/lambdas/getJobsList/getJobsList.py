@@ -13,8 +13,10 @@ dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table("crud-nosql-app-maintenance-request-table")
 
 # ----------------------------
-# Date formatting in SAST for human readability 
+# Date formatting in SAST for human readability
 # ----------------------------
+
+
 def to_human_date(iso_string: str) -> str:
     """
     Convert an ISO 8601 timestamp string to a human-readable date in SAST.
@@ -30,8 +32,10 @@ def to_human_date(iso_string: str) -> str:
     return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
 
 # ----------------------------
-# Decimal serializer for DynamoDB types in JSON responses 
+# Decimal serializer for DynamoDB types in JSON responses
 # ----------------------------
+
+
 def decimal_serializer(obj):
     """
     Custom JSON serializer for handling DynamoDB Decimal types.
@@ -54,6 +58,8 @@ def decimal_serializer(obj):
 # ----------------------------
 # Cognito groups parser for flexible group claim formats
 # ----------------------------
+
+
 def parse_groups(groups_claim):
     if not groups_claim:
         return []
@@ -113,6 +119,7 @@ def query_by_status(status):
         items.extend(response.get("Items", []))
 
     return items
+
 
 def handle_request_metadata(event):
     """
@@ -179,7 +186,8 @@ def lambda_handler(event, context):
     status = query_params.get("status")
 
     # Auth claims
-    claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {})
+    claims = event.get("requestContext", {}).get(
+        "authorizer", {}).get("claims", {})
     groups = parse_groups(claims.get("cognito:groups"))
     user_sub = claims.get("sub")
 
@@ -191,7 +199,8 @@ def lambda_handler(event, context):
         return options_response
 
     try:
-        is_admin_or_technician = any(group in ["admin", "technician"] for group in groups)
+        is_admin_or_technician = any(
+            group in ["admin", "technician"] for group in groups)
 
         # ----------------------------
         # DATA FETCH LOGIC
@@ -212,10 +221,12 @@ def lambda_handler(event, context):
             if status:
                 # GSI + user filter fallback (no composite index)
                 items = query_by_status(status)
-                items = [item for item in items if item.get("request_sub") == user_sub]
+                items = [item for item in items if item.get(
+                    "request_sub") == user_sub]
             else:
                 items = scan_all()
-                items = [item for item in items if item.get("request_sub") == user_sub]
+                items = [item for item in items if item.get(
+                    "request_sub") == user_sub]
 
         # ----------------------------
         # Format dates
@@ -251,123 +262,3 @@ def _response(status_code, body, headers):
         "headers": headers,
         "body": json.dumps(body, default=decimal_serializer),
     }
-
-
-
-# import json
-# import boto3
-# # from boto3.dynamodb.conditions import Key
-# from boto3.dynamodb.conditions import Attr
-# from datetime import datetime, timezone, timedelta
-
-# dynamodb = boto3.resource("dynamodb")
-# table = dynamodb.Table("crud-nosql-app-maintenance-request-table")
-
-# # $ Change the date format in the database to readible for humans
-# def to_human_date(iso_string: str) -> str:
-#     SAST = timezone(timedelta(hours=2))
-#     dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
-#     return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
-
-# # $ Get the User Groups from the claims
-# def parse_groups(groups_claim):
-#     if not groups_claim:
-#         return []
-
-#     if isinstance(groups_claim, list):
-#         return [str(group).lower() for group in groups_claim]
-
-#     if isinstance(groups_claim, str):
-#         # Handle JSON array string or simple comma-separated/string values
-#         try:
-#             parsed = json.loads(groups_claim)
-#             if isinstance(parsed, list):
-#                 return [str(group).lower() for group in parsed]
-#         except Exception:
-#             pass
-
-#         return [group.strip().lower() for group in groups_claim.split(",")]
-
-#     return []
-
-
-# def scan_all(**kwargs):
-#     items = []
-#     response = table.scan(**kwargs)
-#     items.extend(response.get("Items", []))
-
-#     while "LastEvaluatedKey" in response:
-#         response = table.scan(
-#             ExclusiveStartKey=response["LastEvaluatedKey"],
-#             **kwargs
-#         )
-#         items.extend(response.get("Items", []))
-
-#     return items
-    
-# def lambda_handler(event, context):
-#     claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {})
-#     groups = parse_groups(claims.get("cognito:groups"))
-#     user_sub = claims.get("sub")
-
-#     # $ Grab the Origin header from the incoming request
-#     headers = event.get("headers") or {}
-#     origin = headers.get("origin") or headers.get("Origin") or ""
-
-#     allowedOrigins = [
-#     'https://www.crud-nosql.app.fabian-portfolio.net',
-#     'https://crud-nosql.app.fabian-portfolio.net',
-#     'http://localhost:5173',
-#     'http://localhost:8085' # swagger api testing
-#     ]
-
-#     # $ Only allow known origins
-#     allowedOrigin = origin if origin in allowedOrigins else ""
-    
-#     HEADERS = {
-#     "Content-Type": "application/json",
-#     "Access-Control-Allow-Origin": allowedOrigin,
-#     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-#     "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
-#     "Access-Control-Allow-Credentials": "true"
-#         }
-
-#     method = (
-#         event.get("httpMethod")
-#         or event.get("requestContext", {}).get("http", {}).get("method")
-#     )
-
-#     if method == "OPTIONS":
-#         print("OPTIONS request...")
-#         return _response(200, {"message": "Success"}, HEADERS)
-        
-#     # $ Admin can see all completed actions and technician what he submitted 
-#     try:
-#         is_admin_or_technician = any(group in ["admin", "technician"] for group in groups)
-
-#         if is_admin_or_technician:
-#             items = scan_all()
-#         else:
-#             if not user_sub:
-#                 return _response(403, {"message": "User sub not found in token"}, HEADERS)
-
-#             # Assumes each item stores the creator's sub in a field called "request_sub"
-#             items = scan_all(FilterExpression=Attr("request_sub").eq(user_sub))
-
-#         for item in items:
-#             if "jobCreated" in item:
-#                 item["jobCreated"] = to_human_date(item["jobCreated"])
-
-#         return _response(200, items, HEADERS)
-
-#     except Exception as exc:
-#         print("Error:", exc)
-#         return _response(500, {"message": "Internal server error"}, HEADERS)
-
-
-# def _response(status_code, body, headers):
-#     return {
-#         "statusCode": status_code,
-#         "headers": headers,
-#         "body": json.dumps(body),
-#     }

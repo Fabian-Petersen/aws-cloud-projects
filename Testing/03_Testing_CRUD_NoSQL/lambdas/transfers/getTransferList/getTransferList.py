@@ -1,10 +1,265 @@
+"""
+This function returns all the asset transfers in the asset transfers table. Admins and technicians can see all transfers, while regular users only see their own transfers/transfers of the location they belong to.
+
+"""
+
 import json
+import boto3
+from decimal import Decimal
+from boto3.dynamodb.conditions import Key
+from datetime import datetime, timezone, timedelta
+
+dynamodb = boto3.resource("dynamodb")
+table = dynamodb.Table("crud-nosql-app-assets-transfer-table")
+
+# ----------------------------
+# Date formatting in SAST for human readability
+# ----------------------------
 
 
+def to_human_date(iso_string: str) -> str:
+    """
+    Convert an ISO 8601 timestamp string to a human-readable date in SAST.
+
+    Args:
+        iso_string (str): ISO formatted datetime string (e.g., "2024-01-01T12:00:00Z").
+
+    Returns:
+        str: Formatted date string (e.g., "01 Jan 2024, 14:00").
+    """
+    SAST = timezone(timedelta(hours=2))
+    dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
+    return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
+
+# ----------------------------
+# Decimal serializer for DynamoDB types in JSON responses
+# ----------------------------
+
+
+def decimal_serializer(obj):
+    """
+    Custom JSON serializer for handling DynamoDB Decimal types.
+
+    Args:
+        obj: Object to serialize.
+
+    Returns:
+        int | float: Converted numeric value.
+
+    Raises:
+        TypeError: If object type is not supported.
+    """
+    if isinstance(obj, Decimal):
+        if obj % 1 == 0:
+            return int(obj)
+        return float(obj)
+    raise TypeError
+
+# ----------------------------
+# Cognito groups parser for flexible group claim formats
+# ----------------------------
+
+
+def parse_groups(groups_claim):
+    if not groups_claim:
+        return []
+
+    if isinstance(groups_claim, list):
+        return [str(group).lower() for group in groups_claim]
+
+    if isinstance(groups_claim, str):
+        try:
+            parsed = json.loads(groups_claim)
+            if isinstance(parsed, list):
+                return [str(group).lower() for group in parsed]
+        except Exception:
+            pass
+
+        return [group.strip().lower() for group in groups_claim.split(",")]
+
+    return []
+
+
+# ----------------------------
+# Scan fallback (no filters)
+# ----------------------------
+def scan_all():
+    items = []
+    response = table.scan()
+    items.extend(response.get("Items", []))
+
+    while "LastEvaluatedKey" in response:
+        response = table.scan(
+            ExclusiveStartKey=response["LastEvaluatedKey"]
+        )
+        items.extend(response.get("Items", []))
+
+    return items
+
+
+# ----------------------------
+# GSI query (status-based)
+# ----------------------------
+def query_by_status(status):
+    items = []
+
+    response = table.query(
+        IndexName="TransferStatusIndex",
+        KeyConditionExpression=Key("status").eq(status)
+    )
+
+    items.extend(response.get("Items", []))
+
+    while "LastEvaluatedKey" in response:
+        response = table.query(
+            IndexName="TransferStatusIndex",
+            KeyConditionExpression=Key("status").eq(status),
+            ExclusiveStartKey=response["LastEvaluatedKey"]
+        )
+        items.extend(response.get("Items", []))
+
+    return items
+
+
+def handle_request_metadata(event):
+    """
+    Extract HTTP method and construct CORS headers based on request origin.
+
+    Args:
+        event (dict): Lambda event payload.
+
+    Returns:
+        tuple:
+            method (str): HTTP method (GET, POST, OPTIONS, etc.)
+            response_headers (dict): CORS-enabled response headers.
+    """
+    headers = event.get("headers") or {}
+    origin = headers.get("origin") or headers.get("Origin") or ""
+
+    allowed_origins = [
+        "https://www.crud-nosql.app.fabian-portfolio.net",
+        "https://crud-nosql.app.fabian-portfolio.net",
+        "http://localhost:5173",
+    ]
+
+    allowed_origin = origin if origin in allowed_origins else ""
+
+    response_headers = {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": allowed_origin,
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+        "Access-Control-Allow-Credentials": "true",
+    }
+
+    method = (
+        event.get("httpMethod")
+        or event.get("requestContext", {}).get("http", {}).get("method")
+    )
+
+    return method, response_headers
+
+
+def handle_options_request(method, headers):
+    """
+    Handle CORS preflight (OPTIONS) requests.
+
+    Args:
+        method (str): HTTP method.
+        headers (dict): Response headers.
+
+    Returns:
+        dict | None: HTTP response if OPTIONS request, otherwise None.
+    """
+    if method == "OPTIONS":
+        return _response(200, {"message": "Success"}, headers)
+    return None
+
+
+# ----------------------------
+# Lambda handler
+# ----------------------------
 def lambda_handler(event, context):
-    print("Event received:", json.dumps(event))
 
+    # Query params
+    query_params = event.get("queryStringParameters") or {}
+    status = query_params.get("status")
+
+    # Auth claims
+    claims = event.get("requestContext", {}).get(
+        "authorizer", {}).get("claims", {})
+    groups = parse_groups(claims.get("cognito:groups"))
+    user_sub = claims.get("sub")
+
+    # CORS
+    method, HEADERS = handle_request_metadata(event)
+
+    options_response = handle_options_request(method, HEADERS)
+    if options_response:
+        return options_response
+
+    try:
+        is_admin_or_technician = any(
+            group in ["admin", "technician"] for group in groups)
+
+        # ----------------------------
+        # DATA FETCH LOGIC
+        # ----------------------------
+
+        if is_admin_or_technician:
+            # ✅ USE GSI IF STATUS EXISTS
+            if status:
+                items = query_by_status(status)
+            else:
+                items = scan_all()
+
+        else:
+            # Non-admin users only see their own jobs
+            if not user_sub:
+                return _response(403, {"message": "User sub not found in token"}, HEADERS)
+
+            if status:
+                # GSI + user filter fallback (no composite index)
+                items = query_by_status(status)
+                items = [item for item in items if item.get(
+                    "request_sub") == user_sub]
+            else:
+                items = scan_all()
+                items = [item for item in items if item.get(
+                    "request_sub") == user_sub]
+
+        # ----------------------------
+        # Format dates
+        # ----------------------------
+        for item in items:
+            if "transferCreated" in item:
+                item["transferCreated"] = to_human_date(
+                    item["transferCreated"])
+
+        return _response(200, items, HEADERS)
+
+    except Exception as exc:
+        print("Error:", exc)
+        return _response(500, {"message": "Internal server error"}, HEADERS)
+
+
+# ----------------------------
+# Response helper
+# ----------------------------
+def _response(status_code, body, headers):
+    """
+    Construct a standard API Gateway HTTP response.
+
+    Args:
+        status_code (int): HTTP status code.
+        body (dict | list): Response payload.
+        headers (dict): HTTP headers.
+
+    Returns:
+        dict: Formatted response object.
+    """
     return {
-        "statusCode": 200,
-        "body": json.dumps("Success: getTransferList")
+        "statusCode": status_code,
+        "headers": headers,
+        "body": json.dumps(body, default=decimal_serializer),
     }

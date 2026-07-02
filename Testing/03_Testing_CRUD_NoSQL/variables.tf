@@ -157,10 +157,11 @@ variable "lambda_policies" {
 
 variable "lambda_functions" {
   type = map(object({
-    file_name = string
-    handler   = string
-    runtime   = string
-    path      = optional(string)
+    file_name  = string
+    handler    = string
+    runtime    = string
+    path       = optional(string)
+    invoked_by = optional(list(string), []) # e.g. ["apigateway", "s3", "eventbridge"]
 
     dynamodb_permissions = map(object({
       table_name         = string
@@ -185,11 +186,12 @@ variable "lambda_functions" {
 # $ Lambdas not tied to the dynamoDB routes, these lambdas use custom policies as needed
 variable "lambda_functions_custom" {
   type = map(object({
-    file_name = string
-    handler   = string
-    runtime   = string
-    path      = optional(string)
-    timeout   = optional(number, 15)
+    file_name  = string
+    handler    = string
+    runtime    = string
+    path       = optional(string)
+    timeout    = optional(number, 15)
+    invoked_by = optional(list(string), []) # e.g. ["apigateway", "s3", "eventbridge"]
 
     environment_variables = optional(map(string), {})
 
@@ -437,19 +439,19 @@ variable "sqs_lambda_triggers" {
 
 
 # $ SNS Variables
-variable "allowed_lambda_arns" {
-  type = map(string)
-}
-variable "topics" {
-  type = map(object({
-    name = string
+# variable "allowed_lambda_arns" {
+#   type = map(string)
+# }
+# variable "topics" {
+#   type = map(object({
+#     name = string
 
-    email_subscriptions = optional(list(string), [])
-    sms_subscriptions   = optional(list(string), [])
+#     email_subscriptions = optional(list(string), [])
+#     sms_subscriptions   = optional(list(string), [])
 
-    enable_push = optional(bool, false)
-  }))
-}
+#     enable_push = optional(bool, false)
+#   }))
+# }
 
-variable "fcm_key" {}
+# variable "fcm_key" {}
 

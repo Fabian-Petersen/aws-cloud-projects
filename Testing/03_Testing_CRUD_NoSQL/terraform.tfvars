@@ -344,7 +344,7 @@ api_child_routes = {
   transfer-id = {
     parent_key = "transfers" # /api/transfers/{id}
     path_part  = "{id}"
-    level      = 2
+    level      = 1
     methods = {
       GET = {
         lambda        = "getTransferById"
@@ -557,7 +557,7 @@ api_child_routes = {
     level      = 2
     methods = {
       GET = {
-        lambda        = "getTransferMetrics"
+        lambda        = "getDashboardTransferMetrics"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -639,9 +639,10 @@ lambda_policies = {
 #$ lambda variables
 lambda_functions = {
   getJobsList = {
-    file_name = "getJobsList.py"
-    handler   = "getJobsList.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "getJobsList.py"
+    handler    = "getJobsList.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       maintenance_request_table = {
@@ -683,9 +684,10 @@ lambda_functions = {
   # }
 
   postJobRequest = {
-    file_name = "postJobRequest.py"
-    handler   = "postJobRequest.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "postJobRequest.py"
+    handler    = "postJobRequest.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       maintenance_request_table = {
@@ -714,9 +716,10 @@ lambda_functions = {
   }
   # This function return pending, completed, in progress and rejected jobs
   getJobById = {
-    file_name = "getJobById.py"
-    handler   = "getJobById.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "getJobById.py"
+    handler    = "getJobById.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       maintenance_request_table = {
@@ -781,9 +784,10 @@ lambda_functions = {
   # }
 
   getJobsApprovedById = {
-    file_name = "getJobsApprovedById.py"
-    handler   = "getJobsApprovedById.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "getJobsApprovedById.py"
+    handler    = "getJobsApprovedById.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       maintenance_request_table = {
@@ -813,9 +817,10 @@ lambda_functions = {
   }
 
   updateJobById = {
-    file_name = "updateJobById.py"
-    handler   = "updateJobById.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "updateJobById.py"
+    handler    = "updateJobById.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       request_table = {
@@ -832,9 +837,10 @@ lambda_functions = {
   }
 
   deleteJobById = {
-    file_name = "deleteJobById.py"
-    handler   = "deleteJobById.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "deleteJobById.py"
+    handler    = "deleteJobById.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       request_table = {
@@ -868,9 +874,10 @@ lambda_functions = {
   }
 
   getJobsCompletedList = {
-    file_name = "getJobsCompletedList.py"
-    handler   = "getJobsCompletedList.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "getJobsCompletedList.py"
+    handler    = "getJobsCompletedList.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       maintenance_action_table = {
@@ -882,9 +889,10 @@ lambda_functions = {
   }
 
   postJobAction = {
-    file_name = "postJobAction.py"
-    handler   = "postJobAction.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "postJobAction.py"
+    handler    = "postJobAction.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       maintenance_action_table = {
@@ -926,9 +934,10 @@ lambda_functions = {
   }
 
   updateJobActionedById = {
-    file_name = "updateJobActionedById.py"
-    handler   = "updateJobActionedById.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "updateJobActionedById.py"
+    handler    = "updateJobActionedById.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
     dynamodb_permissions = {
       maintenance_action_table = {
         table_name         = "crud-nosql-app-maintenance-action-table"
@@ -939,10 +948,10 @@ lambda_functions = {
   }
 
   deleteJobActionedById = {
-    file_name = "deleteJobActionedById.py"
-    handler   = "deleteJobActionedById.lambda_handler"
-    runtime   = "python3.12"
-
+    file_name  = "deleteJobActionedById.py"
+    handler    = "deleteJobActionedById.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
     dynamodb_permissions = {
       maintenance_action_table = {
         table_name         = "crud-nosql-app-maintenance-action-table"
@@ -953,9 +962,10 @@ lambda_functions = {
   }
 
   getAssetsList = {
-    file_name = "getAssetsList.py"
-    handler   = "getAssetsList.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "getAssetsList.py"
+    handler    = "getAssetsList.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       assets_table = {
@@ -967,10 +977,10 @@ lambda_functions = {
   }
 
   getAssetById = {
-    file_name = "getAssetById.py"
-    handler   = "getAssetById.lambda_handler"
-    runtime   = "python3.12"
-
+    file_name  = "getAssetById.py"
+    handler    = "getAssetById.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
     dynamodb_permissions = {
       assets_table = {
         table_name         = "crud-nosql-app-assets-table"
@@ -1014,9 +1024,10 @@ lambda_functions = {
   }
 
   getAssetsByLocation = {
-    file_name = "getAssetsByLocation.py"
-    handler   = "getAssetsByLocation.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "getAssetsByLocation.py"
+    handler    = "getAssetsByLocation.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       assets_table = {
@@ -1033,9 +1044,10 @@ lambda_functions = {
   }
 
   postCreateAsset = {
-    file_name = "postCreateAsset.py"
-    handler   = "postCreateAsset.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "postCreateAsset.py"
+    handler    = "postCreateAsset.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       assets_table = {
@@ -1065,9 +1077,10 @@ lambda_functions = {
   }
 
   deleteAssetById = {
-    file_name = "deleteAssetById.py"
-    handler   = "deleteAssetById.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "deleteAssetById.py"
+    handler    = "deleteAssetById.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       assets_table = {
@@ -1097,9 +1110,10 @@ lambda_functions = {
   }
 
   updateAssetById = {
-    file_name = "updateAssetById.py"
-    handler   = "updateAssetById.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "updateAssetById.py"
+    handler    = "updateAssetById.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       assets_table = {
@@ -1111,9 +1125,10 @@ lambda_functions = {
   }
 
   getAssetJobsHistoryMetrics = {
-    file_name = "getAssetJobsHistoryMetrics.py"
-    handler   = "getAssetJobsHistoryMetrics.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "getAssetJobsHistoryMetrics.py"
+    handler    = "getAssetJobsHistoryMetrics.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       jobs_table = {
@@ -1140,9 +1155,10 @@ lambda_functions = {
   }
 
   postAssetVerify = {
-    file_name = "postAssetVerify.py"
-    handler   = "postAssetVerify.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "postAssetVerify.py"
+    handler    = "postAssetVerify.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       users_table = {
@@ -1165,10 +1181,11 @@ lambda_functions = {
 
   # $ // ========================== START: Asset Transfer Lambdas ============================== //
   postTransferRequest = {
-    file_name = "postTransferRequest.py"
-    handler   = "postTransferRequest.lambda_handler"
-    runtime   = "python3.12"
-    path      = "transfers/postTransferRequest"
+    file_name  = "postTransferRequest.py"
+    handler    = "postTransferRequest.lambda_handler"
+    runtime    = "python3.12"
+    path       = "transfers/postTransferRequest"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       asset_transfer_table = {
@@ -1180,10 +1197,11 @@ lambda_functions = {
   }
 
   postTransferApproval = {
-    file_name = "postTransferApproval.py"
-    handler   = "postTransferApproval.lambda_handler"
-    runtime   = "python3.12"
-    path      = "transfers/postTransferApproval"
+    file_name  = "postTransferApproval.py"
+    handler    = "postTransferApproval.lambda_handler"
+    runtime    = "python3.12"
+    path       = "transfers/postTransferApproval"
+    invoked_by = ["apigateway"]
     dynamodb_permissions = {
       asset_transfer_table = {
         table_name         = "crud-nosql-app-assets-transfer-table"
@@ -1194,10 +1212,11 @@ lambda_functions = {
   }
 
   postTransferReceipt = {
-    file_name = "postTransferReceipt.py"
-    handler   = "postTransferReceipt.lambda_handler"
-    runtime   = "python3.12"
-    path      = "transfers/postTransferReceipt"
+    file_name  = "postTransferReceipt.py"
+    handler    = "postTransferReceipt.lambda_handler"
+    runtime    = "python3.12"
+    path       = "transfers/postTransferReceipt"
+    invoked_by = ["apigateway"]
     dynamodb_permissions = {
       asset_transfer_table = {
         table_name         = "crud-nosql-app-assets-transfer-table"
@@ -1208,10 +1227,11 @@ lambda_functions = {
   }
 
   postTransferTransit = {
-    file_name = "postTransferTransit.py"
-    handler   = "postTransferTransit.lambda_handler"
-    runtime   = "python3.12"
-    path      = "transfers/postTransferTransit"
+    file_name  = "postTransferTransit.py"
+    handler    = "postTransferTransit.lambda_handler"
+    runtime    = "python3.12"
+    path       = "transfers/postTransferTransit"
+    invoked_by = ["apigateway"]
     dynamodb_permissions = {
       asset_transfer_table = {
         table_name         = "crud-nosql-app-assets-transfer-table"
@@ -1222,10 +1242,11 @@ lambda_functions = {
   }
 
   deleteTransferById = {
-    file_name = "deleteTransferById.py"
-    handler   = "deleteTransferById.lambda_handler"
-    runtime   = "python3.12"
-    path      = "transfers/deleteTransferById"
+    file_name  = "deleteTransferById.py"
+    handler    = "deleteTransferById.lambda_handler"
+    runtime    = "python3.12"
+    path       = "transfers/deleteTransferById"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       asset_transfer_table = {
@@ -1237,10 +1258,11 @@ lambda_functions = {
   }
 
   updateTransferById = {
-    file_name = "updateTransferById.py"
-    handler   = "updateTransferById.lambda_handler"
-    runtime   = "python3.12"
-    path      = "transfers/updateTransferById"
+    file_name  = "updateTransferById.py"
+    handler    = "updateTransferById.lambda_handler"
+    runtime    = "python3.12"
+    path       = "transfers/updateTransferById"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       asset_transfer_table = {
@@ -1269,10 +1291,11 @@ lambda_functions = {
     ]
   }
   getTransferList = {
-    file_name = "getTransferList.py"
-    handler   = "getTransferList.lambda_handler"
-    runtime   = "python3.12"
-    path      = "transfers/getTransferList"
+    file_name  = "getTransferList.py"
+    handler    = "getTransferList.lambda_handler"
+    runtime    = "python3.12"
+    path       = "transfers/getTransferList"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       asset_transfer_table = {
@@ -1302,11 +1325,11 @@ lambda_functions = {
   }
 
   getTransferById = {
-    file_name = "getTransferById.py"
-    handler   = "getTransferById.lambda_handler"
-    runtime   = "python3.12"
-    path      = "transfers/getTransferById"
-
+    file_name  = "getTransferById.py"
+    handler    = "getTransferById.lambda_handler"
+    runtime    = "python3.12"
+    path       = "transfers/getTransferById"
+    invoked_by = ["apigateway"]
     dynamodb_permissions = {
       asset_transfer_table = {
         table_name         = "crud-nosql-app-assets-transfer-table"
@@ -1338,10 +1361,10 @@ lambda_functions = {
   # % // ============================ END: Asset Transfer Lambdas ============================== // 
 
   getJobcardById = {
-    file_name = "getJobcardById.py"
-    handler   = "getJobcardById.lambda_handler"
-    runtime   = "python3.12"
-
+    file_name  = "getJobcardById.py"
+    handler    = "getJobcardById.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
     dynamodb_permissions = {
       maintenance_request_table = {
         table_name         = "crud-nosql-app-maintenance-request-table"
@@ -1370,9 +1393,10 @@ lambda_functions = {
   }
 
   getCommentsList = {
-    file_name = "getCommentsList.py"
-    handler   = "getCommentsList.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "getCommentsList.py"
+    handler    = "getCommentsList.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       comments_table = {
@@ -1398,9 +1422,10 @@ lambda_functions = {
   }
 
   getCommentById = {
-    file_name = "getCommentById.py"
-    handler   = "getCommentById.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "getCommentById.py"
+    handler    = "getCommentById.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       comments_table = {
@@ -1412,9 +1437,10 @@ lambda_functions = {
   }
 
   postRejectRequest = {
-    file_name = "postRejectRequest.py"
-    handler   = "postRejectRequest.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "postRejectRequest.py"
+    handler    = "postRejectRequest.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       maintenance_request_table = {
@@ -1444,9 +1470,10 @@ lambda_functions = {
   }
 
   postApproveRequest = {
-    file_name = "postApproveRequest.py"
-    handler   = "postApproveRequest.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "postApproveRequest.py"
+    handler    = "postApproveRequest.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       maintenance_request_table = {
@@ -1464,9 +1491,10 @@ lambda_functions = {
   }
 
   getContractorList = {
-    file_name = "getContractorList.py"
-    handler   = "getContractorList.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "getContractorList.py"
+    handler    = "getContractorList.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       contractor_table = {
@@ -1478,9 +1506,10 @@ lambda_functions = {
   }
 
   getContractorById = {
-    file_name = "getContractorById.py"
-    handler   = "getContractorById.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "getContractorById.py"
+    handler    = "getContractorById.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       contractor_table = {
@@ -1492,9 +1521,10 @@ lambda_functions = {
   }
 
   postCreateContractor = {
-    file_name = "postCreateContractor.py"
-    handler   = "postCreateContractor.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "postCreateContractor.py"
+    handler    = "postCreateContractor.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       contractor_table = {
@@ -1506,9 +1536,10 @@ lambda_functions = {
   }
 
   deleteContractorById = {
-    file_name = "deleteContractorById.py"
-    handler   = "deleteContractorById.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "deleteContractorById.py"
+    handler    = "deleteContractorById.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       contractor_table = {
@@ -1520,9 +1551,10 @@ lambda_functions = {
   }
 
   updateContractorById = {
-    file_name = "updateContractorById.py"
-    handler   = "updateContractorById.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "updateContractorById.py"
+    handler    = "updateContractorById.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       contractor_table = {
@@ -1534,9 +1566,10 @@ lambda_functions = {
   }
   # $ // ============================ Users lambdas ============================== //
   getUserList = {
-    file_name = "getUserList.py"
-    handler   = "getUserList.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "getUserList.py"
+    handler    = "getUserList.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       users_table = {
@@ -1548,9 +1581,10 @@ lambda_functions = {
   }
 
   getUserById = {
-    file_name = "getUserById.py"
-    handler   = "getUserById.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "getUserById.py"
+    handler    = "getUserById.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       users_table = {
@@ -1563,9 +1597,10 @@ lambda_functions = {
 
   # $ // -------------------------------- Dashboard ------------------------------- */
   getDashboardJobsMetrics = {
-    file_name = "getDashboardJobsMetrics.py"
-    handler   = "getDashboardJobsMetrics.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "getDashboardJobsMetrics.py"
+    handler    = "getDashboardJobsMetrics.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       jobs_table = {
@@ -1581,9 +1616,10 @@ lambda_functions = {
     }
   }
   getDashboardStoreJobsMetrics = {
-    file_name = "getDashboardStoreJobsMetrics.py"
-    handler   = "getDashboardStoreJobsMetrics.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "getDashboardStoreJobsMetrics.py"
+    handler    = "getDashboardStoreJobsMetrics.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       actions_table = {
@@ -1598,12 +1634,29 @@ lambda_functions = {
       }
     }
   }
+
+  getDashboardTransferMetrics = {
+    file_name  = "getDashboardTransferMetrics.py"
+    handler    = "getDashboardTransferMetrics.lambda_handler"
+    runtime    = "python3.12"
+    path       = "transfers/getDashboardTransferMetrics"
+    invoked_by = ["apigateway"]
+
+    dynamodb_permissions = {
+      transfers_table = {
+        table_name         = "crud-nosql-app-transfers-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+    }
+  }
   # $ // -------------------------------- Notifications ------------------------------- */
   getNotificationsList = {
-    file_name = "getNotificationsList.py"
-    handler   = "getNotificationsList.lambda_handler"
-    runtime   = "python3.12"
-    path      = "notifications/getNotificationsList"
+    file_name  = "getNotificationsList.py"
+    handler    = "getNotificationsList.lambda_handler"
+    runtime    = "python3.12"
+    path       = "notifications/getNotificationsList"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       actions_table = {
@@ -1612,6 +1665,24 @@ lambda_functions = {
         allow_index_access = true
       }
     }
+
+    statements = [
+      {
+        actions   = ["s3:GetObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/assets/*"]
+      },
+      {
+        actions   = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images"]
+        conditions = [
+          {
+            test     = "StringLike"
+            variable = "s3:prefix"
+            values   = ["assets/*"]
+          }
+        ]
+      }
+    ]
   }
 }
 
@@ -1624,10 +1695,11 @@ lambda_functions_custom = {
   # $ // ================================= Technicians ==================================== // 
   # Get the technicians list from Cognito which is not a route with dynamoDB Policy 
   getTechnicianList = {
-    file_name = "getTechnicianList.py"
-    handler   = "getTechnicianList.lambda_handler"
-    runtime   = "python3.12"
-    timeout   = 15
+    file_name  = "getTechnicianList.py"
+    handler    = "getTechnicianList.lambda_handler"
+    runtime    = "python3.12"
+    timeout    = 15
+    invoked_by = ["cognito"]
 
     environment_variables = {
       USER_POOL_ID = "af-south-1_A4wjuHPlq"
@@ -1652,10 +1724,11 @@ lambda_functions_custom = {
 
   # $ // ============================ Users ==================================== //
   postUser = {
-    file_name = "postUser.py"
-    handler   = "postUser.lambda_handler"
-    runtime   = "python3.12"
-    timeout   = 15
+    file_name  = "postUser.py"
+    handler    = "postUser.lambda_handler"
+    runtime    = "python3.12"
+    timeout    = 15
+    invoked_by = ["apigateway"]
 
     environment_variables = {
       # SSM parameter storing the User Pool ID
@@ -1714,10 +1787,11 @@ lambda_functions_custom = {
   }
 
   getUser = {
-    file_name = "getUser.py"
-    handler   = "getUser.lambda_handler"
-    runtime   = "python3.12"
-    timeout   = 15
+    file_name  = "getUser.py"
+    handler    = "getUser.lambda_handler"
+    runtime    = "python3.12"
+    timeout    = 15
+    invoked_by = ["apigateway"]
 
     environment_variables = {
       # SSM parameter storing the User Pool ID
@@ -1763,10 +1837,11 @@ lambda_functions_custom = {
   }
 
   postConfirmationTrigger = {
-    file_name = "postConfirmationTrigger.py"
-    handler   = "postConfirmationTrigger.lambda_handler"
-    runtime   = "python3.12"
-    timeout   = 15
+    file_name  = "postConfirmationTrigger.py"
+    handler    = "postConfirmationTrigger.lambda_handler"
+    runtime    = "python3.12"
+    timeout    = 15
+    invoked_by = ["apigateway"]
 
     environment_variables = {
       # SSM parameter storing the User Pool ID
@@ -1817,11 +1892,11 @@ lambda_functions_custom = {
   }
 
   updateUserById = {
-    file_name = "updateUserById.py"
-    handler   = "updateUserById.lambda_handler"
-    runtime   = "python3.12"
-    timeout   = 15
-
+    file_name  = "updateUserById.py"
+    handler    = "updateUserById.lambda_handler"
+    runtime    = "python3.12"
+    timeout    = 15
+    invoked_by = ["apigateway"]
     environment_variables = {
       # SSM parameter storing the User Pool ID
       USER_POOL_PARAM = "/crud-nosql/cognito/cognito_user_pool_id"
@@ -1869,10 +1944,11 @@ lambda_functions_custom = {
   }
   # $ Delete User By ID
   deleteUserById = {
-    file_name = "deleteUserById.py"
-    handler   = "deleteUserById.lambda_handler"
-    runtime   = "python3.12"
-    timeout   = 15
+    file_name  = "deleteUserById.py"
+    handler    = "deleteUserById.lambda_handler"
+    runtime    = "python3.12"
+    timeout    = 15
+    invoked_by = ["apigateway"]
 
     environment_variables = {
       # SSM parameter storing the User Pool ID
@@ -1918,10 +1994,11 @@ lambda_functions_custom = {
   }
 
   postResendTempPassword = {
-    file_name = "postResendTempPassword.py"
-    handler   = "postResendTempPassword.lambda_handler"
-    runtime   = "python3.12"
-    timeout   = 15
+    file_name  = "postResendTempPassword.py"
+    handler    = "postResendTempPassword.lambda_handler"
+    runtime    = "python3.12"
+    timeout    = 15
+    invoked_by = ["apigateway"]
 
     environment_variables = {
       # SSM parameter storing the User Pool ID
@@ -1967,9 +2044,10 @@ lambda_functions_custom = {
   }
 
   updateAssetVerifyStatus = {
-    file_name = "updateAssetVerifyStatus.py"
-    handler   = "updateAssetVerifyStatus.lambda_handler"
-    runtime   = "python3.12"
+    file_name  = "updateAssetVerifyStatus.py"
+    handler    = "updateAssetVerifyStatus.lambda_handler"
+    runtime    = "python3.12"
+    invoked_by = ["apigateway", "eventbridge"]
 
     # Inline policies required for Lambda
     inline_policy_statements = [
@@ -2010,6 +2088,7 @@ lambda_functions_custom = {
     runtime            = "python3.12"
     sns_publish_topics = ["asset-transfer-request-topic"]
     path               = "transfers/checkApprovalTimeout"
+    invoked_by         = ["eventbridgeScheduler"]
 
     // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
     inline_policy_statements = [
@@ -2047,15 +2126,16 @@ lambda_functions_custom = {
   }
 
   assetTransferTransit = {
-    file_name = "assetTransferTransit.py"
-    handler   = "assetTransferTransit.lambda_handler"
-    runtime   = "python3.12"
-    path      = "transfers/assetTransferTransit"
+    file_name  = "assetTransferTransit.py"
+    handler    = "assetTransferTransit.lambda_handler"
+    runtime    = "python3.12"
+    path       = "transfers/assetTransferTransit"
+    invoked_by = ["eventbridge"]
 
     // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
     inline_policy_statements = [
       {
-        sid = "TransferTransitEvent"
+        sid = "TransferTransitNotifyEvent"
         actions = [
           "sqs:SendMessage"
         ]
@@ -2063,14 +2143,28 @@ lambda_functions_custom = {
           "arn:aws:sqs:af-south-1:157489943321:asset-transfer-notifications-queue"
         ]
       },
+      {
+        sid = "TransferTransitQueueAccess"
+        actions = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:ChangeMessageVisibility",
+          "sqs:GetQueueUrl"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-transfer-transit-queue"
+        ]
+      },
     ]
   }
 
   assetTransferRequest = {
-    file_name = "assetTransferRequest.py"
-    handler   = "assetTransferRequest.lambda_handler"
-    runtime   = "python3.12"
-    path      = "transfers/assetTransferRequest"
+    file_name  = "assetTransferRequest.py"
+    handler    = "assetTransferRequest.lambda_handler"
+    runtime    = "python3.12"
+    path       = "transfers/assetTransferRequest"
+    invoked_by = ["eventbridge"]
 
     // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
     inline_policy_statements = [
@@ -2083,18 +2177,31 @@ lambda_functions_custom = {
           "arn:aws:sqs:af-south-1:157489943321:asset-transfer-notifications-queue"
         ]
       },
+      {
+        sid = "TransferRequestQueueAccess"
+        actions = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:ChangeMessageVisibility",
+          "sqs:GetQueueUrl"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-transfer-request-queue"
+        ]
+      },
     ]
   }
 
   assetTransferApproval = {
-    file_name = "assetTransferApproval.py"
-    handler   = "assetTransferApproval.lambda_handler"
-    runtime   = "python3.12"
-    path      = "transfers/assetTransferApproval"
+    file_name  = "assetTransferApproval.py"
+    handler    = "assetTransferApproval.lambda_handler"
+    runtime    = "python3.12"
+    path       = "transfers/assetTransferApproval"
+    invoked_by = ["eventbridge"]
 
     # sns_publish_topics = ["asset-transfer-approval-topic"]
 
-    // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
     inline_policy_statements = [
       {
         sid = "TransferApprovalEvent"
@@ -2105,18 +2212,31 @@ lambda_functions_custom = {
           "arn:aws:sqs:af-south-1:157489943321:asset-transfer-notifications-queue"
         ]
       },
+      {
+        sid = "TransferApprovalQueueAccess"
+        actions = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:ChangeMessageVisibility",
+          "sqs:GetQueueUrl"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-transfer-approval-queue"
+        ]
+      },
     ]
   }
 
   assetTransferReceipt = {
-    file_name = "assetTransferReceipt.py"
-    handler   = "assetTransferReceipt.lambda_handler"
-    runtime   = "python3.12"
-    path      = "transfers/assetTransferReceipt"
+    file_name  = "assetTransferReceipt.py"
+    handler    = "assetTransferReceipt.lambda_handler"
+    runtime    = "python3.12"
+    path       = "transfers/assetTransferReceipt"
+    invoked_by = ["eventbridge"]
 
     # sns_publish_topics = ["asset-transfer-receipt-topic"]
 
-    // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
     inline_policy_statements = [
       {
         sid = "TransferReceiptEvent"
@@ -2127,14 +2247,28 @@ lambda_functions_custom = {
           "arn:aws:sqs:af-south-1:157489943321:asset-transfer-notifications-queue"
         ]
       },
+      {
+        sid = "TransferReceiptQueueAccess"
+        actions = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:ChangeMessageVisibility",
+          "sqs:GetQueueUrl"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-transfer-receipt-queue"
+        ]
+      },
     ]
   }
 
   handleTransferNotifications = {
-    file_name = "handleTransferNotifications.py"
-    handler   = "handleTransferNotifications.lambda_handler"
-    runtime   = "python3.12"
-    path      = "transfers/handleTransferNotifications"
+    file_name  = "handleTransferNotifications.py"
+    handler    = "handleTransferNotifications.lambda_handler"
+    runtime    = "python3.12"
+    path       = "transfers/handleTransferNotifications"
+    invoked_by = ["sqs"]
 
     // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
     # Inline policies required for Lambda
@@ -2150,6 +2284,19 @@ lambda_functions_custom = {
         ]
         resources = [
           "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-notifications-table"
+        ]
+      },
+      {
+        sid = "TransferNotifyQueueAccess"
+        actions = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:ChangeMessageVisibility",
+          "sqs:GetQueueUrl"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-transfer-notifications-queue"
         ]
       },
     ]
@@ -2213,7 +2360,7 @@ sqs_lambda_triggers = {
   }
 
   notification_events = {
-    function_name = "handleNotifications"
+    function_name = "handleTransferNotifications"
   }
 }
 
@@ -2223,11 +2370,11 @@ sqs_lambda_triggers = {
 # $ // ================================================================================ // 
 
 
-topics = {
-  asset_transfer_request = {
-    name = "asset-transfer-request-topic"
-  }
-}
+# topics = {
+#   asset_transfer_request = {
+#     name = "asset-transfer-request-topic"
+#   }
+# }
 
 # $ // ================================================================================ // 
 # $ //                            DynamoDB Tables                                       // 

@@ -245,3 +245,11 @@ resource "aws_cloudwatch_event_archive" "event_bus_archive" {
   event_source_arn = aws_cloudwatch_event_bus.custom_event_bus.arn
   retention_days   = 3
 }
+
+output "permission_arn_map" {
+  value = local.permission_arn_map
+}
+
+output "target_map" {
+  value = local.target_map
+}

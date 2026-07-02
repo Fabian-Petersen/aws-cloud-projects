@@ -64,9 +64,11 @@ variable "subdomain_name" {}
 
 variable "lambda_functions" {
   type = map(object({
-    file_name = string
-    handler   = string
-    runtime   = string
+    file_name  = string
+    handler    = string
+    runtime    = string
+    path       = optional(string)
+    invoked_by = optional(list(string), []) # e.g. ["apigateway", "s3", "eventbridge"]
 
     dynamodb_permissions = map(object({
       table_name         = string
@@ -87,10 +89,12 @@ variable "lambda_arns" {
 
 variable "lambda_functions_custom" {
   type = map(object({
-    file_name = string
-    handler   = string
-    runtime   = string
-    timeout   = optional(number, 15)
+    file_name  = string
+    handler    = string
+    runtime    = string
+    timeout    = optional(number, 15)
+    path       = optional(string)
+    invoked_by = optional(list(string), []) # e.g. ["apigateway", "s3", "eventbridge"]
 
     environment_variables = optional(map(string), {})
 

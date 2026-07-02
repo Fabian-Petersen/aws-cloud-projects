@@ -44,7 +44,17 @@ locals {
       }
     ]
   ])
+
+  api_gateway_functions = {
+    for name, fn in merge(var.lambda_functions, var.lambda_functions_custom) :
+    name => fn
+    if contains(try(fn.invoked_by, []), "apigateway")
+  }
 }
+
+
+
+
 
 
 #$ [Step 1] : Define the API for the project
@@ -240,10 +250,8 @@ resource "aws_api_gateway_stage" "deployment_stage" {
 
 #$ [Step 8] : Set API Permissions to invoke lambda functions / services
 resource "aws_lambda_permission" "allow_api_gateway" {
-  for_each = merge(
-    var.lambda_functions,
-    var.lambda_functions_custom
-  )
+  for_each = local.api_gateway_functions
+
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
   function_name = each.key

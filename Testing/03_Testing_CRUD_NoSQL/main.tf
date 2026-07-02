@@ -270,21 +270,32 @@ module "eventbridge" {
   dynamodb_stream_arns = module.dynamodb_tables.dynamodb_stream_arns
   profile_2_account_id = var.profile_2_account_id
 
-  resource_permissions = [
-    {
-      service     = "lambda"
-      principal   = "events.amazonaws.com"
-      target_name = "updateAssetVerifyStatus" # matches event_subscriptions target name
-      source_arn  = module.eventbridge.rule_arns["asset-verification"]
-      target_arn  = module.cognito_lambda.custom_lambda_arns["updateAssetVerifyStatus"] # Look up the ARN for this target from the lambda module output. cognito_lambda is the resource where the custom lambda function will be generated
-    }
-  ]
+  resource_permissions = flatten([
+    for rule_name, rule in var.event_subscriptions : [
+      for target in rule.targets : {
+        service   = "lambda"
+        principal = "events.amazonaws.com"
+
+        target_name = target.name
+        source_arn  = module.eventbridge.rule_arns[rule_name]
+        target_arn  = module.cognito_lambda.custom_lambda_arns[target.name]
+      }
+    ]
+  ])
 }
 
-#$ // ========================= SQS ======================== //
+#$ // ========================== SQS ============================== //
 
 module "sqs" {
   source              = "../../modules/sqs"
   queues              = var.queues
   sqs_lambda_triggers = var.sqs_lambda_triggers
+}
+
+output "eventbridge_permission_arn_map" {
+  value = module.eventbridge.permission_arn_map
+}
+
+output "eventbridge_target_map" {
+  value = module.eventbridge.target_map
 }
