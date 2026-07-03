@@ -105,7 +105,8 @@ def query_by_status(status):
 
     response = table.query(
         IndexName="TransferStatusIndex",
-        KeyConditionExpression=Key("status").eq(status)
+        KeyConditionExpression=Key("status").eq(status),
+        ScanIndexForward=False  # newest first
     )
 
     items.extend(response.get("Items", []))
@@ -114,8 +115,10 @@ def query_by_status(status):
         response = table.query(
             IndexName="TransferStatusIndex",
             KeyConditionExpression=Key("status").eq(status),
+            ScanIndexForward=False,
             ExclusiveStartKey=response["LastEvaluatedKey"]
         )
+
         items.extend(response.get("Items", []))
 
     return items
@@ -176,14 +179,28 @@ def handle_options_request(method, headers):
     return None
 
 
+VALID_STATUSES = {
+    "pending",
+    "approved",
+    "rejected",
+    "in-transit",
+    "receipted",
+    "cancelled"
+}
+
 # ----------------------------
 # Lambda handler
 # ----------------------------
+
+
 def lambda_handler(event, context):
 
     # Query params
     query_params = event.get("queryStringParameters") or {}
     status = query_params.get("status")
+
+    if status and status not in VALID_STATUSES:
+        return _response(400, {"message": f"Invalid status. Must be one of: {', '.join(sorted(VALID_STATUSES))}"}, HEADERS)
 
     # Auth claims
     claims = event.get("requestContext", {}).get(
@@ -221,12 +238,12 @@ def lambda_handler(event, context):
             if status:
                 # GSI + user filter fallback (no composite index)
                 items = query_by_status(status)
-                items = [item for item in items if item.get(
-                    "request_sub") == user_sub]
+
             else:
                 items = scan_all()
-                items = [item for item in items if item.get(
-                    "request_sub") == user_sub]
+
+            items = [item for item in items if item.get(
+                "request_sub") == user_sub]
 
         # ----------------------------
         # Format dates

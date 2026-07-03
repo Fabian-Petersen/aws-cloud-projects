@@ -72,15 +72,15 @@ api_parent_routes = {
 
   "transfers" = {
     methods = {
-      GET = {
-        lambda        = "getTransferList"
-        authorization = "COGNITO_USER_POOLS"
-      }
+      # GET = {
+      #   lambda        = "getTransferList"
+      #   authorization = "COGNITO_USER_POOLS"
+      # }
 
-      POST = {
-        lambda        = "postTransferRequest"
-        authorization = "COGNITO_USER_POOLS"
-      }
+      # POST = {
+      #   lambda        = "postTransferRequest"
+      #   authorization = "COGNITO_USER_POOLS"
+      # }
       OPTIONS = {
         authorization = "NONE"
       }
@@ -341,6 +341,10 @@ api_child_routes = {
     }
   }
 
+  /*#$ -------------------------------------------------------------------------- */
+  /*#$                                 transfers                                  */
+  /*#$ -------------------------------------------------------------------------- */
+
   transfer-id = {
     parent_key = "transfers" # /api/transfers/{id}
     path_part  = "{id}"
@@ -356,6 +360,85 @@ api_child_routes = {
       }
       DELETE = {
         lambda        = "deleteTransferById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  transfer-id-approve = {
+    parent_key = "transfer-id" # /api/transfers/{id}/approve
+    path_part  = "approve"
+    level      = 2
+    methods = {
+      POST = {
+        lambda        = "postTransferApproval"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  transfer-id-reject = {
+    parent_key = "transfer-id" # /api/transfers/{id}/reject
+    path_part  = "reject"
+    level      = 2
+    methods = {
+      POST = {
+        lambda        = "postTransferReject"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  transfer-requests = {
+    parent_key = "transfers" # /api/transfers/requests/
+    path_part  = "requests"
+    level      = 1
+    methods = {
+      GET = {
+        lambda        = "getTransferList"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      POST = {
+        lambda        = "postTransferRequest"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  transfer-completed = {
+    parent_key = "transfers" # /api/transfers/completed/
+    path_part  = "completed"
+    level      = 1
+    methods = {
+      GET = {
+        lambda        = "getTransferCompletedList"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  transfer-id-documents = {
+    parent_key = "transfer-id" # /api/transfers/{id}/transfer-document
+    path_part  = "transfer-document"
+    level      = 2
+    methods = {
+      GET = {
+        lambda        = "getTransferDocumentById"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -1211,6 +1294,29 @@ lambda_functions = {
     }
   }
 
+  postTransferReject = {
+    file_name  = "postTransferReject.py"
+    handler    = "postTransferReject.lambda_handler"
+    runtime    = "python3.12"
+    path       = "transfers/postTransferReject"
+    invoked_by = ["apigateway"]
+
+    dynamodb_permissions = {
+      asset_transfer_table = {
+        table_name         = "crud-nosql-app-assets-transfer-table"
+        actions            = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+
+    statements = [
+      {
+        actions   = ["s3:DeleteObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/transfers/*"]
+      }
+    ]
+  }
+
   postTransferReceipt = {
     file_name  = "postTransferReceipt.py"
     handler    = "postTransferReceipt.lambda_handler"
@@ -1290,6 +1396,8 @@ lambda_functions = {
       }
     ]
   }
+
+
   getTransferList = {
     file_name  = "getTransferList.py"
     handler    = "getTransferList.lambda_handler"
@@ -1356,6 +1464,55 @@ lambda_functions = {
       }
     ]
   }
+  getTransferCompletedList = {
+    file_name  = "getTransferCompletedList.py"
+    handler    = "getTransferCompletedList.lambda_handler"
+    runtime    = "python3.12"
+    path       = "transfers/getTransferCompletedList"
+    invoked_by = ["apigateway"]
+
+    dynamodb_permissions = {
+      asset_transfer_table = {
+        table_name         = "crud-nosql-app-assets-transfer-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+    }
+  }
+
+  getTransferDocumentById = {
+    file_name  = "getTransferDocumentById.py"
+    handler    = "getTransferDocumentById.lambda_handler"
+    runtime    = "python3.12"
+    path       = "transfers/getTransferDocumentById"
+    invoked_by = ["apigateway"]
+    dynamodb_permissions = {
+      asset_transfer_table = {
+        table_name         = "crud-nosql-app-assets-transfer-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+    }
+
+    statements = [
+      {
+        actions   = ["s3:GetObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/transfer-documents/*"]
+      },
+      {
+        actions   = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images"]
+        conditions = [
+          {
+            test     = "StringLike"
+            variable = "s3:prefix"
+            values   = ["transfer-documents/*"]
+          }
+        ]
+      }
+    ]
+  }
+
 
 
   # % // ============================ END: Asset Transfer Lambdas ============================== // 
@@ -2474,6 +2631,10 @@ dynamodb_tables = {
       "TransferStatusIndex" = {
         hash_key        = "status"
         range_key       = "transferCreated"
+        projection_type = "ALL"
+      }
+      "IdIndex" = {
+        hash_key        = "id"
         projection_type = "ALL"
       }
       "RequestorIndex" = {
