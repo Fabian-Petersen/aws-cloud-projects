@@ -95,7 +95,7 @@ def lambda_handler(event, context):
 
         # $ Validate required fields (assetID and description is not required)
         required_fields = ["transferReason", "locationFrom", "locationTo",
-                           "area", "equipment", "transferDate"]
+                           "area", "equipment", "expectedDate"]
         for field in required_fields:
             if not data.get(field):
                 return _response(400, {"message": f"Missing or empty field: {field}"})
@@ -166,7 +166,7 @@ def lambda_handler(event, context):
             "area": normalize_string(data.get("area")),
             "equipment": data["equipment"],
             "assetID": data.get("assetID", ""),  # % (PK)
-            "transferDate": data["transferDate"],
+            "expectedDate": data["expectedDate"],
             "description": data.get("description", ""),
             "images": []  # Will be updated by S3-triggered Lambda later
         }

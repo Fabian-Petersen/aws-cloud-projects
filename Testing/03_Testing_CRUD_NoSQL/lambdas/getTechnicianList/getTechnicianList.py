@@ -1,6 +1,7 @@
 import json
 import os
 import boto3
+from decimal import Decimal
 from botocore.exceptions import ClientError
 
 cognito = boto3.client("cognito-idp")
@@ -8,11 +9,36 @@ cognito = boto3.client("cognito-idp")
 USER_POOL_ID = os.environ["USER_POOL_ID"]
 GROUP_NAME = "technician"
 
+
 def get_attr(user, name):
     for attr in user.get("Attributes", []):
         if attr.get("Name") == name:
             return attr.get("Value", "")
     return ""
+
+# ----------------------------
+# Decimal serializer for DynamoDB types in JSON responses
+# ----------------------------
+
+
+def decimal_serializer(obj):
+    """
+    Custom JSON serializer for handling DynamoDB Decimal types.
+
+    Args:
+        obj: Object to serialize.
+
+    Returns:
+        int | float: Converted numeric value.
+
+    Raises:
+        TypeError: If object type is not supported.
+    """
+    if isinstance(obj, Decimal):
+        if obj % 1 == 0:
+            return int(obj)
+        return float(obj)
+    raise TypeError
 
 
 def list_technicians():
@@ -56,34 +82,99 @@ def list_technicians():
     return technicians
 
 
-def response(status_code, body):
-    return {
-        "statusCode": status_code,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "http://localhost:5173",
-            "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Requested-With",
-            "Access-Control-Allow-Methods": "GET,OPTIONS",
-            "Access-Control-Allow-Credentials": "true"
-        },
-        "body": json.dumps(body),
+def handle_request_metadata(event):
+    """
+    Extract HTTP method and construct CORS headers based on request origin.
+
+    Args:
+        event (dict): Lambda event payload.
+
+    Returns:
+        tuple:
+            method (str): HTTP method (GET, POST, OPTIONS, etc.)
+            response_headers (dict): CORS-enabled response headers.
+    """
+    headers = event.get("headers") or {}
+    origin = headers.get("origin") or headers.get("Origin") or ""
+
+    allowed_origins = [
+        "https://www.crud-nosql.app.fabian-portfolio.net",
+        "https://crud-nosql.app.fabian-portfolio.net",
+        "http://localhost:5173",
+    ]
+
+    allowed_origin = origin if origin in allowed_origins else ""
+
+    response_headers = {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": allowed_origin,
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+        "Access-Control-Allow-Credentials": "true",
     }
 
-def lambda_handler(event, context):
-    http_method = event.get("requestContext", {}).get("http", {}).get("method") \
-        or event.get("httpMethod")
+    method = (
+        event.get("httpMethod")
+        or event.get("requestContext", {}).get("http", {}).get("method")
+    )
 
-    if http_method == "OPTIONS":
-        return response(200, {"message": "OK"})
+    return method, response_headers
+
+
+def handle_options_request(method, headers):
+    """
+    Handle CORS preflight (OPTIONS) requests.
+
+    Args:
+        method (str): HTTP method.
+        headers (dict): Response headers.
+
+    Returns:
+        dict | None: HTTP response if OPTIONS request, otherwise None.
+    """
+    if method == "OPTIONS":
+        return _response(200, {"message": "Success"}, headers)
+    return None
+
+
+def lambda_handler(event, context):
+    # CORS
+    method, HEADERS = handle_request_metadata(event)
+
+    options_response = handle_options_request(method, HEADERS)
+    if options_response:
+        return options_response
 
     try:
         technicians = list_technicians()
-        return response(200, technicians)
+        return _response(200, technicians, HEADERS)
 
     except ClientError as e:
         print("Cognito error:", e)
-        return response(500, {"message": "Failed to fetch technicians"})
+        return _response(500, {"message": "Failed to fetch technicians"}, HEADERS)
 
     except Exception as e:
         print("Unexpected error:", e)
-        return response(500, {"message": "Unexpected server error"})
+        return _response(500, {"message": "Unexpected server error"}, HEADERS)
+
+
+# ----------------------------
+# Response helper
+# ----------------------------
+def _response(status_code, body, headers):
+    """
+    Construct a standard API Gateway HTTP response.
+
+    Args:
+        status_code (int): HTTP status code.
+        body (dict | list): Response payload.
+        headers (dict): HTTP headers.
+
+    Returns:
+        dict: Formatted response object.
+    """
+    return {
+        "statusCode": status_code,
+        "headers": headers,
+        "body": json.dumps(body, default=decimal_serializer),
+    }

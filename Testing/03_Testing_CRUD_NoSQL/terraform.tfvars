@@ -398,6 +398,36 @@ api_child_routes = {
     }
   }
 
+  transfer-id-transit = {
+    parent_key = "transfer-id" # /api/transfers/{id}/transit
+    path_part  = "in-transit"
+    level      = 2
+    methods = {
+      POST = {
+        lambda        = "postTransferTransit"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  transfer-id-receipt = {
+    parent_key = "transfer-id" # /api/transfers/{id}/receipt
+    path_part  = "receipt"
+    level      = 2
+    methods = {
+      POST = {
+        lambda        = "postTransferReceipt"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
   transfer-requests = {
     parent_key = "transfers" # /api/transfers/requests/
     path_part  = "requests"
@@ -1289,7 +1319,7 @@ lambda_functions = {
       asset_transfer_table = {
         table_name         = "crud-nosql-app-assets-transfer-table"
         actions            = ["dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
-        allow_index_access = false
+        allow_index_access = true
       }
     }
   }

@@ -7,7 +7,12 @@ data "archive_file" "lambda_zip" {
     ? "${path.root}/lambdas/${each.value.path}/${each.value.file_name}"
     : "${path.root}/lambdas/${each.key}/${each.value.file_name}"
   )
-  output_path = "${path.root}/lambdas/${each.key}/${replace(each.value.file_name, ".py", ".zip")}"
+
+  output_path = (
+    try(each.value.path, null) != null
+    ? "${path.root}/lambdas/${each.value.path}/${replace(each.value.file_name, ".py", ".zip")}"
+    : "${path.root}/lambdas/${each.key}/${replace(each.value.file_name, ".py", ".zip")}"
+  )
 }
 
 #$ [Step 1] : Create an IAM role for the Lambda function to execute operations on dynamoDB
