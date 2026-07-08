@@ -78,12 +78,6 @@ def normalize_string(value: str | None) -> str:
 
 
 def lambda_handler(event, context):
-    # print("COPY_EVENT:", generate_test_event(event))
-    # return {
-    #     "statusCode": 200,
-    #     "body": json.dumps({"message": "ok"})
-    # }
-
     try:
         if not event.get("body"):
             return _response(400, {"message": "Missing request body"})
@@ -155,6 +149,8 @@ def lambda_handler(event, context):
             "requestor_sub": user_id,
             "requestor_email": user_email,
             "requestor_name": normalize_string(user_name),
+            "approval_reminder_count": 0,
+            "schedule_name": f'transfer-{transfer_id}-timeout',
             # $ Frontend data
             "transferReason": data["transferReason"],
             "locationFrom": normalize_string(data.get("locationFrom")),

@@ -31,6 +31,71 @@ PRESIGN_EXPIRES_SECONDS = int(os.getenv("PRESIGN_EXPIRES_SECONDS", "900"))
 VALID_STATUSES = {"pending", "in-transit",
                   "receipted", "cancelled", "rejected", "approved"}
 
+# $ STAGES: Used to build the response object for the frontend
+STAGES = {
+    "request": [
+        "requested_by",
+        "requestor_name",
+        "requestor_sub",
+        "assetID",
+        "area",
+        "images",
+        "equipment",
+        "description",
+        "transferReason",
+        "locationFrom",
+        "locationTo",
+        "expectedDate",
+    ],
+    "approved": [
+        "approvalId",
+        "dateApproved",
+        "approvedBy"
+        "approvedBySub",
+        "approvalReminderCount",
+    ],
+    "inTransit": [
+        "transitId",
+        "dateCreated",
+        "inTransitSub",
+        "transportType",
+        "transportName",
+        "transportDate",
+        "trackingNumber",
+        "transportNotes",
+        "transportCost",
+        "images",
+        "invoices",
+    ],
+    "receipt": [
+        "receiptId",
+        "dateReceived",
+        "receivedBySub",
+        "receiptStatus",
+        "condition",
+        "damageDetails",
+        "receiptImages",
+        "deliveryNote",
+    ],
+    "cancelled": [
+        "dateCancelled",
+        "cancelledBySub",
+        "cancelReason",
+        "cancelStatus",
+    ],
+}
+
+# $ Dates to be changed from ISO string to human readable date
+DATE_FIELDS = {
+    "transferCreated",
+    "expectedDate",
+    "dateApproved",
+    "dateCreated",
+    "transportDate",
+    "dateReceived",
+    "dateCancelled",
+}
+
 # ----------------------------
 # Decimal serializer for DynamoDB types in JSON responses
 # ----------------------------
@@ -182,8 +247,49 @@ def add_presigned_urls(data):
 
 
 # =========================================================================
+# Format all the date fields in the STAGES
+# =========================================================================
+
+def format_dates(data):
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if key in DATE_FIELDS and value:
+                data[key] = to_human_date(value)
+            else:
+                format_dates(value)
+
+    elif isinstance(data, list):
+        for item in data:
+            format_dates(item)
+
+# =========================================================================
+# Build the response object
+# =========================================================================
+
+
+def build_transfer_response(item):
+    response = {
+        "id": item["id"],
+        "assetID": item["assetID"],
+        "status": item["status"],
+        "transferCreated": item["transferCreated"],
+    }
+
+    for stage, fields in STAGES.items():
+        data = {}
+
+        for field in fields:
+            if field in item:
+                data[field] = item[field]
+
+        response[stage] = data or None
+
+    return response
+
+# =========================================================================
 # Get transfer by request ID (GSI: id)
 # =========================================================================
+
 
 def get_transfer_by_id(table, request_id: str) -> dict:
     response = table.query(
@@ -210,6 +316,10 @@ def get_transfer_request(request_id: str, status: str, headers) -> dict:
 
     try:
         item = get_transfer_by_id(transfer_table, request_id)
+        response = build_transfer_response(item)
+        format_dates(response)
+        response = add_presigned_urls(response)
+
     except ValueError:
         return _response(
             404,
@@ -224,15 +334,11 @@ def get_transfer_request(request_id: str, status: str, headers) -> dict:
             headers,
         )
 
-    if "transferCreated" in item:
-        item["transferCreated"] = to_human_date(item["transferCreated"])
-
-    if status != "receipted":
-        return _response(
-            200,
-            add_presigned_urls(item),
-            headers,
-        )
+    return _response(
+        200,
+        response,
+        headers,
+    )
 
 
 def lambda_handler(event, context):

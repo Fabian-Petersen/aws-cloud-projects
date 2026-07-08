@@ -1,5 +1,6 @@
 import json
 import boto3
+import uuid
 from datetime import datetime, timezone, timedelta
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
@@ -118,6 +119,7 @@ def lambda_handler(event, context):
 
         transfer_id = data.get("id")
         status = normalize_string(data.get("status"))
+        approvalId = str(uuid.uuid4())
 
         if not transfer_id:
             return _response(400, {"message": "Missing field: id"})
@@ -145,7 +147,7 @@ def lambda_handler(event, context):
 
         approved_by_sub = claims.get("sub", "")
 
-        approved_date = get_local_now()
+        dateApproved = get_local_now()
 
         response = table_transfers.update_item(
             Key={
@@ -154,18 +156,22 @@ def lambda_handler(event, context):
             },
             UpdateExpression="""
                 SET #status = :status,
+                    approvalId = :approvalId,
                     approvedBy = :approvedBy,
                     approvedBySub = :approvedBySub,
-                    approvedDate = :approvedDate
+                    dateApproved = :dateApproved,
+                    approvalReminderCount = :approvalReminderCount
             """,
             ExpressionAttributeNames={
                 "#status": "status",
             },
             ExpressionAttributeValues={
                 ":status": "approved",
+                ":approvalId": approvalId,
                 ":approvedBy": approved_by,
                 ":approvedBySub": approved_by_sub,
-                ":approvedDate": approved_date,
+                ":dateApproved": dateApproved,
+                ":approvalReminderCount": 0
             },
             ConditionExpression="""
             attribute_exists(assetID) 
