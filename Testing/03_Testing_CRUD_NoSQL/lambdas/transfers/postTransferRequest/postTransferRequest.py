@@ -115,10 +115,6 @@ def lambda_handler(event, context):
         requested_by = f'{claims.get("name", "")} {claims.get("family_name", "")}'
         user_email = claims.get("email")
 
-        # $ Build the jobcardNumber
-        # location = data["location"]
-        # jobcardNumber = generateJobCardNo(location)
-
         presigned_urls = []
 
         # $ Check if frontend included any files

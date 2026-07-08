@@ -248,10 +248,12 @@ def lambda_handler(event, context):
         # ----------------------------
         # Format dates
         # ----------------------------
+
+        DATE_FIELDS = ["transferCreated", "dateCreated", "transportDate"]
         for item in items:
-            if "transferCreated" in item:
-                item["transferCreated"] = to_human_date(
-                    item["transferCreated"])
+            for field in DATE_FIELDS:
+                if field in item and item[field]:
+                    item[field] = to_human_date(item[field])
 
         return _response(200, items, HEADERS)
 

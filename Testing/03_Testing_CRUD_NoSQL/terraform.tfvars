@@ -1372,7 +1372,7 @@ lambda_functions = {
       asset_transfer_table = {
         table_name         = "crud-nosql-app-assets-transfer-table"
         actions            = ["dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
-        allow_index_access = false
+        allow_index_access = true
       }
     }
   }
