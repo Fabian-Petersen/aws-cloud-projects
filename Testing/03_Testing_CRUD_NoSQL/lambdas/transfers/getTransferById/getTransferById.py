@@ -71,10 +71,9 @@ STAGES = {
         "receiptId",
         "dateReceived",
         "receivedBySub",
-        "receiptStatus",
         "condition",
         "damageDetails",
-        "receiptImages",
+        "images",
         "deliveryNote",
     ],
     "cancelled": [
@@ -140,6 +139,10 @@ def to_human_date(iso_string: str) -> str:
     return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
 
 
+# ----------------------------
+# Construct Headers
+# ----------------------------
+
 def handle_request_metadata(event):
     """
     Extract HTTP method and construct CORS headers based on request origin.
@@ -180,6 +183,10 @@ def handle_request_metadata(event):
     return method, response_headers
 
 
+# ----------------------------
+# Construct Options
+# ----------------------------
+
 def handle_options_request(method, headers):
     """
     Handle CORS preflight (OPTIONS) requests.
@@ -194,6 +201,10 @@ def handle_options_request(method, headers):
     if method == "OPTIONS":
         return _response(200, {"message": "Success"}, headers)
     return None
+
+# ----------------------------
+# Add Presigned URLS
+# ----------------------------
 
 
 def add_presigned_urls(data):

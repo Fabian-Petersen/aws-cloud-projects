@@ -12,24 +12,78 @@ from datetime import datetime, timezone, timedelta
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table("crud-nosql-app-assets-transfer-table")
 
-# ----------------------------
-# Date formatting in SAST for human readability
-# ----------------------------
+VALID_STATUSES = {
+    "pending",
+    "approved",
+    "rejected",
+    "in-transit",
+    "receipted",
+    "cancelled"
+}
 
+# $ STAGES: Used to build the response object for the frontend
+STAGES = {
+    "request": [
+        "requested_by",
+        "requestor_name",
+        "requestor_sub",
+        "assetID",
+        "area",
+        "images",
+        "equipment",
+        "description",
+        "transferReason",
+        "locationFrom",
+        "locationTo",
+        "expectedDate",
+    ],
+    "approved": [
+        "approvalId",
+        "dateApproved",
+        "approvedBy",
+        "approvedBySub",
+        "approvalReminderCount",
+    ],
+    "inTransit": [
+        "transitId",
+        "dateCreated",
+        "inTransitSub",
+        "transportType",
+        "transportName",
+        "transportDate",
+        "trackingNumber",
+        "transportNotes",
+        "transportCost",
+        "images",
+        "invoices",
+    ],
+    "receipt": [
+        "receiptId",
+        "dateReceived",
+        "receivedBySub",
+        "condition",
+        "damageDetails",
+        "images",
+        "deliveryNote",
+    ],
+    "cancelled": [
+        "dateCancelled",
+        "cancelledBySub",
+        "cancelReason",
+        "cancelStatus",
+    ],
+}
 
-def to_human_date(iso_string: str) -> str:
-    """
-    Convert an ISO 8601 timestamp string to a human-readable date in SAST.
-
-    Args:
-        iso_string (str): ISO formatted datetime string (e.g., "2024-01-01T12:00:00Z").
-
-    Returns:
-        str: Formatted date string (e.g., "01 Jan 2024, 14:00").
-    """
-    SAST = timezone(timedelta(hours=2))
-    dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
-    return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
+# $ Dates to be changed from ISO string to human readable date
+DATE_FIELDS = {
+    "transferCreated",
+    "expectedDate",
+    "dateApproved",
+    "dateCreated",
+    "transportDate",
+    "dateReceived",
+    "dateCancelled",
+}
 
 # ----------------------------
 # Decimal serializer for DynamoDB types in JSON responses
@@ -56,6 +110,26 @@ def decimal_serializer(obj):
     raise TypeError
 
 # ----------------------------
+# Date formatting in SAST for human readability
+# ----------------------------
+
+
+def to_human_date(iso_string: str) -> str:
+    """
+    Convert an ISO 8601 timestamp string to a human-readable date in SAST.
+
+    Args:
+        iso_string (str): ISO formatted datetime string (e.g., "2024-01-01T12:00:00Z").
+
+    Returns:
+        str: Formatted date string (e.g., "01 Jan 2024, 14:00").
+    """
+    SAST = timezone(timedelta(hours=2))
+    dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
+    return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
+
+
+# ----------------------------
 # Cognito groups parser for flexible group claim formats
 # ----------------------------
 
@@ -80,26 +154,52 @@ def parse_groups(groups_claim):
     return []
 
 
-# ----------------------------
-# Scan fallback (no filters)
-# ----------------------------
-def scan_all():
-    items = []
-    response = table.scan()
-    items.extend(response.get("Items", []))
+# =========================================================================
+# Format all the date fields in the STAGES
+# =========================================================================
 
-    while "LastEvaluatedKey" in response:
-        response = table.scan(
-            ExclusiveStartKey=response["LastEvaluatedKey"]
-        )
-        items.extend(response.get("Items", []))
 
-    return items
+def format_dates(data):
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if key in DATE_FIELDS and value:
+                data[key] = to_human_date(value)
+            else:
+                format_dates(value)
 
+    elif isinstance(data, list):
+        for item in data:
+            format_dates(item)
+
+
+# =========================================================================
+# Build the response object
+# =========================================================================
+
+def build_transfer_response(item):
+    response = {
+        "id": item["id"],
+        "assetID": item["assetID"],
+        "status": item["status"],
+        "transferCreated": item["transferCreated"],
+    }
+
+    for stage, fields in STAGES.items():
+        data = {}
+
+        for field in fields:
+            if field in item:
+                data[field] = item[field]
+
+        response[stage] = data or None
+
+    return response
 
 # ----------------------------
 # GSI query (status-based)
 # ----------------------------
+
+
 def query_by_status(status):
     items = []
 
@@ -123,6 +223,28 @@ def query_by_status(status):
 
     return items
 
+# ----------------------------
+# Scan fallback (no filters)
+# ----------------------------
+
+
+def scan_all():
+    items = []
+    response = table.scan()
+    items.extend(response.get("Items", []))
+
+    while "LastEvaluatedKey" in response:
+        response = table.scan(
+            ExclusiveStartKey=response["LastEvaluatedKey"]
+        )
+        items.extend(response.get("Items", []))
+
+    return items
+
+
+# ----------------------------
+# Construct Headers
+# ----------------------------
 
 def handle_request_metadata(event):
     """
@@ -163,6 +285,10 @@ def handle_request_metadata(event):
     return method, response_headers
 
 
+# ----------------------------
+# Construct Options
+# ----------------------------
+
 def handle_options_request(method, headers):
     """
     Handle CORS preflight (OPTIONS) requests.
@@ -179,28 +305,26 @@ def handle_options_request(method, headers):
     return None
 
 
-VALID_STATUSES = {
-    "pending",
-    "approved",
-    "rejected",
-    "in-transit",
-    "receipted",
-    "cancelled"
-}
-
 # ----------------------------
 # Lambda handler
 # ----------------------------
 
 
 def lambda_handler(event, context):
+    print("event:", event)
 
     # Query params
-    query_params = event.get("queryStringParameters") or {}
-    status = query_params.get("status")
+    multi_query_params = event.get("multiValueQueryStringParameters") or {}
+    statuses = (
+        multi_query_params.get("status[]")
+        or multi_query_params.get("status")
+        or []
+    )
 
-    if status and status not in VALID_STATUSES:
-        return _response(400, {"message": f"Invalid status. Must be one of: {', '.join(sorted(VALID_STATUSES))}"}, HEADERS)
+    invalid = [status for status in statuses if status not in VALID_STATUSES]
+
+    if invalid:
+        return _response(400, {"message": f"Invalid status(es): {', '.join(invalid)}"}, HEADERS)
 
     # Auth claims
     claims = event.get("requestContext", {}).get(
@@ -225,8 +349,11 @@ def lambda_handler(event, context):
 
         if is_admin_or_technician:
             # ✅ USE GSI IF STATUS EXISTS
-            if status:
-                items = query_by_status(status)
+            if statuses:
+                items = []
+
+                for status in statuses:
+                    items.extend(query_by_status(status))
             else:
                 items = scan_all()
 
@@ -235,10 +362,11 @@ def lambda_handler(event, context):
             if not user_sub:
                 return _response(403, {"message": "User sub not found in token"}, HEADERS)
 
-            if status:
+            if statuses:
+                items = []
                 # GSI + user filter fallback (no composite index)
-                items = query_by_status(status)
-
+                for status in statuses:
+                    items.extend(query_by_status(status))
             else:
                 items = scan_all()
 
@@ -246,16 +374,17 @@ def lambda_handler(event, context):
                 "request_sub") == user_sub]
 
         # ----------------------------
-        # Format dates
+        # Build response
         # ----------------------------
 
-        DATE_FIELDS = ["transferCreated", "dateCreated", "transportDate"]
-        for item in items:
-            for field in DATE_FIELDS:
-                if field in item and item[field]:
-                    item[field] = to_human_date(item[field])
+        response = []
 
-        return _response(200, items, HEADERS)
+        for item in items:
+            transfer = build_transfer_response(item)
+            format_dates(transfer)
+            response.append(transfer)
+
+        return _response(200, response, HEADERS)
 
     except Exception as exc:
         print("Error:", exc)
