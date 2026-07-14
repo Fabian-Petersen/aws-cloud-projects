@@ -33,7 +33,7 @@ VALID_STATUSES = {"pending", "in-transit",
 
 # $ STAGES: Used to build the response object for the frontend
 STAGES = {
-    "request": [
+    "pending": [
         "requested_by",
         "requestor_name",
         "requestor_sub",
@@ -50,11 +50,11 @@ STAGES = {
     "approved": [
         "approvalId",
         "dateApproved",
-        "approvedBy"
+        "approvedBy",
         "approvedBySub",
         "approvalReminderCount",
     ],
-    "inTransit": [
+    "in-transit": [
         "transitId",
         "dateCreated",
         "inTransitSub",
@@ -67,7 +67,7 @@ STAGES = {
         "images",
         "invoices",
     ],
-    "receipt": [
+    "completed": [
         "receiptId",
         "dateReceived",
         "receivedBySub",
@@ -81,6 +81,12 @@ STAGES = {
         "cancelledBySub",
         "cancelReason",
         "cancelStatus",
+    ],
+    "rejected": [
+        "dateRejected",
+        "rejectedBySub",
+        "rejectedReason",
+        "rejectedStatus",
     ],
 }
 

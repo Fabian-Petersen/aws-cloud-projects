@@ -23,7 +23,7 @@ VALID_STATUSES = {
 
 # $ STAGES: Used to build the response object for the frontend
 STAGES = {
-    "request": [
+    "pending": [
         "requested_by",
         "requestor_name",
         "requestor_sub",
@@ -39,12 +39,12 @@ STAGES = {
     ],
     "approved": [
         "approvalId",
-        "dateApproved",
+        "approvedDate",
         "approvedBy",
         "approvedBySub",
         "approvalReminderCount",
     ],
-    "inTransit": [
+    "in-transit": [
         "transitId",
         "dateCreated",
         "inTransitSub",
@@ -57,7 +57,7 @@ STAGES = {
         "images",
         "invoices",
     ],
-    "receipt": [
+    "completed": [
         "receiptId",
         "dateReceived",
         "receivedBySub",
@@ -72,13 +72,21 @@ STAGES = {
         "cancelReason",
         "cancelStatus",
     ],
+    "rejected": [
+        "rejectedId",
+        "dateRejected",
+        "rejectedBySub",
+        "rejectedBy",
+        "rejectedReason",
+        "rejectedStatus",
+    ],
 }
 
 # $ Dates to be changed from ISO string to human readable date
 DATE_FIELDS = {
     "transferCreated",
     "expectedDate",
-    "dateApproved",
+    "approvedDate",
     "dateCreated",
     "transportDate",
     "dateReceived",
@@ -182,6 +190,7 @@ def build_transfer_response(item):
         "assetID": item["assetID"],
         "status": item["status"],
         "transferCreated": item["transferCreated"],
+        "equipment": item["equipment"]
     }
 
     for stage, fields in STAGES.items():

@@ -132,6 +132,7 @@ def lambda_handler(event, context):
         - transitId
         - dateCreated
         - inTransitSub
+        - inTransitBy
         - status
         - transportDate
         - transportType
@@ -214,6 +215,7 @@ def lambda_handler(event, context):
         asset_id = transfer_item["assetID"]
 
         inTransitSub = claims.get("sub", "")
+        inTransitBy = f'{claims.get("name", "")} {claims.get("family_name", "")}'
         dateCreated = get_local_now()
 
         image_urls = generate_presigned_files(
@@ -237,10 +239,12 @@ def lambda_handler(event, context):
                 SET #status = :status,
                     dateCreated = :dateCreated,
                     inTransitSub = :inTransitSub,
+                    inTransitBy = :inTransitBy,
                     transportDate = :transportDate,
                     transportType = :transportType,
                     transportName = :transportName,
                     transportCost = :transportCost,
+                    trackingNumber = :trackingNumber,
                     transportNotes = :transportNotes,
                     transitImages = :transitImages,
                     transitInvoices = :transitInvoices
@@ -253,9 +257,11 @@ def lambda_handler(event, context):
                 ":status": "in-transit",
                 ":dateCreated": dateCreated,
                 ":inTransitSub": inTransitSub,
+                ":inTransitBy": inTransitBy,
                 ":transportDate": data["transportDate"],
                 ":transportType": data["transportType"],
                 ":transportName": data["transportName"],
+                ":trackingNumber": data.get("trackingNumber", ""),
                 ":transportCost": data.get("transportCost", ""),
                 ":transportNotes": data.get("transportNotes", ""),
                 ":transitImages": [],
