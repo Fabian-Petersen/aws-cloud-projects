@@ -147,7 +147,7 @@ def lambda_handler(event, context):
 
         approved_by_sub = claims.get("sub", "")
 
-        dateApproved = get_local_now()
+        approvedDate = get_local_now()
 
         response = table_transfers.update_item(
             Key={
@@ -159,7 +159,7 @@ def lambda_handler(event, context):
                     approvalId = :approvalId,
                     approvedBy = :approvedBy,
                     approvedBySub = :approvedBySub,
-                    dateApproved = :dateApproved,
+                    approvedDate = :approvedDate,
                     approvalReminderCount = :approvalReminderCount
             """,
             ExpressionAttributeNames={
@@ -170,7 +170,7 @@ def lambda_handler(event, context):
                 ":approvalId": approvalId,
                 ":approvedBy": approved_by,
                 ":approvedBySub": approved_by_sub,
-                ":dateApproved": dateApproved,
+                ":approvedDate": approvedDate,
                 ":approvalReminderCount": 0
             },
             ConditionExpression="""

@@ -1,6 +1,6 @@
 """
-This function retrieves a specific transfer request by its ID and status. 
-It supports both pending/approved transfers from the assets transfer table. 
+This function retrieves a specific transfer request by its ID. 
+It supports both pending, approved, rejected and cancelled transfers from the assets transfer table. 
 The function validates the input parameters, formats dates for human readability, and generates presigned URLs for any associated images stored in S3. 
 CORS headers are included to allow cross-origin requests from the frontend application. 
 The function also includes robust error handling for missing parameters, invalid status values, and database retrieval issues.
@@ -28,8 +28,6 @@ s3 = boto3.client(
 )
 
 PRESIGN_EXPIRES_SECONDS = int(os.getenv("PRESIGN_EXPIRES_SECONDS", "900"))
-VALID_STATUSES = {"pending", "in-transit",
-                  "receipted", "cancelled", "rejected", "approved"}
 
 # $ STAGES: Used to build the response object for the frontend
 STAGES = {
@@ -49,7 +47,7 @@ STAGES = {
     ],
     "approved": [
         "approvalId",
-        "dateApproved",
+        "approvedDate",
         "approvedBy",
         "approvedBySub",
         "approvalReminderCount",
@@ -86,7 +84,7 @@ STAGES = {
         "dateRejected",
         "rejectedBySub",
         "rejectedReason",
-        "rejectedStatus",
+        "rejectedBy",
     ],
 }
 
@@ -326,9 +324,10 @@ def get_transfer_by_id(table, request_id: str) -> dict:
 # =========================================================================
 
 
-def get_transfer_request(request_id: str, status: str, headers) -> dict:
+def get_transfer_request(request_id: str, headers) -> dict:
     """
     The frontend sends the request_id.
+    Retrieve a transfer request by its unique ID.
     """
 
     try:
@@ -337,25 +336,18 @@ def get_transfer_request(request_id: str, status: str, headers) -> dict:
         format_dates(response)
         response = add_presigned_urls(response)
 
+        return _response(
+            200,
+            response,
+            headers,
+        )
+
     except ValueError:
         return _response(
             404,
             {"message": "Transfer Request not found"},
             headers,
         )
-
-    if item.get("status") != status:
-        return _response(
-            404,
-            {"message": "Transfer Request not found"},
-            headers,
-        )
-
-    return _response(
-        200,
-        response,
-        headers,
-    )
 
 
 def lambda_handler(event, context):
@@ -370,15 +362,11 @@ def lambda_handler(event, context):
 
     try:
         request_id = event.get("pathParameters", {}).get("id")
-        status = (event.get("queryStringParameters") or {}).get("status")
 
         if not request_id:
             return _response(400, {"message": "Missing request id"}, HEADERS)
 
-        if not status or status not in VALID_STATUSES:
-            return _response(400, {"message": f"Invalid or missing status. Must be one of: {', '.join(VALID_STATUSES)}"}, HEADERS)
-
-        return get_transfer_request(request_id, status, HEADERS)
+        return get_transfer_request(request_id, HEADERS)
 
     except Exception as exc:
         print("Error:", exc)
