@@ -1357,7 +1357,7 @@ lambda_functions = {
       asset_transfer_table = {
         table_name         = "crud-nosql-app-assets-transfer-table"
         actions            = ["dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
-        allow_index_access = false
+        allow_index_access = true
       }
     }
   }
@@ -2192,6 +2192,7 @@ lambda_functions_custom = {
       USER_POOL_PARAM = "/crud-nosql/cognito/cognito_user_pool_id"
     }
 
+
     # Inline policies required for Lambda
     inline_policy_statements = [
       {
@@ -2351,10 +2352,30 @@ lambda_functions_custom = {
     handler    = "assetTransferRequest.lambda_handler"
     runtime    = "python3.12"
     path       = "transfers/assetTransferRequest"
-    invoked_by = ["eventbridge"]
+    invoked_by = ["sqs"]
+
+    environment_variables = {
+      # SSM parameter storing the User Pool ID
+      NOTIFICATION_QUEUE_URL = "/crud-nosql/sqs/transfer_request_url"
+    }
+
 
     // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
     inline_policy_statements = [
+      {
+        sid = "DynamoDBTableAccess"
+        actions = [
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-assets-table",
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-assets-table/index/*",
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table",
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table/index/*"
+        ]
+      },
       {
         sid = "TransferRequestEvent"
         actions = [
@@ -2377,6 +2398,15 @@ lambda_functions_custom = {
           "arn:aws:sqs:af-south-1:157489943321:asset-transfer-request-queue"
         ]
       },
+      {
+        sid = "ReadQueueURLFromSSM"
+        actions = [
+          "ssm:GetParameter"
+        ]
+        resources = [
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/sqs/transfer_request_url"
+        ]
+      }
     ]
   }
 
@@ -2533,7 +2563,7 @@ sqs_lambda_triggers = {
 
   transfer_request_events = {
     function_name = "assetTransferRequest"
-    batch_size    = 5
+    batch_size    = 1 # keep 1 if you want per-record processing guarantees, bump toward the module default (10) if throughput matters more
   }
 
   transfer_approval_events = {
@@ -2751,8 +2781,16 @@ dynamodb_tables = {
 
   crud-nosql-app-users = {
     pk            = "id"
-    enable_gsi    = false
+    enable_gsi    = true
     enable_stream = false
+
+    gsis = {
+      "PositionIndex" = {
+        hash_key           = "position" # e.g. "operations manager"
+        projection_type    = "INCLUDE"
+        non_key_attributes = ["id", "email", "name", "family_name", "location"]
+      }
+    }
   }
 }
 
@@ -2831,7 +2869,7 @@ user_groups = {
 # $ s3FileUploadLambda - lambda triggers on s3 file upload
 # % Module lambda/s3
 file_name   = "s3FileUploadLambda.py"
-table_names = ["crud-nosql-app-maintenance-request-table", "crud-nosql-app-maintenance-action-table", "crud-nosql-app-assets-table"]
+table_names = ["crud-nosql-app-maintenance-request-table", "crud-nosql-app-maintenance-action-table", "crud-nosql-app-assets-table", "crud-nosql-app-assets-transfer-table"]
 bucket_name = "crud-nosql-app-images"
 handler     = "s3FileUploadLambda.lambda_handler"
 lambda_name = "s3FileUploadLambda"
@@ -2869,6 +2907,12 @@ parameters = {
     description = "Cognito User Pool ID for the app"
     prefix      = "/crud-nosql/cognito"
   }
+
+  transfer_request_url = {
+    value       = "https://sqs.af-south-1.amazonaws.com/157489943321/asset-transfer-notifications-queue"
+    description = "app notifications queue"
+    prefix      = "/crud-nosql/sqs"
+  }
 }
 
 # ssm_prefix = "/crud-nosql/jobs/ses"
@@ -2898,8 +2942,8 @@ event_subscriptions = {
     detail_type = "TransferRequest"
     targets = [
       {
-        name        = "assetTransferRequest"
-        target_type = "lambda"
+        name        = "transfer_request_events" # Key name of the sqs queue:
+        target_type = "sqs"
       },
       {
         name        = "assetTransferApproval"

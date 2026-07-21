@@ -10,6 +10,8 @@ MAINTENANCE_TABLE = dynamodb.Table("crud-nosql-app-maintenance-request-table")
 ASSETS_TABLE = dynamodb.Table("crud-nosql-app-assets-table")
 ACTION_TABLE = dynamodb.Table("crud-nosql-app-maintenance-action-table"
                               )
+TRANSFER_TABLE = dynamodb.Table("crud-nosql-app-assets-transfer-table"
+                                )
 
 
 def get_maintenance_sort_key(item_id: str):
@@ -35,6 +37,20 @@ def get_action_sort_key(item_id: str):
         return None
 
     return items[0].get("actionCreated")
+
+
+def get_transfers_sort_key(item_id: str):
+    response = TRANSFER_TABLE.query(
+        KeyConditionExpression=Key("id").eq(item_id),
+        Limit=1
+    )
+
+    items = response.get("Items", [])
+
+    if not items:
+        return None
+
+    return items[0].get("transferCreated")
 
 
 def append_file_to_table(
@@ -142,6 +158,27 @@ def lambda_handler(event, context):
             )
 
         # =========================
+        # Transfer invoices
+        # =========================
+        elif prefix == "invoices":
+
+            transfer_created = get_transfers_sort_key(item_id)
+
+            if not transfer_created:
+                print(f"No transfer item found for id={item_id}")
+                continue
+
+            append_file_to_table(
+                table=TRANSFER_TABLE,
+                key={
+                    "id": item_id,
+                    "transferCreated": transfer_created
+                },
+                attribute_name="invoices",
+                file_data=file_data
+            )
+
+        # =========================
         # Asset images
         # =========================
         elif prefix == "assets":
@@ -152,41 +189,3 @@ def lambda_handler(event, context):
                 attribute_name="images",
                 file_data=file_data
             )
-
-        # if prefix == "maintenance":
-        #     job_created = get_maintenance_sort_key(item_id)
-        #     if not job_created:
-        #         print(f"No maintenance item found for id={item_id}")
-        #         continue
-
-        #     MAINTENANCE_TABLE.update_item(
-        #         Key={
-        #             "id": item_id,
-        #             "jobCreated": job_created
-        #         },
-        #         UpdateExpression="""
-        #             SET images = list_append(
-        #                 if_not_exists(images, :empty),
-        #                 :img
-        #             )
-        #         """,
-        #         ExpressionAttributeValues={
-        #             ":img": [file_data],
-        #             ":empty": []
-        #         }
-        #     )
-
-        # elif prefix == "assets":
-        #     ASSETS_TABLE.update_item(
-        #         Key={"id": item_id},
-        #         UpdateExpression="""
-        #             SET images = list_append(
-        #                 if_not_exists(images, :empty),
-        #                 :img
-        #             )
-        #         """,
-        #         ExpressionAttributeValues={
-        #             ":img": [file_data],
-        #             ":empty": []
-        #         }
-        #     )

@@ -17,7 +17,7 @@ VALID_STATUSES = {
     "approved",
     "rejected",
     "in-transit",
-    "receipted",
+    "completed",
     "cancelled"
 }
 
@@ -54,17 +54,20 @@ STAGES = {
         "trackingNumber",
         "transportNotes",
         "transportCost",
-        "images",
+        "transitImages",
         "invoices",
     ],
     "completed": [
         "receiptId",
-        "dateReceived",
-        "receivedBySub",
-        "condition",
+        "dateReceiptCreated",
+        "receiptDate",
+        "receiptBySub",
+        "receiptCondition",
+        "receiptBy",
         "damageDetails",
-        "images",
+        "receiptImages",
         "deliveryNote",
+        "receiptNotes",
     ],
     "cancelled": [
         "dateCancelled",
@@ -91,6 +94,7 @@ DATE_FIELDS = {
     "transportDate",
     "dateReceived",
     "dateCancelled",
+    "dateReceiptCreated",
 }
 
 # ----------------------------

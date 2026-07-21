@@ -20,3 +20,13 @@ variable "sqs_lambda_triggers" {
   }))
   default = {}
 }
+
+variable "project_name" {
+  description = "The name of the project"
+  type        = string
+}
+
+variable "env" {
+  description = "development environment: dev, staging or prod"
+  type        = string
+}

@@ -204,9 +204,9 @@ def lambda_handler(event, context):
         transfer_created = transfer_item["transferCreated"]
         asset_id = transfer_item["assetID"]
 
-        receiptSub = claims.get("sub", "")
+        receiptBySub = claims.get("sub", "")
         receiptBy = f'{claims.get("name", "")} {claims.get("family_name", "")}'
-        dateCreated = get_local_now()
+        dateReceiptCreated = get_local_now()
 
         image_urls = generate_presigned_files(
             transfer_id,
@@ -227,8 +227,8 @@ def lambda_handler(event, context):
             },
             UpdateExpression="""
                 SET #status = :status,
-                    dateCreated = :dateCreated,
-                    receiptSub = :receiptSub,
+                    dateReceiptCreated = :dateReceiptCreated,
+                    receiptBySub = :receiptBySub,
                     receiptBy = :receiptBy,
                     receiptDate = :receiptDate,
                     receiptCondition = :receiptCondition,
@@ -240,10 +240,10 @@ def lambda_handler(event, context):
                 "#status": "status",
             },
             ExpressionAttributeValues={
-                ":in-transit": "in-transit",
-                ":status": "receipted",
-                ":dateCreated": dateCreated,
-                ":receiptSub": receiptSub,
+                ":currentStatus": "in-transit",
+                ":status": "completed",
+                ":dateReceiptCreated": dateReceiptCreated,
+                ":receiptBySub": receiptBySub,
                 ":receiptBy": receiptBy,
                 ":receiptDate": data["receiptDate"],
                 ":receiptCondition": data["condition"],
@@ -254,7 +254,7 @@ def lambda_handler(event, context):
             ConditionExpression="""
             attribute_exists(assetID) 
             AND attribute_exists(transferCreated)
-            AND #status = :in-transit
+            AND #status = :currentStatus
             """,
             ReturnValues="ALL_NEW"
         )

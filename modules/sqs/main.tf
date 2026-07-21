@@ -15,6 +15,11 @@ resource "aws_sqs_queue" "queue" {
     deadLetterTargetArn = aws_sqs_queue.dlq[each.key].arn
     maxReceiveCount     = try(each.value.max_receive_count, 3)
   }) : null
+
+  tags = {
+    Project     = var.project_name
+    Environment = var.env
+  }
 }
 
 resource "aws_sqs_queue" "dlq" {

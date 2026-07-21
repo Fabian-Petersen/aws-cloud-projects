@@ -273,12 +273,16 @@ module "eventbridge" {
   resource_permissions = flatten([
     for rule_name, rule in var.event_subscriptions : [
       for target in rule.targets : {
-        service   = "lambda"
+        service   = target.target_type
         principal = "events.amazonaws.com"
 
         target_name = target.name
         source_arn  = module.eventbridge.rule_arns[rule_name]
-        target_arn  = module.cognito_lambda.custom_lambda_arns[target.name]
+        target_arn = (
+          target.target_type == "lambda" ? module.cognito_lambda.custom_lambda_arns[target.name] :
+          target.target_type == "sqs" ? module.sqs.queue_arns[target.name] :
+          null
+        )
       }
     ]
   ])
@@ -290,12 +294,23 @@ module "sqs" {
   source              = "../../modules/sqs"
   queues              = var.queues
   sqs_lambda_triggers = var.sqs_lambda_triggers
+  project_name        = var.project_name
+  env                 = var.env
 }
 
-output "eventbridge_permission_arn_map" {
-  value = module.eventbridge.permission_arn_map
-}
 
-output "eventbridge_target_map" {
-  value = module.eventbridge.target_map
-}
+/* -------------------------------------------------------------------------- */
+/*                                   OUTPUTS                                  */
+/* -------------------------------------------------------------------------- */
+
+# output "eventbridge_permission_arn_map" {
+#   value = module.eventbridge.permission_arn_map
+# }
+
+# output "eventbridge_target_map" {
+#   value = module.eventbridge.target_map
+# }
+
+# output "sqs_queues_arns" {
+#   value = module.sqs.queue_arns
+# }

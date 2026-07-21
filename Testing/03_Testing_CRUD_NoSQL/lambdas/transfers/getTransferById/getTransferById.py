@@ -67,12 +67,15 @@ STAGES = {
     ],
     "completed": [
         "receiptId",
-        "dateReceived",
-        "receivedBySub",
-        "condition",
+        "dateReceiptCreated",
+        "receiptDate",
+        "receiptBySub",
+        "receiptCondition",
+        "receiptBy",
         "damageDetails",
-        "images",
+        "receiptImages",
         "deliveryNote",
+        "receiptNotes",
     ],
     "cancelled": [
         "dateCancelled",
@@ -92,11 +95,12 @@ STAGES = {
 DATE_FIELDS = {
     "transferCreated",
     "expectedDate",
-    "dateApproved",
+    "approvedDate",
     "dateCreated",
     "transportDate",
     "dateReceived",
     "dateCancelled",
+    "dateReceiptCreated",
 }
 
 # ----------------------------

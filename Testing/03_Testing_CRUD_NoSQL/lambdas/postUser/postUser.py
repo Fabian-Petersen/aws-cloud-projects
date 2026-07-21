@@ -55,7 +55,7 @@ def lambda_handler(event, context):
         body = json.loads(event.get("body", "{}"))
 
         required_fields = ["email", "group",
-                           "family_name", "name", "location", "mobile"]
+                           "family_name", "name", "location", "mobile", "position"]
         missing = [f for f in required_fields if not body.get(f)]
         if missing:
             return _response(400, {"error": f"Missing required fields: {', '.join(missing)}"})
@@ -66,6 +66,7 @@ def lambda_handler(event, context):
         name = body["name"]
         location = body["location"]
         mobile = body["mobile"]
+        position = body["position"]
 
         #  Get the userpool id
         user_pool_id = get_user_pool_id()
@@ -118,6 +119,7 @@ def lambda_handler(event, context):
             "group":          group,
             "location":       location,
             "mobile":         mobile,
+            "position":       position,
             "userCreated":    to_human_date(now),
             "updatedAt":      to_human_date(now),
         }

@@ -130,7 +130,7 @@ def lambda_handler(event, context):
 
     On in-transit, the following fields are updated:
         - transitId
-        - dateCreated
+        - dateTransitCreated
         - inTransitSub
         - inTransitBy
         - status
@@ -216,7 +216,7 @@ def lambda_handler(event, context):
 
         inTransitSub = claims.get("sub", "")
         inTransitBy = f'{claims.get("name", "")} {claims.get("family_name", "")}'
-        dateCreated = get_local_now()
+        dateTransitCreated = get_local_now()
 
         image_urls = generate_presigned_files(
             transfer_id,
@@ -237,7 +237,7 @@ def lambda_handler(event, context):
             },
             UpdateExpression="""
                 SET #status = :status,
-                    dateCreated = :dateCreated,
+                    dateTransitCreated = :dateTransitCreated,
                     inTransitSub = :inTransitSub,
                     inTransitBy = :inTransitBy,
                     transportDate = :transportDate,
@@ -255,7 +255,7 @@ def lambda_handler(event, context):
             ExpressionAttributeValues={
                 ":approved": "approved",
                 ":status": "in-transit",
-                ":dateCreated": dateCreated,
+                ":dateTransitCreated": dateTransitCreated,
                 ":inTransitSub": inTransitSub,
                 ":inTransitBy": inTransitBy,
                 ":transportDate": data["transportDate"],
