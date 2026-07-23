@@ -166,6 +166,8 @@ module "dynamodb_tables" {
   env             = var.env
   project_name    = var.project_name
   dynamodb_tables = var.dynamodb_tables # % Map variable - added features can be passed in map
+  enable_ttl      = var.enable_ttl
+  ttl_attribute   = var.ttl_attribute
 }
 
 #$ // =================================== cognito =================================== //

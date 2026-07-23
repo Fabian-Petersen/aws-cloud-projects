@@ -37,6 +37,11 @@ resource "aws_dynamodb_table" "dynamodb_table" {
   stream_enabled   = each.value.enable_stream
   stream_view_type = each.value.enable_stream ? "NEW_AND_OLD_IMAGES" : null
 
+  ttl {
+    attribute_name = var.ttl_attribute
+    enabled        = var.enable_ttl
+  }
+
   tags = {
     Project = var.project_name
     Env     = var.env

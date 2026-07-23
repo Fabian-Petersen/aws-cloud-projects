@@ -33,6 +33,16 @@ variable "project_name" {
 }
 
 
+variable "enable_ttl" {
+  type    = bool
+  default = false
+}
+
+variable "ttl_attribute" {
+  type    = string
+  default = null
+}
+
 # Optional GSI map: key = table_name, value = GSI config
 # variable "table_gsi_map" {
 #   type = map(object({

@@ -268,15 +268,20 @@ def build_notification(recipient: dict, transfer: dict) -> dict:
 
     asset_id = transfer["assetID"]["S"]
     transfer_id = transfer["id"]["S"]
+    location_from = transfer["locationFrom"]["S"]
 
     # Get the current time for the update
     sast = timezone(timedelta(hours=2))
     now = datetime.now(sast).isoformat()
     created_at = now
 
+    ttl = int(
+        (datetime.now(timezone.utc) + timedelta(days=90)).timestamp()
+    )
+
     return {
         "notificationCreated": created_at,
-        "notificationId": str(uuid.uuid4()),
+        "id": str(uuid.uuid4()),
 
         "recipientSub": recipient["sub"],
         "recipientEmail": recipient["email"],
@@ -284,23 +289,21 @@ def build_notification(recipient: dict, transfer: dict) -> dict:
         "type": "ASSET_TRANSFER_REQUEST",
         "title": "Asset Transfer Request",
         "message": f"Please approve the transfer of asset {asset_id}.",
+        "location": location_from,
 
         "assetId": asset_id,
         "transferId": transfer_id,
-
-        "action": {
-            "type": "OPEN_TRANSFER",
-            "id": transfer_id
-        },
+        "type": "OPEN_TRANSFER",
 
         "status": "UNREAD",
         "priority": "NORMAL",
 
-
         "channels": [
             "IN_APP",
             "EMAIL"
-        ]
+        ],
+
+        "ttl": ttl
     }
 
 # ---------------------------------------------------------------------------- #

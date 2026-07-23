@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
+from decimal import Decimal
 
 dynamodb = boto3.resource("dynamodb")
 
@@ -17,6 +18,10 @@ HEADERS = {
     "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Requested-With",
     "Access-Control-Allow-Credentials": "true"
 }
+
+# ---------------------------------------------------------------------------- #
+#                               Get time is SAST                               #
+# ---------------------------------------------------------------------------- #
 
 
 def get_local_now() -> str:
@@ -33,6 +38,30 @@ def get_local_now() -> str:
     utc_now = datetime.now(timezone.utc)
     local_time = utc_now.astimezone(timezone(timedelta(hours=2)))
     return local_time.isoformat()
+
+
+# ---------------------------------------------------------------------------- #
+#                               Convert Decimals                               #
+# ---------------------------------------------------------------------------- #
+
+def convert_decimals(obj):
+    """Recursively convert DynamoDB Decimals to JSON-serializable types."""
+
+    if isinstance(obj, list):
+        return [convert_decimals(item) for item in obj]
+
+    if isinstance(obj, dict):
+        return {key: convert_decimals(value) for key, value in obj.items()}
+
+    if isinstance(obj, Decimal):
+        # Return int if it's a whole number, otherwise float
+        return int(obj) if obj % 1 == 0 else float(obj)
+
+    return obj
+
+# ---------------------------------------------------------------------------- #
+#                                Transfer by ID                                #
+# ---------------------------------------------------------------------------- #
 
 
 def get_transfer_by_id(transfer_id: str) -> dict | None:
@@ -184,7 +213,7 @@ def lambda_handler(event, context):
             200,
             {
                 "message": "Transfer approved successfully.",
-                "data": response["Attributes"],
+                "data": convert_decimals(response["Attributes"]),
             },
         )
 

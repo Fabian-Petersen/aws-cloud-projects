@@ -144,6 +144,10 @@ api_parent_routes = {
         lambda        = "getNotificationsList"
         authorization = "COGNITO_USER_POOLS"
       }
+      POST = {
+        lambda        = "postNotification"
+        authorization = "COGNITO_USER_POOLS"
+      }
       OPTIONS = {
         authorization = "NONE"
       }
@@ -1853,23 +1857,39 @@ lambda_functions = {
       }
     }
 
-    statements = [
-      {
-        actions   = ["s3:GetObject"]
-        resources = ["arn:aws:s3:::crud-nosql-app-images/assets/*"]
-      },
-      {
-        actions   = ["s3:ListBucket"]
-        resources = ["arn:aws:s3:::crud-nosql-app-images"]
-        conditions = [
-          {
-            test     = "StringLike"
-            variable = "s3:prefix"
-            values   = ["assets/*"]
-          }
-        ]
+    # statements = [
+    #   {
+    #     actions   = ["s3:GetObject"]
+    #     resources = ["arn:aws:s3:::crud-nosql-app-images/assets/*"]
+    #   },
+    #   {
+    #     actions   = ["s3:ListBucket"]
+    #     resources = ["arn:aws:s3:::crud-nosql-app-images"]
+    #     conditions = [
+    #       {
+    #         test     = "StringLike"
+    #         variable = "s3:prefix"
+    #         values   = ["assets/*"]
+    #       }
+    #     ]
+    #   }
+    # ]
+  }
+
+  postNotification = {
+    file_name  = "postNotification.py"
+    handler    = "postNotification.lambda_handler"
+    runtime    = "python3.12"
+    path       = "notifications/postNotification"
+    invoked_by = ["apigateway"]
+
+    dynamodb_permissions = {
+      notification_table = {
+        table_name         = "crud-nosql-app-notifications-table"
+        actions            = ["dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
       }
-    ]
+    }
   }
 }
 
@@ -2312,41 +2332,6 @@ lambda_functions_custom = {
       }
     ]
   }
-
-  assetTransferTransit = {
-    file_name  = "assetTransferTransit.py"
-    handler    = "assetTransferTransit.lambda_handler"
-    runtime    = "python3.12"
-    path       = "transfers/assetTransferTransit"
-    invoked_by = ["eventbridge"]
-
-    // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
-    inline_policy_statements = [
-      {
-        sid = "TransferTransitNotifyEvent"
-        actions = [
-          "sqs:SendMessage"
-        ]
-        resources = [
-          "arn:aws:sqs:af-south-1:157489943321:asset-transfer-notifications-queue"
-        ]
-      },
-      {
-        sid = "TransferTransitQueueAccess"
-        actions = [
-          "sqs:ReceiveMessage",
-          "sqs:DeleteMessage",
-          "sqs:GetQueueAttributes",
-          "sqs:ChangeMessageVisibility",
-          "sqs:GetQueueUrl"
-        ]
-        resources = [
-          "arn:aws:sqs:af-south-1:157489943321:asset-transfer-transit-queue"
-        ]
-      },
-    ]
-  }
-
   assetTransferRequest = {
     file_name  = "assetTransferRequest.py"
     handler    = "assetTransferRequest.lambda_handler"
@@ -2356,7 +2341,7 @@ lambda_functions_custom = {
 
     environment_variables = {
       # SSM parameter storing the User Pool ID
-      NOTIFICATION_QUEUE_URL = "/crud-nosql/sqs/transfer_request_url"
+      NOTIFICATION_QUEUE_URL = "/crud-nosql/sqs/notification_queue_url"
     }
 
 
@@ -2404,22 +2389,37 @@ lambda_functions_custom = {
           "ssm:GetParameter"
         ]
         resources = [
-          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/sqs/transfer_request_url"
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/sqs/notification_queue_url"
         ]
       }
     ]
   }
-
   assetTransferApproval = {
     file_name  = "assetTransferApproval.py"
     handler    = "assetTransferApproval.lambda_handler"
     runtime    = "python3.12"
     path       = "transfers/assetTransferApproval"
-    invoked_by = ["eventbridge"]
+    invoked_by = ["sqs"]
 
-    # sns_publish_topics = ["asset-transfer-approval-topic"]
+    environment_variables = {
+      # SSM parameter storing the User Pool ID
+      NOTIFICATION_QUEUE_URL = "/crud-nosql/sqs/notification_queue_url"
+    }
+
 
     inline_policy_statements = [
+      {
+        sid = "DynamoDBTableAccess"
+        actions = [
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table",
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table/index/*"
+        ]
+      },
       {
         sid = "TransferApprovalEvent"
         actions = [
@@ -2442,8 +2442,79 @@ lambda_functions_custom = {
           "arn:aws:sqs:af-south-1:157489943321:asset-transfer-approval-queue"
         ]
       },
+      {
+        sid = "ReadQueueURLFromSSM"
+        actions = [
+          "ssm:GetParameter"
+        ]
+        resources = [
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/sqs/notification_queue_url"
+        ]
+      }
     ]
   }
+
+  assetTransferTransit = {
+    file_name  = "assetTransferTransit.py"
+    handler    = "assetTransferTransit.lambda_handler"
+    runtime    = "python3.12"
+    path       = "transfers/assetTransferTransit"
+    invoked_by = ["sqs"]
+
+    environment_variables = {
+      # SSM parameter storing the User Pool ID
+      NOTIFICATION_QUEUE_URL = "/crud-nosql/sqs/notification_queue_url"
+    }
+
+    // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
+    inline_policy_statements = [
+      {
+        sid = "DynamoDBTableAccess"
+        actions = [
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table",
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table/index/*"
+        ]
+      },
+      {
+        sid = "TransferTransitNotifyEvent"
+        actions = [
+          "sqs:SendMessage"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-transfer-notifications-queue"
+        ]
+      },
+      {
+        sid = "TransferTransitQueueAccess"
+        actions = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:ChangeMessageVisibility",
+          "sqs:GetQueueUrl"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-transfer-transit-queue"
+        ]
+      },
+      {
+        sid = "ReadQueueURLFromSSM"
+        actions = [
+          "ssm:GetParameter"
+        ]
+        resources = [
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/sqs/notification_queue_url"
+        ]
+      }
+    ]
+  }
+
+
 
   assetTransferReceipt = {
     file_name  = "assetTransferReceipt.py"
@@ -2453,6 +2524,11 @@ lambda_functions_custom = {
     invoked_by = ["eventbridge"]
 
     # sns_publish_topics = ["asset-transfer-receipt-topic"]
+
+    environment_variables = {
+      # SSM parameter storing the User Pool ID
+      NOTIFICATION_QUEUE_URL = "/crud-nosql/sqs/notification_queue_url"
+    }
 
     inline_policy_statements = [
       {
@@ -2556,10 +2632,6 @@ queues = {
 }
 
 sqs_lambda_triggers = {
-  transfer_transit_events = {
-    function_name = "assetTransferTransit"
-    batch_size    = 5
-  }
 
   transfer_request_events = {
     function_name = "assetTransferRequest"
@@ -2568,12 +2640,16 @@ sqs_lambda_triggers = {
 
   transfer_approval_events = {
     function_name = "assetTransferApproval"
-    batch_size    = 5
+    batch_size    = 1
   }
 
+  transfer_transit_events = {
+    function_name = "assetTransferTransit"
+    batch_size    = 1
+  }
   transfer_receipt_events = {
     function_name = "assetTransferReceipt"
-    batch_size    = 5
+    batch_size    = 1
   }
 
   notification_events = {
@@ -2746,6 +2822,11 @@ dynamodb_tables = {
     sk            = "notificationCreated"
     enable_gsi    = true
     enable_stream = false
+
+    /* # $ Let DynamoDB clean up old records */
+    enable_ttl    = true
+    ttl_attribute = "ttl"
+
     gsis = {
       "EntityIndex" = {
         hash_key        = "entityReference" # e.g. "JOB#<request_id>" or "TRANSFER#<transfer_id>"
@@ -2790,7 +2871,13 @@ dynamodb_tables = {
         projection_type    = "INCLUDE"
         non_key_attributes = ["id", "email", "name", "family_name", "location"]
       }
+      "LocationIndex" = {
+        hash_key           = "location" # e.g. "maitland to retrieve users by location"
+        projection_type    = "INCLUDE"
+        non_key_attributes = ["id", "email", "name", "family_name", "location", "position"]
+      }
     }
+
   }
 }
 
@@ -2908,7 +2995,12 @@ parameters = {
     prefix      = "/crud-nosql/cognito"
   }
 
-  transfer_request_url = {
+  # transfer_request_url = {
+  #   value       = "https://sqs.af-south-1.amazonaws.com/157489943321/asset-transfer-notifications-queue"
+  #   description = "app notifications queue"
+  #   prefix      = "/crud-nosql/sqs"
+  # }
+  notification_queue_url = {
     value       = "https://sqs.af-south-1.amazonaws.com/157489943321/asset-transfer-notifications-queue"
     description = "app notifications queue"
     prefix      = "/crud-nosql/sqs"
@@ -2946,16 +3038,16 @@ event_subscriptions = {
         target_type = "sqs"
       },
       {
-        name        = "assetTransferApproval"
-        target_type = "lambda"
+        name        = "transfer_approval_events"
+        target_type = "sqs"
       },
       {
-        name        = "assetTransferReceipt"
-        target_type = "lambda"
+        name        = "transfer_transit_events"
+        target_type = "sqs"
       },
       {
-        name        = "assetTransferTransit"
-        target_type = "lambda"
+        name        = "transfer_receipt_events"
+        target_type = "sqs"
       }
     ]
   }

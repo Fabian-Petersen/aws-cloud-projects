@@ -219,18 +219,6 @@ resource "aws_cloudwatch_event_rule" "log_all_events" {
     source = [{ "prefix" = "" }] # source = ["your.source.name"]  # e.g. "com.myapp.orders" for specific logs
   })
 }
-# For specific logs and detail type
-# event_pattern = jsonencode({
-#   source      = ["your.source.name"]
-#   detail-type = ["YourDetailType"]
-# })
-# event_subscriptions = {
-#   my_rule = {
-#     source      = "com.myapp.orders"
-#     detail_type = "OrderCreated"
-#     ...
-#   }
-# }
 
 resource "aws_cloudwatch_event_target" "log_target" {
   rule           = aws_cloudwatch_event_rule.log_all_events.name

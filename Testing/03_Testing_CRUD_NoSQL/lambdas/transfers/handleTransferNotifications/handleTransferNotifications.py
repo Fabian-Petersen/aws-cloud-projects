@@ -10,6 +10,7 @@ notifications_table = dynamodb.Table(
 
 
 def lambda_handler(event, context):
+    print("event:", event)
     """
     Processes notification messages from SQS and stores them in DynamoDB.
     """
@@ -20,11 +21,11 @@ def lambda_handler(event, context):
 
             notifications_table.put_item(
                 Item=notification,
-                ConditionExpression="attribute_not_exists(notificationId)"
+                ConditionExpression="attribute_not_exists(id)"
             )
 
             print(
-                f"Notification stored: {notification['notificationId']}"
+                f"Notification stored: {notification['id']}"
             )
 
         except ClientError as e:
@@ -33,7 +34,7 @@ def lambda_handler(event, context):
             if error_code == "ConditionalCheckFailedException":
                 print(
                     f"Notification already exists: "
-                    f"{notification.get('notificationId')}"
+                    f"{notification.get('id')}"
                 )
             else:
                 print(f"DynamoDB error: {e}")

@@ -271,6 +271,16 @@ variable "dynamodb_tables" {
   }))
 }
 
+variable "enable_ttl" {
+  type    = bool
+  default = false
+}
+
+variable "ttl_attribute" {
+  type    = string
+  default = null
+}
+
 #$ ======================== Event Bridge ====================
 variable "event_subscriptions" {
   type = map(object({
