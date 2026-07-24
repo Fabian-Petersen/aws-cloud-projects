@@ -2749,7 +2749,7 @@ dynamodb_tables = {
     enable_stream     = true // enable stream to trigger lambda for verification updates
     stream_filter     = ["INSERT"]
     event_source      = "asset-verify-service" # matches your rule
-    event_detail_type = "AssetVerified"
+    event_detail-type = "AssetVerified"
   }
 
 
@@ -3017,10 +3017,52 @@ from_email         = "no-reply@crud-nosql.app.fabian-portfolio.net"
 # dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
 
 # $ Event Bridge - for triggering lambdas on specific events like asset verification or scanning
+# event_subscriptions = {
+#   asset-verification = {
+#     source      = "asset-verify-service"
+#     detail-type = "AssetVerified"
+#     targets = [
+#       {
+#         name        = "updateAssetVerifyStatus"
+#         target_type = "lambda"
+#       }
+#     ]
+#   }
+
+#   asset-transfer = {
+#     source      = "asset-transfer-service"
+#     detail-type = "TransferRequest"
+#     targets = [
+#       {
+#         name        = "transfer_request_events" # Key name of the sqs queue:
+#         target_type = "sqs"
+#       },
+#       {
+#         name        = "transfer_approval_events"
+#         target_type = "sqs"
+#       },
+#       {
+#         name        = "transfer_transit_events"
+#         target_type = "sqs"
+#       },
+#       {
+#         name        = "transfer_receipt_events"
+#         target_type = "sqs"
+#       }
+#     ]
+#   }
+# }
+
+
 event_subscriptions = {
   asset-verification = {
-    source      = "asset-verify-service"
-    detail_type = "AssetVerified"
+    event_pattern = {
+      source      = ["asset-verify-service"]
+      detail-type = ["AssetVerified"]
+      detail      = null
+    }
+
+
     targets = [
       {
         name        = "updateAssetVerifyStatus"
@@ -3029,22 +3071,125 @@ event_subscriptions = {
     ]
   }
 
-  asset-transfer = {
-    source      = "asset-transfer-service"
-    detail_type = "TransferRequest"
+  # crud-nosql-app-assets-transfer = {
+  #   pk                = "assetID"
+  #   sk                = "transferCreated"
+  #   enable_gsi        = true
+  #   enable_stream     = true // enable stream to trigger lambda for transfer created
+  #   stream_filter     = ["INSERT", "MODIFY"]
+  #   event_source      = "asset-transfer-service" # matches your rule
+  #   event_detail-type = "TransferRequest"
+
+
+  transfer-request = {
+    event_pattern = {
+      source      = ["asset-transfer-service"]
+      detail-type = ["TransferRequest"]
+
+      detail = {
+        eventName = ["INSERT"]
+
+        dynamodb = {
+          NewImage = {
+            status = {
+              S = ["pending"]
+            }
+          }
+        }
+      }
+    }
+
     targets = [
       {
-        name        = "transfer_request_events" # Key name of the sqs queue:
+        name        = "transfer_request_events"
         target_type = "sqs"
-      },
+      }
+    ]
+  }
+
+
+  transfer-approval = {
+    event_pattern = {
+      source      = ["asset-transfer-service"]
+      detail-type = ["TransferRequest"]
+      detail = {
+        eventName = ["MODIFY"]
+        dynamodb = {
+          OldImage = {
+            status = {
+              S = ["pending"]
+            }
+          }
+          NewImage = {
+            status = {
+              S = ["approved"]
+            }
+          }
+        }
+      }
+    }
+
+    targets = [
       {
         name        = "transfer_approval_events"
         target_type = "sqs"
-      },
+      }
+    ]
+  }
+
+  transfer-transit = {
+    event_pattern = {
+      source      = ["asset-transfer-service"]
+      detail-type = ["TransferRequest"]
+      detail = {
+        eventName = ["MODIFY"]
+        dynamodb = {
+          OldImage = {
+            status = {
+              S = ["approved"]
+            }
+          }
+          NewImage = {
+            status = {
+              S = ["in-transit"]
+            }
+          }
+        }
+      }
+    }
+
+    targets = [
       {
         name        = "transfer_transit_events"
         target_type = "sqs"
-      },
+      }
+    ]
+  }
+
+  transfer-receipt = {
+
+    event_pattern = {
+      source      = ["asset-transfer-service"]
+      detail-type = ["TransferRequest"]
+
+      detail = {
+        eventName = ["MODIFY"]
+        dynamodb = {
+          OldImage = {
+            status = {
+              S = ["in-transit"]
+            }
+          }
+          NewImage = {
+            status = {
+              S = ["receipted"]
+            }
+          }
+        }
+      }
+    }
+
+    targets = [
       {
         name        = "transfer_receipt_events"
         target_type = "sqs"

@@ -64,4 +64,5 @@ coverage.xml
 *.bak
 *.tmp
 
-T
+# Ignore All sample Data which could have sensitive information
+sampleData/

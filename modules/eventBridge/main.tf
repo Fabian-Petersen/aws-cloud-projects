@@ -33,6 +33,35 @@ locals {
     for idx, perm in var.resource_permissions :
     "${perm.service}-${idx}" => perm
   }
+
+  # Strip null-valued optional keys out of each event_pattern before
+  # jsonencode, because EventBridge rejects explicit `null` values —
+  # it requires the key to be absent entirely, not null.
+  event_patterns = {
+    for name, sub in var.event_subscriptions : name => merge(
+      {
+        source        = sub.event_pattern.source
+        "detail-type" = sub.event_pattern["detail-type"]
+      },
+      sub.event_pattern.detail == null ? {} : {
+        detail = merge(
+          sub.event_pattern.detail.eventName == null ? {} : {
+            eventName = sub.event_pattern.detail.eventName
+          },
+          sub.event_pattern.detail.dynamodb == null ? {} : {
+            dynamodb = merge(
+              sub.event_pattern.detail.dynamodb.OldImage == null ? {} : {
+                OldImage = sub.event_pattern.detail.dynamodb.OldImage
+              },
+              sub.event_pattern.detail.dynamodb.NewImage == null ? {} : {
+                NewImage = sub.event_pattern.detail.dynamodb.NewImage
+              }
+            )
+          }
+        )
+      }
+    )
+  }
 }
 
 # $ Step 1 : EventBridge Pipe (Stream to Bus)
@@ -143,10 +172,7 @@ resource "aws_cloudwatch_event_rule" "rules" {
   name           = "${var.project_name}-${each.key}-rule"
   event_bus_name = aws_cloudwatch_event_bus.custom_event_bus.name
 
-  event_pattern = jsonencode({
-    source      = [each.value.source]
-    detail-type = [each.value.detail_type]
-  })
+  event_pattern = jsonencode(local.event_patterns[each.key])
 }
 
 # Link Rule to resource Target

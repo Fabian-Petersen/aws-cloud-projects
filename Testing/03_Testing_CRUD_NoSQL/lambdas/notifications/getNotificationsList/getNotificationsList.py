@@ -204,7 +204,9 @@ def query_by_user(recipient_sub):
             if created >= cutoff:
                 filtered.append(item)
 # sort the items such that UNREAD items always on top in order
-    return filtered.sort(key=lambda item: item["status"] == "READ")
+    filtered.sort(key=lambda item: item["status"] == "READ")
+
+    return filtered
 # ----------------------------
 # Scan fallback (no filters)
 # ----------------------------

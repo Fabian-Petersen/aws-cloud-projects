@@ -282,17 +282,44 @@ variable "ttl_attribute" {
 }
 
 #$ ======================== Event Bridge ====================
+# variable "event_subscriptions" {
+#   type = map(object({
+
+#     event_pattern = any
+#     targets = list(object({
+#       name        = string
+#       target_type = string
+#     }))
+#   }))
+# }
+
 variable "event_subscriptions" {
   type = map(object({
-    source      = string
-    detail_type = string
+    event_pattern = object({
+      source      = list(string)
+      detail-type = list(string)
+      detail = optional(object({
+        eventName = optional(list(string))
+        dynamodb = optional(object({
+          OldImage = optional(object({
+            status = optional(object({
+              S = list(string)
+            }))
+          }))
+          NewImage = optional(object({
+            status = optional(object({
+              S = list(string)
+            }))
+          }))
+        }))
+      }))
+    })
     targets = list(object({
       name        = string
       target_type = string
     }))
   }))
 }
-
 
 variable "resource_permissions" {
   description = "Generic list of resource permissions for EventBridge targets"
