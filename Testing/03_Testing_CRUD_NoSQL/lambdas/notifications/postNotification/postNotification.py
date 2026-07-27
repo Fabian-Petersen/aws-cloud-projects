@@ -1,5 +1,11 @@
+"""
+This function updates the notification status once a user opened the notification by its ID. 
+The function validates the input parameters, create the time
+"""
+
 import json
 import boto3
+from decimal import Decimal
 from datetime import datetime, timezone, timedelta
 from botocore.exceptions import ClientError
 
@@ -23,10 +29,31 @@ def get_local_now():
 # Fields that clients are allowed to update
 ALLOWED_FIELDS = {
     "status",
-    # "archived",
-    # "starred",
-    # "deleted",
 }
+
+# ----------------------------
+# Decimal serializer for DynamoDB types in JSON responses
+# ----------------------------
+
+
+def decimal_serializer(obj):
+    """
+    Custom JSON serializer for handling DynamoDB Decimal types.
+
+    Args:
+        obj: Object to serialize.
+
+    Returns:
+        int | float: Converted numeric value.
+
+    Raises:
+        TypeError: If object type is not supported.
+    """
+    if isinstance(obj, Decimal):
+        if obj % 1 == 0:
+            return int(obj)
+        return float(obj)
+    raise TypeError
 
 
 def lambda_handler(event, context):
@@ -120,9 +147,25 @@ def lambda_handler(event, context):
                          )
 
 
-def _response(status_code, data):
+# ----------------------------
+# Response helper
+# ----------------------------
+
+
+def _response(status_code, body):
+    """
+    Construct a standard API Gateway HTTP response.
+
+    Args:
+        status_code (int): HTTP status code.
+        body (dict | list): Response payload.
+        headers (dict): HTTP headers.
+
+    Returns:
+        dict: Formatted response object.
+    """
     return {
         "statusCode": status_code,
         "headers": HEADERS,
-        "body": json.dumps(data),
+        "body": json.dumps(body, default=decimal_serializer),
     }

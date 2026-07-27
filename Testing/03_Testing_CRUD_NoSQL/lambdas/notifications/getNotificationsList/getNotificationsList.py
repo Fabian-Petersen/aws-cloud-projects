@@ -79,6 +79,31 @@ def parse_groups(groups_claim):
 
     return []
 
+# =========================================================================
+# Build the response object
+# =========================================================================
+
+
+# def build_transfer_response(item):
+#     response = {
+#         "id": item["id"],
+#         "assetID": item["assetID"],
+#         "status": item["status"],
+#         "transferCreated": item["transferCreated"],
+#     }
+
+#     for stage, fields in STATUS.items():
+#         data = {}
+
+#         for field in fields:
+#             if field in item:
+#                 data[field] = item[field]
+
+#         response[stage] = data or None
+
+#     return response
+
+
 # ----------------------------
 # Construct Headers
 # ----------------------------
@@ -172,8 +197,8 @@ def format_dates(data):
 # ----------------------------
 def query_by_user(recipient_sub):
     items = []
-    # Notifications that were READ already within the last 3 days will be send to FE
-    cutoff = datetime.now(timezone.utc) - timedelta(days=3)
+    # Notifications that were READ already within the last 7 days will be send to FE
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
 
     response = table.query(
         KeyConditionExpression=Key("recipientSub").eq(recipient_sub),
@@ -264,14 +289,37 @@ def lambda_handler(event, context):
         # Build response
         # ----------------------------
 
-        response = []
+        response = {
+            "counts": {
+                "all": 0,
+                "unread": 0,
+                "read": 0,
+                "archived": 0,
+            },
+            "notifications": {
+                "all": [],
+                "unread": [],
+                "read": [],
+                "archived": [],
+            },
+        }
 
         for item in items:
             # Preserve the original sort key for the notifications update from frontend
             item["notificationCreatedDisplay"] = item.get(
                 "notificationCreated")
             format_dates(item)
-            response.append(item)
+
+            # Add to "all"
+            response["notifications"]["all"].append(item)
+            response["counts"]["all"] += 1
+
+            status = item.get("status").lower()
+
+            # Add to status-specific collection
+            if status in response["notifications"]:
+                response["notifications"][status].append(item)
+                response["counts"][status] += 1
 
         return _response(200, response, HEADERS)
 

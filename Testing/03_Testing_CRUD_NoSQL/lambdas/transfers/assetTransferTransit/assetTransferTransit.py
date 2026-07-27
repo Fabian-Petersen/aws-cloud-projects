@@ -167,7 +167,7 @@ def lambda_handler(event, context):
                 "notificationCreated": approved_date,
                 "status": "UNREAD",
                 "priority": "NORMAL",
-                "type": "TRANSFER_TRANSIT",
+                "type": "TRANSFER_IN_TRANSIT",
                 "title": "Asset In Transit",
                 "assetId": asset_id,
                 "message": (

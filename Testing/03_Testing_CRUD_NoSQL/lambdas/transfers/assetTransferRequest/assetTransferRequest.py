@@ -286,7 +286,7 @@ def build_notification(recipient: dict, transfer: dict) -> dict:
         "recipientSub": recipient["sub"],
         "recipientEmail": recipient["email"],
 
-        "type": "ASSET_TRANSFER_REQUEST",
+        "type": "TRANSFER_REQUEST_SUBMITTED",
         "title": "Asset Transfer Request",
         "message": f"Please approve the transfer of asset {asset_id}.",
         "location": location_from,
