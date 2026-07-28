@@ -481,6 +481,29 @@ api_child_routes = {
     }
   }
 
+  /*#$ -------------------------------------------------------------------------- */
+  /*#$                                Notifications                               */
+  /*#$ -------------------------------------------------------------------------- */
+
+  notification-id = {
+    parent_key = "notifications" # /api/notifications/{id}
+    path_part  = "{id}"
+    level      = 1
+    methods = {
+      PUT = {
+        lambda        = "updateNotificationById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      DELETE = {
+        lambda        = "deleteNotificationById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
   comments-id = {
     # path       = "/api/comments/{commentId}"
     parent_key = "comments"
@@ -1856,24 +1879,6 @@ lambda_functions = {
         allow_index_access = true
       }
     }
-
-    # statements = [
-    #   {
-    #     actions   = ["s3:GetObject"]
-    #     resources = ["arn:aws:s3:::crud-nosql-app-images/assets/*"]
-    #   },
-    #   {
-    #     actions   = ["s3:ListBucket"]
-    #     resources = ["arn:aws:s3:::crud-nosql-app-images"]
-    #     conditions = [
-    #       {
-    #         test     = "StringLike"
-    #         variable = "s3:prefix"
-    #         values   = ["assets/*"]
-    #       }
-    #     ]
-    #   }
-    # ]
   }
 
   postNotification = {
@@ -1881,6 +1886,38 @@ lambda_functions = {
     handler    = "postNotification.lambda_handler"
     runtime    = "python3.12"
     path       = "notifications/postNotification"
+    invoked_by = ["apigateway"]
+
+    dynamodb_permissions = {
+      notification_table = {
+        table_name         = "crud-nosql-app-notifications-table"
+        actions            = ["dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  deleteNotificationById = {
+    file_name  = "deleteNotificationById.py"
+    handler    = "deleteNotificationById.lambda_handler"
+    runtime    = "python3.12"
+    path       = "notifications/deleteNotificationById"
+    invoked_by = ["apigateway"]
+
+    dynamodb_permissions = {
+      notification_table = {
+        table_name         = "crud-nosql-app-notifications-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+  # notifications/updateNotificationById/updateNotificationById
+  updateNotificationById = {
+    file_name  = "updateNotificationById.py"
+    handler    = "updateNotificationById.lambda_handler"
+    runtime    = "python3.12"
+    path       = "notifications/updateNotificationById"
     invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
@@ -3182,7 +3219,7 @@ event_subscriptions = {
           }
           NewImage = {
             status = {
-              S = ["receipted"]
+              S = ["completed"]
             }
           }
         }

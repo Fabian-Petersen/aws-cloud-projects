@@ -101,6 +101,7 @@ def lambda_handler(event, context):
         # $ Create backend meta data
         transfer_id = str(uuid.uuid4())
         created_at = now
+        dateUpdated = now
         status = str("pending")
 
         # $ data from the cognito user sign-in
@@ -144,6 +145,7 @@ def lambda_handler(event, context):
             # $ created on backend
             "id": transfer_id,
             "transferCreated": created_at,  # % (SK)
+            "dateUpdated": dateUpdated,
             "status": normalize_string(status),
             "requested_by": normalize_string(requested_by),
             "requestor_sub": user_id,

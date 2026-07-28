@@ -220,7 +220,7 @@ def lambda_handler(event, context):
             data.get("deliveryNote", [])
         )
 
-        response = table_transfers.update_item(
+        table_transfers.update_item(
             Key={
                 "assetID": asset_id,
                 "transferCreated": transfer_created,
@@ -234,7 +234,7 @@ def lambda_handler(event, context):
                     receiptCondition = :receiptCondition,
                     receiptNotes = :receiptNotes,
                     receiptImages = :receiptImages,
-                    deliveryNote = :deliveryNote
+                    deliveryNote = :deliveryNote,
             """,
             ExpressionAttributeNames={
                 "#status": "status",

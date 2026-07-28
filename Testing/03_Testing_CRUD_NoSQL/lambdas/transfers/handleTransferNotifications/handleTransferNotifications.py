@@ -1,6 +1,7 @@
 import json
 import boto3
 from botocore.exceptions import ClientError
+from datetime import datetime, timezone, timedelta
 
 dynamodb = boto3.resource("dynamodb")
 
@@ -18,6 +19,13 @@ def lambda_handler(event, context):
     for record in event["Records"]:
         try:
             notification = json.loads(record["body"])
+
+            # Get the current time for the update
+            sast = timezone(timedelta(hours=2))
+            now = datetime.now(sast).isoformat()
+
+            # Timestamp when the notification record is created
+            notification["notificationCreatedAt"] = now
 
             notifications_table.put_item(
                 Item=notification,

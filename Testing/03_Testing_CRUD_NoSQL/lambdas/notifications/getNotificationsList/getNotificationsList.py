@@ -175,6 +175,7 @@ def handle_options_request(method, headers):
 DATE_FIELDS = {
     "transferCreated",
     "notificationCreatedDisplay",
+    "notificationCreatedAt",
     "dateRead",
 }
 
