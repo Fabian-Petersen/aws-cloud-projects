@@ -1,6 +1,7 @@
 import json
 import boto3
 import uuid
+import os
 from datetime import datetime, timezone, timedelta
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
@@ -10,6 +11,8 @@ dynamodb = boto3.resource("dynamodb")
 
 TABLE_NAME_TRANSFERS = "crud-nosql-app-assets-transfer-table"
 table_transfers = dynamodb.Table(TABLE_NAME_TRANSFERS)
+
+scheduler = boto3.client("scheduler")
 
 HEADERS = {
     "Content-Type": "application/json",
@@ -59,6 +62,32 @@ def convert_decimals(obj):
 
     return obj
 
+# ---------------------------------------------------------------------------- #
+#                        Delete Eventbridge Schedule                           #
+# ---------------------------------------------------------------------------- #
+
+
+SCHEDULER_GROUP = os.environ["SCHEDULER_GROUP"]
+
+
+def delete_transfer_reminder_schedule(transfer_id: str) -> None:
+    """
+    Delete the reminder schedule after a transfer has been approved.
+
+    If the schedule no longer exists, no exception is raised.
+    """
+
+    schedule_name = f"approval-{transfer_id}"
+
+    try:
+        scheduler.delete_schedule(
+            GroupName=SCHEDULER_GROUP,
+            Name=schedule_name,
+        )
+
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] != "ResourceNotFoundException":
+            raise
 # ---------------------------------------------------------------------------- #
 #                                Transfer by ID                                #
 # ---------------------------------------------------------------------------- #
@@ -209,6 +238,9 @@ def lambda_handler(event, context):
             """,
             ReturnValues="ALL_NEW"
         )
+
+        delete_transfer_reminder_schedule(transfer_id)
+
         return _response(
             200,
             {

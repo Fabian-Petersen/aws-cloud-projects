@@ -15,25 +15,3 @@ resource "aws_ssm_parameter" "this" {
     Environment = var.env
   }
 }
-
-
-# variable "parameters" {
-#   type = map(object({
-#     value       = string
-#     description = optional(string)
-#     prefix      = optional(string)  # allow custom SSM prefix
-#   }))
-# }
-
-# locals {
-#   default_prefix = "/crud-nosql"  # can be overridden per parameter
-# }
-
-# resource "aws_ssm_parameter" "parameters" {
-#   for_each = var.parameters
-
-#   name  = "${lookup(each.value, "prefix", local.default_prefix)}/${each.key}"
-#   type  = "String"
-#   value = each.value.value
-#   description = lookup(each.value, "description", "")
-# }

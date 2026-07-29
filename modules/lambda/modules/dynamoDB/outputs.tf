@@ -1,8 +1,8 @@
 # Loop through the variable for the lambda functions to return a map of arn values to be passed into the api.
 
 #* =================== Function Explanation =====================
-#* k = the key (like "getBookings_lambda", "postBooking_lambda")
-#* v = the actual Lambda resource object
+#* k (key) = the key (like "getBookings_lambda", "postBooking_lambda")
+#* v (value) = the actual Lambda resource object
 #* v.invoke_arn = the ARN Terraform gives for invoking that Lambda*
 #* lambda_invoke_arns = {
 #*   "getBookings_lambda"  = "arn:aws:lambda:us-east-1:123456789:function:getBookings_lambda:1"
@@ -44,6 +44,20 @@ output "lambda_arns" {
     k => v.arn
   }
 }
+
+# $ Return map of lambdas that publish to eventbidge scheduler
+output "scheduler_targets_arns" {
+  description = "Scheduler-enabled Lambda targets."
+
+  value = {
+    for k, v in aws_lambda_function.lambda_function :
+    k => {
+      arn = v.arn
+    }
+    if try(var.lambda_functions[k].scheduler_target, false)
+  }
+}
+
 
 # This should retun a map example {{
 #   "getBookings_lambda" = "arn:aws:lambda:region:acct:function:getBookings_lambda"

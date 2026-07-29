@@ -9,6 +9,7 @@ import boto3
 
 sqs = boto3.client("sqs")
 ssm = boto3.client("ssm")
+scheduler = boto3.client("scheduler")
 
 dynamodb = boto3.resource("dynamodb")
 
@@ -327,10 +328,58 @@ def publish_notification(notification: dict) -> None:
         >>> publish_notification({"notificationId": "...", "recipientSub": "mgr-sub", ...})
     """
     sqs_url = get_sqs_url()
-    print("sqs_url:", sqs_url)
+    # print("sqs_url:", sqs_url)
     sqs.send_message(
         QueueUrl=sqs_url,
         MessageBody=json.dumps(notification)
+    )
+
+# ---------------------------------------------------------------------------- #
+#                        Create Schedule Reminder                              #
+# ---------------------------------------------------------------------------- #
+
+
+def schedule_transfer_approval_reminder(
+    transfer: dict,
+    transfer_id: str,
+    delay_hours: int = 24,
+) -> None:
+    """Schedule a one-time reminder to verify the transfer has progressed."""
+
+    scheduler_role_arn = ssm.get_parameter(
+        Name=os.getenv(
+            "SCHEDULER_ROLE_ARN", "/crud-nosql/scheduler_approval/scheduler_role_arn")
+    )["Parameter"]["Value"]
+
+    reminder_target_arn = ssm.get_parameter(
+        Name=os.getenv(
+            "REMINDER_TARGET_ARN", "/crud-nosql/scheduler_approval/reminder_target_arn")
+    )["Parameter"]["Value"]
+
+    scheduler_group = ssm.get_parameter(
+        Name=os.getenv(
+            "SCHEDULER_GROUP", "/crud-nosql/scheduler_approval/scheduler_group_name")
+    )["Parameter"]["Value"]
+
+    schedule_time = (
+        datetime.now(timezone.utc) + timedelta(hours=delay_hours)
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    scheduler.create_schedule(
+        Name=f"approval-{transfer_id}",
+        GroupName=scheduler_group,
+        ScheduleExpression=f"at({schedule_time})",
+        FlexibleTimeWindow={"Mode": "OFF"},
+        Target={
+            "Arn": reminder_target_arn,
+            "RoleArn": scheduler_role_arn,
+            "Input": json.dumps({
+                "transferId": transfer["id"],
+                "assetID": transfer["assetID"],
+                "type": "APPROVAL_REMINDER",
+            }),
+        },
+        ActionAfterCompletion="DELETE",
     )
 
 # ---------------------------------------------------------------------------- #
@@ -339,7 +388,7 @@ def publish_notification(notification: dict) -> None:
 
 
 def lambda_handler(event, context):
-    # print("event:", event)
+    print("event:", event)
     """
     Entry point triggered by SQS, which itself is fed by an EventBridge
     rule watching the transfer table's DynamoDB Stream (via a Pipe).
@@ -396,6 +445,7 @@ def lambda_handler(event, context):
         transfer = detail["dynamodb"]["NewImage"]
         asset_id = _stream_value(transfer, "assetID")
         location_from = _stream_value(transfer, "locationFrom")
+        transfer_id = _stream_value(transfer, "id")
 
         tier = get_asset_tier(assets_table, asset_id)
         print(f"Tier {tier} approval required for asset {asset_id}" +
@@ -413,7 +463,8 @@ def lambda_handler(event, context):
             )
 
             publish_notification(notification)
-
+            schedule_transfer_approval_reminder(
+                transfer, transfer_id, delay_hours=48)
     return {
         "statusCode": 200,
         "body": json.dumps("Notifications queued")

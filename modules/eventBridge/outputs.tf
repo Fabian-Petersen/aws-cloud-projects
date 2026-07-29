@@ -8,3 +8,12 @@ output "rule_arns" {
 output "debug_stream_tables" {
   value = local.stream_tables
 }
+
+output "permission_arn_map" {
+  value = local.permission_arn_map
+}
+
+output "target_map" {
+  value = local.target_map
+}
+

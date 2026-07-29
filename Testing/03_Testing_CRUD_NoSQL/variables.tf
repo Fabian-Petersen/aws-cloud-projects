@@ -169,7 +169,11 @@ variable "lambda_functions" {
       allow_index_access = bool
     }))
 
+    environment_variables = optional(map(string), {})
+    scheduler_target      = optional(bool, false)
+
     statements = optional(list(object({
+      sid       = optional(string)
       effect    = optional(string, "Allow")
       actions   = list(string)
       resources = list(string)
@@ -194,8 +198,8 @@ variable "lambda_functions_custom" {
     invoked_by = optional(list(string), []) # e.g. ["apigateway", "s3", "eventbridge"]
 
     environment_variables = optional(map(string), {})
-
-    sns_publish_topics = optional(list(string), [])
+    scheduler_target      = optional(bool, false)      # true lets lambda publish to schedule group
+    sns_publish_topics    = optional(list(string), []) # true lets lambda publish to sns
 
     inline_policy_statements = optional(list(object({
       sid       = optional(string)
@@ -331,6 +335,17 @@ variable "resource_permissions" {
     source_arn  = string # ARN of the EventBridge rule granting permission
   }))
   default = []
+}
+
+variable "scheduler_group_name" {
+  type    = string
+  default = null
+}
+
+variable "scheduler_target_arns" {
+  description = "Lambda ARNs that EventBridge Scheduler may invoke."
+  type        = list(string)
+  default     = []
 }
 
 

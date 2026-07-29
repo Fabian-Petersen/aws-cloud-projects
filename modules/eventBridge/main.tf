@@ -62,6 +62,11 @@ locals {
       }
     )
   }
+
+  scheduler_target_arns = [
+    for target in values(var.scheduler_target_arns) :
+    target.arn
+  ]
 }
 
 # $ Step 1 : EventBridge Pipe (Stream to Bus)
@@ -260,10 +265,95 @@ resource "aws_cloudwatch_event_archive" "event_bus_archive" {
   retention_days   = 3
 }
 
-output "permission_arn_map" {
-  value = local.permission_arn_map
+
+
+/* -------------------------------------------------------------------------- */
+/*                         Create Scheduler (Optional)                        */
+/* -------------------------------------------------------------------------- */
+
+resource "aws_scheduler_schedule_group" "this" {
+  count = var.scheduler_group_name != null ? 1 : 0
+
+  name = var.scheduler_group_name
+
+  tags = {
+    Project     = var.project_name
+    Service     = "asset-transfer"
+    Environment = var.env
+  }
 }
 
-output "target_map" {
-  value = local.target_map
+# $  Create role to invoke lambdas
+
+resource "aws_iam_role" "scheduler_role" {
+  name = "crud-nosql-scheduler-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "scheduler.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+# $  Create policy for the lambdas
+resource "aws_iam_role_policy" "scheduler_invoke_lambda" {
+  count = length(local.scheduler_target_arns) > 0 ? 1 : 0
+
+  name = "scheduler-invoke-lambda"
+  role = aws_iam_role.scheduler_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "lambda:InvokeFunction"
+        ]
+        Resource = local.scheduler_target_arns
+      }
+    ]
+  })
+}
+
+# $ Store scheduler values in SSM to be used by lambdas later
+resource "aws_ssm_parameter" "scheduler_group_name" {
+  count = var.scheduler_group_name != null ? 1 : 0
+
+  name  = "/crud-nosql/scheduler_approval/scheduler_group_name"
+  type  = "String"
+  value = aws_scheduler_schedule_group.this[0].name
+
+  tags = {
+    Project = var.project_name
+  }
+}
+
+resource "aws_ssm_parameter" "scheduler_role_arn" {
+  name  = "/crud-nosql/scheduler_approval/scheduler_role_arn"
+  type  = "String"
+  value = aws_iam_role.scheduler_role.arn
+
+  tags = {
+    Project = var.project_name
+  }
+}
+
+resource "aws_ssm_parameter" "reminder_target_arn" {
+  for_each = var.scheduler_target_arns
+
+  name  = "/crud-nosql/scheduler_approval/reminder_target_arn/${each.key}"
+  type  = "String"
+  value = each.value.arn
+
+  tags = {
+    Project = var.project_name
+  }
 }

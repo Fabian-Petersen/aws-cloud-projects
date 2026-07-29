@@ -96,3 +96,15 @@ variable "dynamodb_stream_arns" {
   description = "Map of table name => stream ARN, from the dynamodb module output"
   type        = map(string)
 }
+
+variable "scheduler_group_name" {
+  type    = string
+  default = null
+}
+
+variable "scheduler_target_arns" {
+  description = "map of all the lambda function arns that pushish to the scheduler"
+  type = map(object({
+    arn = string
+  }))
+}

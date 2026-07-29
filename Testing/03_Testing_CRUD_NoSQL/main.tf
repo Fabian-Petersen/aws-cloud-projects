@@ -265,12 +265,14 @@ module "eventbridge" {
   source = "../../modules/eventBridge"
   env    = var.env
 
-  project_name         = var.project_name
-  region               = var.region
-  dynamodb_tables      = var.dynamodb_tables
-  event_subscriptions  = var.event_subscriptions
-  dynamodb_stream_arns = module.dynamodb_tables.dynamodb_stream_arns
-  profile_2_account_id = var.profile_2_account_id
+  project_name          = var.project_name
+  region                = var.region
+  dynamodb_tables       = var.dynamodb_tables
+  event_subscriptions   = var.event_subscriptions
+  dynamodb_stream_arns  = module.dynamodb_tables.dynamodb_stream_arns
+  profile_2_account_id  = var.profile_2_account_id
+  scheduler_group_name  = var.scheduler_group_name
+  scheduler_target_arns = merge(module.lambda.scheduler_targets_arns, module.cognito_lambda.scheduler_targets_arns)
 
   resource_permissions = flatten([
     for rule_name, rule in var.event_subscriptions : [

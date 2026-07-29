@@ -16,10 +16,11 @@ variable "project_name" {}
 
 variable "lambda_functions" {
   type = map(object({
-    file_name = string
-    handler   = string
-    runtime   = string
-    path      = optional(string)
+    file_name  = string
+    handler    = string
+    runtime    = string
+    path       = optional(string)
+    invoked_by = optional(list(string), []) # e.g. ["apigateway", "s3", "eventbridge"]
 
     dynamodb_permissions = map(object({
       table_name         = string
@@ -27,7 +28,11 @@ variable "lambda_functions" {
       allow_index_access = bool
     }))
 
+    environment_variables = optional(map(string), {})
+    scheduler_target      = optional(bool, false)
+
     statements = optional(list(object({
+      sid       = optional(string)
       effect    = optional(string, "Allow")
       actions   = list(string)
       resources = list(string)
@@ -40,6 +45,7 @@ variable "lambda_functions" {
     })), [])
   }))
 }
+
 
 
 variable "region" {

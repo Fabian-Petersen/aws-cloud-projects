@@ -1342,6 +1342,10 @@ lambda_functions = {
     runtime    = "python3.12"
     path       = "transfers/postTransferApproval"
     invoked_by = ["apigateway"]
+    environment_variables = {
+      SCHEDULER_GROUP = "/crud-nosql/scheduler_approval/scheduler_group_name"
+    }
+
     dynamodb_permissions = {
       asset_transfer_table = {
         table_name         = "crud-nosql-app-assets-transfer-table"
@@ -1349,6 +1353,19 @@ lambda_functions = {
         allow_index_access = true
       }
     }
+
+    // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
+    statements = [
+      {
+        sid = "ReadSchedulerFromSSM"
+        actions = [
+          "ssm:GetParameter"
+        ]
+        resources = [
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/scheduler_approval/scheduler_group_name",
+        ]
+      }
+    ]
   }
 
   postTransferReject = {
@@ -2335,6 +2352,8 @@ lambda_functions_custom = {
     path               = "transfers/checkApprovalTimeout"
     invoked_by         = ["eventbridgeScheduler"]
 
+    scheduler_target = true
+
     // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
     inline_policy_statements = [
       {
@@ -2379,8 +2398,10 @@ lambda_functions_custom = {
     environment_variables = {
       # SSM parameter storing the User Pool ID
       NOTIFICATION_QUEUE_URL = "/crud-nosql/sqs/notification_queue_url"
+      SCHEDULER_ROLE_ARN     = "/crud-nosql/shedule_approval/scheduler_role_arn"
+      REMINDER_TARGET_ARN    = "/crud-nosql/scheduler_approval/reminder_target_arn"
+      SCHEDULER_GROUP        = "/crud-nosql/scheduler_approval/scheduler_group_name"
     }
-
 
     // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
     inline_policy_statements = [
@@ -2427,6 +2448,21 @@ lambda_functions_custom = {
         ]
         resources = [
           "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/sqs/notification_queue_url"
+        ]
+      },
+      {
+        sid = "EventBridgeSchedulerAccess"
+
+        actions = [
+          "scheduler:CreateSchedule",
+          "scheduler:DeleteSchedule",
+          "scheduler:GetSchedule",
+          "scheduler:UpdateSchedule"
+        ]
+
+        resources = [
+          "arn:aws:scheduler:af-south-1:157489943321:schedule/crud-nosql-schedules/*",
+          "arn:aws:scheduler:af-south-1:157489943321:schedule-group/crud-nosql-schedules"
         ]
       }
     ]
@@ -2551,16 +2587,12 @@ lambda_functions_custom = {
     ]
   }
 
-
-
   assetTransferReceipt = {
     file_name  = "assetTransferReceipt.py"
     handler    = "assetTransferReceipt.lambda_handler"
     runtime    = "python3.12"
     path       = "transfers/assetTransferReceipt"
     invoked_by = ["eventbridge"]
-
-    # sns_publish_topics = ["asset-transfer-receipt-topic"]
 
     environment_variables = {
       # SSM parameter storing the User Pool ID
@@ -3032,11 +3064,6 @@ parameters = {
     prefix      = "/crud-nosql/cognito"
   }
 
-  # transfer_request_url = {
-  #   value       = "https://sqs.af-south-1.amazonaws.com/157489943321/asset-transfer-notifications-queue"
-  #   description = "app notifications queue"
-  #   prefix      = "/crud-nosql/sqs"
-  # }
   notification_queue_url = {
     value       = "https://sqs.af-south-1.amazonaws.com/157489943321/asset-transfer-notifications-queue"
     description = "app notifications queue"
@@ -3053,44 +3080,9 @@ ses_lambda_handler = "jobs-notify-admin.lambda_handler"
 from_email         = "no-reply@crud-nosql.app.fabian-portfolio.net"
 # dynamodb_table_name = "crud-nosql-app-maintenance-request-table"
 
-# $ Event Bridge - for triggering lambdas on specific events like asset verification or scanning
-# event_subscriptions = {
-#   asset-verification = {
-#     source      = "asset-verify-service"
-#     detail-type = "AssetVerified"
-#     targets = [
-#       {
-#         name        = "updateAssetVerifyStatus"
-#         target_type = "lambda"
-#       }
-#     ]
-#   }
-
-#   asset-transfer = {
-#     source      = "asset-transfer-service"
-#     detail-type = "TransferRequest"
-#     targets = [
-#       {
-#         name        = "transfer_request_events" # Key name of the sqs queue:
-#         target_type = "sqs"
-#       },
-#       {
-#         name        = "transfer_approval_events"
-#         target_type = "sqs"
-#       },
-#       {
-#         name        = "transfer_transit_events"
-#         target_type = "sqs"
-#       },
-#       {
-#         name        = "transfer_receipt_events"
-#         target_type = "sqs"
-#       }
-#     ]
-#   }
-# }
-
-
+# $ Eventbridge
+# - for triggering lambdas on specific events like asset verification or scanning
+scheduler_group_name = "crud-nosql-schedules"
 event_subscriptions = {
   asset-verification = {
     event_pattern = {
@@ -3107,15 +3099,6 @@ event_subscriptions = {
       }
     ]
   }
-
-  # crud-nosql-app-assets-transfer = {
-  #   pk                = "assetID"
-  #   sk                = "transferCreated"
-  #   enable_gsi        = true
-  #   enable_stream     = true // enable stream to trigger lambda for transfer created
-  #   stream_filter     = ["INSERT", "MODIFY"]
-  #   event_source      = "asset-transfer-service" # matches your rule
-  #   event_detail-type = "TransferRequest"
 
 
   transfer-request = {
