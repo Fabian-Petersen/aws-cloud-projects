@@ -7,6 +7,7 @@ from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
 from decimal import Decimal
 
+ssm = boto3.client("ssm")
 dynamodb = boto3.resource("dynamodb")
 
 TABLE_NAME_TRANSFERS = "crud-nosql-app-assets-transfer-table"
@@ -67,21 +68,22 @@ def convert_decimals(obj):
 # ---------------------------------------------------------------------------- #
 
 
-SCHEDULER_GROUP = os.environ["SCHEDULER_GROUP"]
-
-
 def delete_transfer_reminder_schedule(transfer_id: str) -> None:
     """
     Delete the reminder schedule after a transfer has been approved.
 
     If the schedule no longer exists, no exception is raised.
     """
+    scheduler_group_name = ssm.get_parameter(
+        Name=os.getenv(
+            "SCHEDULER_GROUP", "/crud-nosql/scheduler_approval/scheduler_group_name")
+    )["Parameter"]["Value"]
 
     schedule_name = f"approval-{transfer_id}"
 
     try:
         scheduler.delete_schedule(
-            GroupName=SCHEDULER_GROUP,
+            GroupName=scheduler_group_name,
             Name=schedule_name,
         )
 

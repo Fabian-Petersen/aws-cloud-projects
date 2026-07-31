@@ -20,9 +20,9 @@ NOTIFICATION_QUEUE_URL = os.getenv("NOTIFICATION_QUEUE_URL",
                                    "/crud-nosql/sqs")
 
 
-def get_sqs_url():
-    """Fetch the queue URL from the SSM Parameter Store"""
-    response = ssm.get_parameter(Name=NOTIFICATION_QUEUE_URL)
+def get_ssm_parameter_value(name: str) -> str:
+    """Fetch the parameter value from the SSM Parameter Store"""
+    response = ssm.get_parameter(Name=name)
     return response["Parameter"]["Value"]
 
 # ---------------------------------------------------------------------------- #
@@ -272,16 +272,16 @@ def build_notification(recipient: dict, transfer: dict) -> dict:
     location_from = transfer["locationFrom"]["S"]
 
     # Get the current time for the update
-    sast = timezone(timedelta(hours=2))
+    # sast = timezone(timedelta(hours=2))
+    sast = timezone(timedelta(minutes=5))
     now = datetime.now(sast).isoformat()
-    created_at = now
 
     ttl = int(
         (datetime.now(timezone.utc) + timedelta(days=90)).timestamp()
     )
 
     return {
-        "notificationCreated": created_at,
+        "notificationCreated": now,
         "id": str(uuid.uuid4()),
 
         "recipientSub": recipient["sub"],
@@ -327,7 +327,7 @@ def publish_notification(notification: dict) -> None:
     Example:
         >>> publish_notification({"notificationId": "...", "recipientSub": "mgr-sub", ...})
     """
-    sqs_url = get_sqs_url()
+    sqs_url = get_ssm_parameter_value(NOTIFICATION_QUEUE_URL)
     # print("sqs_url:", sqs_url)
     sqs.send_message(
         QueueUrl=sqs_url,
@@ -341,42 +341,55 @@ def publish_notification(notification: dict) -> None:
 
 def schedule_transfer_approval_reminder(
     transfer: dict,
+    recipients: list[dict],
     transfer_id: str,
-    delay_hours: int = 24,
+    # delay_hours: int = 24,
+    delay_minutes: int = 1,
 ) -> None:
     """Schedule a one-time reminder to verify the transfer has progressed."""
 
-    scheduler_role_arn = ssm.get_parameter(
-        Name=os.getenv(
-            "SCHEDULER_ROLE_ARN", "/crud-nosql/scheduler_approval/scheduler_role_arn")
-    )["Parameter"]["Value"]
+# NOTIFICATION_QUEUE_URL = os.getenv("NOTIFICATION_QUEUE_URL",
+#                                    "/crud-nosql/sqs")
 
-    reminder_target_arn = ssm.get_parameter(
-        Name=os.getenv(
-            "REMINDER_TARGET_ARN", "/crud-nosql/scheduler_approval/reminder_target_arn")
-    )["Parameter"]["Value"]
+    SCHEDULER_ROLE_ARN = os.getenv(
+        "SCHEDULER_ROLE_ARN", "/crud-nosql/scheduler_approval/scheduler_role_arn")
 
-    scheduler_group = ssm.get_parameter(
-        Name=os.getenv(
-            "SCHEDULER_GROUP", "/crud-nosql/scheduler_approval/scheduler_group_name")
-    )["Parameter"]["Value"]
+    REMINDER_TARGET_ARN = os.getenv(
+        "REMINDER_TARGET_ARN", "/crud-nosql/scheduler_approval/reminder_target_arn")
+
+    SCHEDULER_GROUP_NAME = os.getenv(
+        "SCHEDULER_GROUP_NAME", "/crud-nosql/scheduler_approval/scheduler_group_name")
+
+    scheduler_role_arn = get_ssm_parameter_value(SCHEDULER_ROLE_ARN)
+    print('scheduler_role_arn:', scheduler_role_arn)
+
+    reminder_target_arn = get_ssm_parameter_value(REMINDER_TARGET_ARN)
+    print('reminder_target_arn:', reminder_target_arn)
+
+    scheduler_group_name = get_ssm_parameter_value(SCHEDULER_GROUP_NAME)
+    print('scheduler_group_name:', scheduler_group_name)
+
+    # schedule_time = (
+    #     datetime.now(timezone.utc) + timedelta(hours=delay_hours)
+    # ).strftime("%Y-%m-%dT%H:%M:%S")
 
     schedule_time = (
-        datetime.now(timezone.utc) + timedelta(hours=delay_hours)
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+        datetime.now(timezone.utc) + timedelta(minutes=delay_minutes)
+    ).strftime("%Y-%m-%dT%H:%M:%S")
 
     scheduler.create_schedule(
         Name=f"approval-{transfer_id}",
-        GroupName=scheduler_group,
+        GroupName=scheduler_group_name,
         ScheduleExpression=f"at({schedule_time})",
+        ScheduleExpressionTimezone="UTC",
         FlexibleTimeWindow={"Mode": "OFF"},
         Target={
             "Arn": reminder_target_arn,
             "RoleArn": scheduler_role_arn,
             "Input": json.dumps({
-                "transferId": transfer["id"],
-                "assetID": transfer["assetID"],
                 "type": "APPROVAL_REMINDER",
+                "transfer": transfer,
+                "recipients": recipients,
             }),
         },
         ActionAfterCompletion="DELETE",
@@ -453,7 +466,6 @@ def lambda_handler(event, context):
 
         # Determine recipients based on tier (and locationFrom, for tier 3)
         recipients = get_recipients(users_table, tier, location_from)
-        print("recipients:", recipients)
 
         # Create one notification per recipient
         for recipient in recipients:
@@ -464,7 +476,7 @@ def lambda_handler(event, context):
 
             publish_notification(notification)
             schedule_transfer_approval_reminder(
-                transfer, transfer_id, delay_hours=48)
+                transfer, recipients, transfer_id, delay_minutes=5)
     return {
         "statusCode": 200,
         "body": json.dumps("Notifications queued")

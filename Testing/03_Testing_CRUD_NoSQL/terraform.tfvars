@@ -72,15 +72,6 @@ api_parent_routes = {
 
   "transfers" = {
     methods = {
-      # GET = {
-      #   lambda        = "getTransferList"
-      #   authorization = "COGNITO_USER_POOLS"
-      # }
-
-      # POST = {
-      #   lambda        = "postTransferRequest"
-      #   authorization = "COGNITO_USER_POOLS"
-      # }
       OPTIONS = {
         authorization = "NONE"
       }
@@ -1364,6 +1355,18 @@ lambda_functions = {
         resources = [
           "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/scheduler_approval/scheduler_group_name",
         ]
+        }, {
+        sid = "EventBridgeSchedulerAccess"
+
+        actions = [
+          "scheduler:DeleteSchedule",
+          "scheduler:GetSchedule",
+        ]
+
+        resources = [
+          "arn:aws:scheduler:af-south-1:157489943321:schedule/crud-nosql-schedules/*",
+          "arn:aws:scheduler:af-south-1:157489943321:schedule-group/crud-nosql-schedules"
+        ]
       }
     ]
   }
@@ -2354,6 +2357,14 @@ lambda_functions_custom = {
 
     scheduler_target = true
 
+    environment_variables = {
+      # SSM parameter storing the User Pool ID
+      NOTIFICATION_QUEUE_URL = "/crud-nosql/sqs/notification_queue_url"
+      SCHEDULER_ROLE_ARN     = "/crud-nosql/scheduler_approval/scheduler_role_arn"
+      REMINDER_TARGET_ARN    = "/crud-nosql/scheduler_approval/reminder_target_arn/checkApprovalTimeout"
+      SCHEDULER_GROUP_NAME   = "/crud-nosql/scheduler_approval/scheduler_group_name"
+    }
+
     // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
     inline_policy_statements = [
       {
@@ -2369,12 +2380,28 @@ lambda_functions_custom = {
         ]
       },
       {
-        sid = "TransferTimeOutEvent"
+        sid = "TransferRequestQueueAccess"
         actions = [
-          "sqs:SendMessage"
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:ChangeMessageVisibility",
+          "sqs:GetQueueUrl"
         ]
         resources = [
-          "arn:aws:sqs:af-south-1:157489943321:asset-transfer-notifications-queue"
+          "arn:aws:sqs:af-south-1:157489943321:asset-transfer-request-queue"
+        ]
+      },
+      {
+        sid = "ReadQueueURLFromSSM"
+        actions = [
+          "ssm:GetParameter"
+        ]
+        resources = [
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/sqs/notification_queue_url",
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/scheduler_approval/scheduler_role_arn",
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/scheduler_approval/reminder_target_arn/checkApprovalTimeout",
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/scheduler_approval/scheduler_group_name",
         ]
       },
       {
@@ -2388,6 +2415,7 @@ lambda_functions_custom = {
       }
     ]
   }
+
   assetTransferRequest = {
     file_name  = "assetTransferRequest.py"
     handler    = "assetTransferRequest.lambda_handler"
@@ -2398,9 +2426,9 @@ lambda_functions_custom = {
     environment_variables = {
       # SSM parameter storing the User Pool ID
       NOTIFICATION_QUEUE_URL = "/crud-nosql/sqs/notification_queue_url"
-      SCHEDULER_ROLE_ARN     = "/crud-nosql/shedule_approval/scheduler_role_arn"
-      REMINDER_TARGET_ARN    = "/crud-nosql/scheduler_approval/reminder_target_arn"
-      SCHEDULER_GROUP        = "/crud-nosql/scheduler_approval/scheduler_group_name"
+      SCHEDULER_ROLE_ARN     = "/crud-nosql/scheduler_approval/scheduler_role_arn"
+      REMINDER_TARGET_ARN    = "/crud-nosql/scheduler_approval/reminder_target_arn/checkApprovalTimeout"
+      SCHEDULER_GROUP_NAME   = "/crud-nosql/scheduler_approval/scheduler_group_name"
     }
 
     // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
@@ -2447,7 +2475,10 @@ lambda_functions_custom = {
           "ssm:GetParameter"
         ]
         resources = [
-          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/sqs/notification_queue_url"
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/sqs/notification_queue_url",
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/scheduler_approval/scheduler_role_arn",
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/scheduler_approval/reminder_target_arn/checkApprovalTimeout",
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/scheduler_approval/scheduler_group_name",
         ]
       },
       {
@@ -2463,6 +2494,15 @@ lambda_functions_custom = {
         resources = [
           "arn:aws:scheduler:af-south-1:157489943321:schedule/crud-nosql-schedules/*",
           "arn:aws:scheduler:af-south-1:157489943321:schedule-group/crud-nosql-schedules"
+        ]
+      },
+      {
+        sid = "AllowPassSchedulerRole"
+        actions = [
+          "iam:PassRole"
+        ]
+        resources = [
+          "arn:aws:iam::157489943321:role/crud-nosql-scheduler-role"
         ]
       }
     ]
@@ -3217,3 +3257,11 @@ event_subscriptions = {
     ]
   }
 }
+
+# schedule : arn:aws:scheduler:af-south-1:157489943321:schedule-group/crud-nosql-schedules
+
+# Scheduler Role
+# name: crud-nosql-scheduler-role
+# arn: arn:aws:iam::157489943321:role/crud-nosql-scheduler-role
+# ssm_parameter: arn:aws:iam::157489943321:role/crud-nosql-scheduler-role
+# ssm_name: /crud-nosql/scheduler_approval/scheduler_role_arn
