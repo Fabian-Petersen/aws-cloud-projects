@@ -2380,16 +2380,17 @@ lambda_functions_custom = {
         ]
       },
       {
-        sid = "TransferRequestQueueAccess"
+        sid = "TransferApprovalReminderQueue"
         actions = [
           "sqs:ReceiveMessage",
+          "sqs:SendMessage",
           "sqs:DeleteMessage",
           "sqs:GetQueueAttributes",
           "sqs:ChangeMessageVisibility",
           "sqs:GetQueueUrl"
         ]
         resources = [
-          "arn:aws:sqs:af-south-1:157489943321:asset-transfer-request-queue"
+          "arn:aws:sqs:af-south-1:157489943321:asset-transfer-notifications-queue"
         ]
       },
       {

@@ -272,8 +272,7 @@ def build_notification(recipient: dict, transfer: dict) -> dict:
     location_from = transfer["locationFrom"]["S"]
 
     # Get the current time for the update
-    # sast = timezone(timedelta(hours=2))
-    sast = timezone(timedelta(minutes=5))
+    sast = timezone(timedelta(hours=2))
     now = datetime.now(sast).isoformat()
 
     ttl = int(
@@ -343,13 +342,9 @@ def schedule_transfer_approval_reminder(
     transfer: dict,
     recipients: list[dict],
     transfer_id: str,
-    # delay_hours: int = 24,
-    delay_minutes: int = 1,
+    delay_hours: int = 24,
 ) -> None:
     """Schedule a one-time reminder to verify the transfer has progressed."""
-
-# NOTIFICATION_QUEUE_URL = os.getenv("NOTIFICATION_QUEUE_URL",
-#                                    "/crud-nosql/sqs")
 
     SCHEDULER_ROLE_ARN = os.getenv(
         "SCHEDULER_ROLE_ARN", "/crud-nosql/scheduler_approval/scheduler_role_arn")
@@ -369,12 +364,8 @@ def schedule_transfer_approval_reminder(
     scheduler_group_name = get_ssm_parameter_value(SCHEDULER_GROUP_NAME)
     print('scheduler_group_name:', scheduler_group_name)
 
-    # schedule_time = (
-    #     datetime.now(timezone.utc) + timedelta(hours=delay_hours)
-    # ).strftime("%Y-%m-%dT%H:%M:%S")
-
     schedule_time = (
-        datetime.now(timezone.utc) + timedelta(minutes=delay_minutes)
+        datetime.now(timezone.utc) + timedelta(hours=delay_hours)
     ).strftime("%Y-%m-%dT%H:%M:%S")
 
     scheduler.create_schedule(
@@ -476,7 +467,7 @@ def lambda_handler(event, context):
 
             publish_notification(notification)
             schedule_transfer_approval_reminder(
-                transfer, recipients, transfer_id, delay_minutes=5)
+                transfer, recipients, transfer_id, delay_hours=72)
     return {
         "statusCode": 200,
         "body": json.dumps("Notifications queued")
