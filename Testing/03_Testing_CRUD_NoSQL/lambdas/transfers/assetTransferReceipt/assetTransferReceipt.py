@@ -20,14 +20,20 @@ dynamodb = boto3.resource("dynamodb")
 NOTIFICATION_QUEUE_URL = os.getenv("NOTIFICATION_QUEUE_URL",
                                    "/crud-nosql/sqs")
 
+# ---------------------------------------------------------------------------- #
+#                                DynamoDB Tables                               #
+# ---------------------------------------------------------------------------- #
+users_table = dynamodb.Table("crud-nosql-app-users-table")
+assets_table = dynamodb.Table("crud-nosql-app-assets-table")
 
+
+# ---------------------------------------------------------------------------- #
+#                               GET SQS URL FROM SSM                           #
+# ---------------------------------------------------------------------------- #
 def get_sqs_url():
     """Fetch the queue URL from the SSM Parameter Store"""
     response = ssm.get_parameter(Name=NOTIFICATION_QUEUE_URL)
     return response["Parameter"]["Value"]
-
-
-users_table = dynamodb.Table("crud-nosql-app-users-table")
 
 
 def deserialize(image):
@@ -100,6 +106,40 @@ def get_branch_manager(location):
     return None
 
 
+# ---------------------------------------------------------------------------- #
+#                             UPDATE ASSET LOCATION                            #
+# ---------------------------------------------------------------------------- #
+
+def update_asset_location(asset_id, location):
+    """
+    Updates the asset's location using the assetID GSI.
+    """
+    response = assets_table.query(
+        IndexName="AssetIDIndex",
+        KeyConditionExpression=Key("assetID").eq(asset_id)
+    )
+
+    items = response.get("Items", [])
+
+    if not items:
+        raise ValueError(f"Asset not found: {asset_id}")
+
+    asset = items[0]
+
+    assets_table.update_item(
+        Key={
+            "id": asset["id"]
+        },
+        UpdateExpression="SET #location = :location",
+        ExpressionAttributeNames={
+            "#location": "location"
+        },
+        ExpressionAttributeValues={
+            ":location": location
+        }
+    )
+
+
 def lambda_handler(event, context):
     print("event:", json.dumps(event))
 
@@ -155,7 +195,10 @@ def lambda_handler(event, context):
                 "ttl": ttl
             }
 
+            # $ Notify the requestor asset was received
             publish_notification(recipient_notification)
+            # $ Update the asset location in assets table
+            update_asset_location(asset_id, location)
 
     return {
         "statusCode": 200,
