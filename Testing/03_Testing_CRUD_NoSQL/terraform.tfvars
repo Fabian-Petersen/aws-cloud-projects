@@ -2642,6 +2642,32 @@ lambda_functions_custom = {
 
     inline_policy_statements = [
       {
+        sid = "DynamoDBTableUsersAccess"
+        actions = [
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table",
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table/index/LocationIndex"
+        ]
+      },
+      {
+        sid = "DynamoDBTableAssetsAccess"
+        actions = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-assets-table",
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-assets-table/index/AssetIDIndex"
+        ]
+      },
+      {
         sid = "TransferReceiptEvent"
         actions = [
           "sqs:SendMessage"

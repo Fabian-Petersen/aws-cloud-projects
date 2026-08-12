@@ -133,10 +133,10 @@ def get_asset_action_history(asset_id) -> dict:
 
     return items
 
-
 # ======================================================================================
 # JOB REQUEST HISTORY QUERY
 # ======================================================================================
+
 
 def get_asset_request_history(asset_id) -> dict:
 

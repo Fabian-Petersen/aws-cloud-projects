@@ -234,7 +234,7 @@ def lambda_handler(event, context):
                     receiptCondition = :receiptCondition,
                     receiptNotes = :receiptNotes,
                     receiptImages = :receiptImages,
-                    deliveryNote = :deliveryNote,
+                    deliveryNote = :deliveryNote
             """,
             ExpressionAttributeNames={
                 "#status": "status",

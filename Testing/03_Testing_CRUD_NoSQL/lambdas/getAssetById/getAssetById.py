@@ -17,9 +17,7 @@ request_table = dynamodb.Table(
     "crud-nosql-app-maintenance-request-table"
 )
 
-transfer_table = dynamodb.Table(
-    "crud-nosql-app-assets-transfer-table"
-)
+transfers_table = dynamodb.Table("crud-nosql-app-assets-transfer-table")
 
 s3 = boto3.client(
     "s3",
@@ -168,33 +166,149 @@ def get_maintenance_history(asset_id: str) -> list:
 ##############################################################
 ################ GET ASSET TRANSFER HISTORY ##################
 ##############################################################
+# $ STAGES: Used to build the response object for the frontend
+
+
+STAGES = {
+    "pending": [
+        "requested_by",
+        "requestor_name",
+        "requestor_sub",
+        "assetID",
+        "area",
+        "images",
+        "equipment",
+        "description",
+        "transferReason",
+        "locationFrom",
+        "locationTo",
+        "expectedDate",
+    ],
+    "approved": [
+        "approvalId",
+        "approvedDate",
+        "approvedBy",
+        "approvedBySub",
+        "approvalReminderCount",
+    ],
+    "in-transit": [
+        "transitId",
+        "dateCreated",
+        "inTransitSub",
+        "transportType",
+        "transportName",
+        "transportDate",
+        "trackingNumber",
+        "transportNotes",
+        "transportCost",
+        "images",
+        "invoices",
+    ],
+    "completed": [
+        "receiptId",
+        "dateReceiptCreated",
+        "receiptDate",
+        "receiptBySub",
+        "receiptCondition",
+        "receiptBy",
+        "damageDetails",
+        "receiptImages",
+        "deliveryNote",
+        "receiptNotes",
+    ],
+    "cancelled": [
+        "dateCancelled",
+        "cancelledBySub",
+        "cancelReason",
+        "cancelStatus",
+    ],
+    "rejected": [
+        "dateRejected",
+        "rejectedBySub",
+        "rejectedReason",
+        "rejectedBy",
+    ],
+}
+
+# $ Dates to be changed from ISO string to human readable date
+DATE_FIELDS = {
+    "transferCreated",
+    "expectedDate",
+    "approvedDate",
+    "dateCreated",
+    "transportDate",
+    "dateReceived",
+    "dateCancelled",
+    "dateReceiptCreated",
+}
+
+# =========================================================================
+# Format all the date fields in the STAGES
+# =========================================================================
+
+
+def format_dates(data):
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if key in DATE_FIELDS and value:
+                data[key] = to_human_date(value)
+            else:
+                format_dates(value)
+
+    elif isinstance(data, list):
+        for item in data:
+            format_dates(item)
+
+
+# =========================================================================
+# Build the response object
+# =========================================================================
+
+
+def build_transfer_response(item):
+    response = {
+        "id": item["id"],
+        "assetID": item["assetID"],
+        "status": item["status"],
+        "transferCreated": item["transferCreated"],
+    }
+
+    for stage, fields in STAGES.items():
+        data = {}
+
+        for field in fields:
+            if field in item:
+                data[field] = item[field]
+
+        response[stage] = data or None
+
+    return response
 
 
 def get_transfer_history(asset_id: str) -> list:
     try:
-        response = transfer_table.get_item(
-            Key={"id": asset_id}
+        response = transfers_table.query(
+            KeyConditionExpression=Key("assetID").eq(asset_id),
+            ScanIndexForward=False
         )
 
         items = response.get("Items", [])
 
-        if not items:
-            return []
+        while "LastEvaluatedKey" in response:
+            response = transfers_table.query(
+                KeyConditionExpression=Key("assetID").eq(asset_id),
+                ExclusiveStartKey=response["LastEvaluatedKey"],
+            )
+            items.extend(response.get("Items", []))
 
-        return [
-            {
-                "id": item.get("id"),
-                "fromLocation": item.get("fromLocation"),
-                "toLocation": item.get("toLocation"),
-                "transferredAt": (
-                    to_human_date(item["transferredAt"])
-                    if item.get("transferredAt")
-                    else None
-                ),
-                "transferredBy": item.get("transferredBy"),
-            }
+        history = [
+            build_transfer_response(item)
             for item in items
         ]
+
+        format_dates(history)
+
+        return history
 
     except Exception as exc:
         print(f"Error loading transfer history: {exc}")
@@ -256,6 +370,7 @@ def _response(status_code, body):
         "headers": HEADERS,
         "body": json.dumps(body),
     }
+
 
     # Run the lambda locally with the events.json file to test
 if __name__ == "__main__":

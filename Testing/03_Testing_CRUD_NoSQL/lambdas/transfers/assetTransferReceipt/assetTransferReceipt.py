@@ -114,6 +114,9 @@ def update_asset_location(asset_id, location):
     """
     Updates the asset's location using the assetID GSI.
     """
+
+    print(f"Looking up asset {asset_id} using AssetIDIndex")
+
     response = assets_table.query(
         IndexName="AssetIDIndex",
         KeyConditionExpression=Key("assetID").eq(asset_id)
@@ -125,6 +128,11 @@ def update_asset_location(asset_id, location):
         raise ValueError(f"Asset not found: {asset_id}")
 
     asset = items[0]
+
+    print(
+        f"Found asset: id={asset['id']}, "
+        f"currentLocation={asset.get('location')}"
+    )
 
     assets_table.update_item(
         Key={
@@ -144,42 +152,87 @@ def lambda_handler(event, context):
     print("event:", json.dumps(event))
 
     for record in event.get("Records", []):
+        try:
+            body = json.loads(record["body"])
+            detail = body["detail"]
+            dynamodb_record = detail["dynamodb"]
 
-        body = json.loads(record["body"])
-        detail = body["detail"]
-        dynamodb = detail["dynamodb"]
+            new_image = deserialize(dynamodb_record["NewImage"])
+            old_image = deserialize(dynamodb_record.get("OldImage", {}))
 
-        new_image = deserialize(dynamodb["NewImage"])
-        old_image = deserialize(dynamodb.get("OldImage", {}))
+            old_status = old_image.get("status")
+            new_status = new_image.get("status")
 
-        # Only process in-transit event
-        if (
-            old_image.get("status") != "in-transit"
-            or new_image.get("status") != "receipted"
-        ):
-            continue
+            print(f"Old status: {old_status}")
+            print(f"New status: {new_status}")
+            print(f"New image: {json.dumps(new_image, default=str)}")
 
-        transfer_id = new_image["id"]
-        location = new_image["locationTo"]
-        recipient = get_branch_manager(location)
-        approved_date = new_image["approvedDate"]
-        asset_id = new_image["assetID"]
+            # Only process an in-transit -> completed transition
+            if old_status != "in-transit" or new_status != "completed":
+                print(
+                    f"Skipping record. Status transition "
+                    f"{old_status} -> {new_status} is not supported."
+                )
+                continue
 
-        ttl = int(
-            (datetime.now(timezone.utc) + timedelta(days=90)).timestamp()
-        )
+            transfer_id = new_image["id"]
+            asset_id = new_image["assetID"]
+            location = new_image["locationTo"]
 
-        # ---------------------------------------------------------------------------- #
-        #                           Notification for Requestor                         #
-        # ---------------------------------------------------------------------------- #
+            print(
+                f"Processing received transfer: "
+                f"transferId={transfer_id}, "
+                f"assetId={asset_id}, "
+                f"location={location}"
+            )
 
-        if recipient:
+            # ------------------------------------------------------------
+            # Update asset location
+            # ------------------------------------------------------------
+
+            update_asset_location(asset_id, location)
+
+            print(
+                f"Asset {asset_id} location updated to {location}"
+            )
+
+            # ------------------------------------------------------------
+            # Find notification recipient
+            # ------------------------------------------------------------
+
+            recipient = get_branch_manager(location)
+
+            if not recipient:
+                print(
+                    f"No branch manager/supervisor found for location "
+                    f"{location}. Asset was updated, but no notification "
+                    f"will be sent."
+                )
+                continue
+
+            print(
+                f"Notification recipient found: {recipient}"
+            )
+
+            # ------------------------------------------------------------
+            # Notification
+            # ------------------------------------------------------------
+
+            ttl = int(
+                (
+                    datetime.now(timezone.utc)
+                    + timedelta(days=90)
+                ).timestamp()
+            )
 
             recipient_notification = {
                 "id": str(uuid.uuid4()),
                 "recipientSub": recipient["id"],
                 "transferId": transfer_id,
-                "notificationCreated": approved_date,
+                "notificationCreated": new_image.get(
+                    "receivedDate",
+                    new_image.get("approvedDate")
+                ),
                 "status": "UNREAD",
                 "priority": "NORMAL",
                 "type": "TRANSFER_RECEIVED",
@@ -195,12 +248,20 @@ def lambda_handler(event, context):
                 "ttl": ttl
             }
 
-            # $ Notify the requestor asset was received
             publish_notification(recipient_notification)
-            # $ Update the asset location in assets table
-            update_asset_location(asset_id, location)
+
+            print(
+                f"Notification queued for recipient "
+                f"{recipient['id']}"
+            )
+
+        except Exception as e:
+            print(
+                f"Error processing record: {str(e)}"
+            )
+            raise
 
     return {
         "statusCode": 200,
-        "body": json.dumps("Notifications queued.")
+        "body": json.dumps("Processed.")
     }
