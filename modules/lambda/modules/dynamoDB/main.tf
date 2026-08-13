@@ -34,7 +34,11 @@ resource "aws_iam_role" "lambda_exec_role" {
 
 #$ [Step 2] : Create the policy that define scope of lambda access to dynamoDB table
 resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
-  for_each = var.lambda_functions
+  for_each = {
+    for name, config in var.lambda_functions :
+    name => config
+    if length(config.dynamodb_permissions) > 0 # Don't create dynamodb_permissions if not specified
+  }
 
   name = "${each.key}_dynamodb_policy"
   role = aws_iam_role.lambda_exec_role[each.key].id
@@ -56,7 +60,31 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
   })
 }
 
-#$ [Step 2.1] : Add additional policies a lambda needs over and above dynamoDB
+#$ [Step 2.1] : Create policies allowing Lambda functions to invoke other Lambda functions
+resource "aws_iam_role_policy" "lambda_invoke_policy" {
+  for_each = {
+    for name, config in var.lambda_functions :
+    name => config
+    if length(config.lambda_permissions) > 0
+  }
+
+  name = "${each.key}_lambda_invoke_policy"
+  role = aws_iam_role.lambda_exec_role[each.key].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      for permission in values(each.value.lambda_permissions) : {
+        Effect   = "Allow"
+        Action   = permission.actions
+        Resource = "arn:aws:lambda:${var.region}:${var.profile_2_account_id}:function:${permission.function_name}"
+      }
+    ]
+  })
+}
+
+#$ [Step 2.2] : Add additional policies a lambda needs over and above dynamoDB
 resource "aws_iam_role_policy_attachment" "extra_policies" {
   for_each   = var.extra_policies
   role       = aws_iam_role.lambda_exec_role[each.key].name

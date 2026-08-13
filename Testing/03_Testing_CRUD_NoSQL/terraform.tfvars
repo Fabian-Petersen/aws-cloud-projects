@@ -121,7 +121,7 @@ api_parent_routes = {
   dashboard = {
     methods = {
       GET = {
-        lambda        = "getDashboardJobsMetrics"
+        lambda        = "getCardMetrics"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -311,7 +311,7 @@ api_child_routes = {
     level      = 2
     methods = {
       GET = {
-        lambda        = "getAssetJobsHistoryMetrics"
+        lambda        = "getAssetMetrics"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -644,12 +644,16 @@ api_child_routes = {
   }
 
   dashboard-metrics = {
-    parent_key = "dashboard" // path: /api/admin/confirm-user-signup
+    parent_key = "dashboard" // path: /api/dashboard/metrics
     path_part  = "metrics"
     level      = 1
     methods = {
       OPTIONS = {
         authorization = "NONE"
+      }
+      GET = {
+        lambda        = "getDashboardMetrics"
+        authorization = "COGNITO_USER_POOLS"
       }
     }
   }
@@ -659,7 +663,7 @@ api_child_routes = {
     level      = 2
     methods = {
       GET = {
-        lambda        = "getDashboardJobsMetrics"
+        lambda        = "getCardMetrics"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -673,7 +677,7 @@ api_child_routes = {
     level      = 2
     methods = {
       GET = {
-        lambda        = "getDashboardStoreJobsMetrics"
+        lambda        = "getStoreCostMetrics"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -688,7 +692,7 @@ api_child_routes = {
     level      = 2
     methods = {
       GET = {
-        lambda        = "getDashboardTransferMetrics"
+        lambda        = "getTransferMetrics"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -1255,36 +1259,6 @@ lambda_functions = {
     }
   }
 
-  getAssetJobsHistoryMetrics = {
-    file_name  = "getAssetJobsHistoryMetrics.py"
-    handler    = "getAssetJobsHistoryMetrics.lambda_handler"
-    runtime    = "python3.12"
-    invoked_by = ["apigateway"]
-
-    dynamodb_permissions = {
-      jobs_table = {
-        table_name         = "crud-nosql-app-maintenance-request-table"
-        actions            = ["dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
-        allow_index_access = true
-      }
-      users_table = {
-        table_name         = "crud-nosql-app-users-table"
-        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-        allow_index_access = false
-      }
-      assets_table = {
-        table_name         = "crud-nosql-app-assets-table"
-        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-        allow_index_access = false
-      }
-      action_table = {
-        table_name         = "crud-nosql-app-maintenance-action-table"
-        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
-        allow_index_access = true
-      }
-    }
-  }
-
   postAssetVerify = {
     file_name  = "postAssetVerify.py"
     handler    = "postAssetVerify.lambda_handler"
@@ -1830,11 +1804,50 @@ lambda_functions = {
   }
 
   # $ // -------------------------------- Dashboard ------------------------------- */
-  getDashboardJobsMetrics = {
-    file_name  = "getDashboardJobsMetrics.py"
-    handler    = "getDashboardJobsMetrics.lambda_handler"
+
+  getDashboardMetrics = {
+    file_name  = "getDashboardMetrics.py"
+    handler    = "getDashboardMetrics.lambda_handler"
     runtime    = "python3.12"
+    path       = "dashboard/getDashboardMetrics"
     invoked_by = ["apigateway"]
+
+    lambda_permissions = {
+      storeCost_metrics = {
+        function_name = "getStoreCostMetrics"
+        actions       = ["lambda:InvokeFunction"]
+      }
+
+      card_metrics = {
+        function_name = "getCardMetrics"
+        actions       = ["lambda:InvokeFunction"]
+      }
+
+      asset_metrics = {
+        function_name = "getAssetMetrics"
+        actions       = ["lambda:InvokeFunction"]
+      }
+
+
+      transfers_metrics = {
+        function_name = "getTransferMetrics"
+        actions       = ["lambda:InvokeFunction"]
+      }
+
+      verification_metrics = {
+        function_name = "getVerificationMetrics"
+        actions       = ["lambda:InvokeFunction"]
+      }
+    }
+  }
+
+
+  getCardMetrics = {
+    file_name  = "getCardMetrics.py"
+    handler    = "getCardMetrics.lambda_handler"
+    runtime    = "python3.12"
+    path       = "dashboard/getCardMetrics"
+    invoked_by = ["lambda"]
 
     dynamodb_permissions = {
       jobs_table = {
@@ -1849,11 +1862,12 @@ lambda_functions = {
       }
     }
   }
-  getDashboardStoreJobsMetrics = {
-    file_name  = "getDashboardStoreJobsMetrics.py"
-    handler    = "getDashboardStoreJobsMetrics.lambda_handler"
+  getStoreCostMetrics = {
+    file_name  = "getStoreCostMetrics.py"
+    handler    = "getStoreCostMetrics.lambda_handler"
     runtime    = "python3.12"
-    invoked_by = ["apigateway"]
+    path       = "dashboard/getStoreCostMetrics"
+    invoked_by = ["lambda"]
 
     dynamodb_permissions = {
       actions_table = {
@@ -1869,16 +1883,64 @@ lambda_functions = {
     }
   }
 
-  getDashboardTransferMetrics = {
-    file_name  = "getDashboardTransferMetrics.py"
-    handler    = "getDashboardTransferMetrics.lambda_handler"
+  getAssetMetrics = {
+    file_name  = "getAssetMetrics.py"
+    handler    = "getAssetMetrics.lambda_handler"
     runtime    = "python3.12"
-    path       = "transfers/getDashboardTransferMetrics"
-    invoked_by = ["apigateway"]
+    path       = "dashboard/getAssetMetrics"
+    invoked_by = ["lambda"]
+
+    dynamodb_permissions = {
+      jobs_table = {
+        table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+      users_table = {
+        table_name         = "crud-nosql-app-users-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+      assets_table = {
+        table_name         = "crud-nosql-app-assets-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+      action_table = {
+        table_name         = "crud-nosql-app-maintenance-action-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+    }
+  }
+
+
+  getTransferMetrics = {
+    file_name  = "getTransferMetrics.py"
+    handler    = "getTransferMetrics.lambda_handler"
+    runtime    = "python3.12"
+    path       = "dashboard/getTransferMetrics"
+    invoked_by = ["lambda"]
 
     dynamodb_permissions = {
       transfers_table = {
         table_name         = "crud-nosql-app-transfers-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+    }
+  }
+
+  getVerificationMetrics = {
+    file_name  = "getVerificationMetrics.py"
+    handler    = "getVerificationMetrics.lambda_handler"
+    runtime    = "python3.12"
+    path       = "dashboard/getVerificationMetrics"
+    invoked_by = ["lambda"]
+
+    dynamodb_permissions = {
+      transfers_table = {
+        table_name         = "crud-nosql-app-assets-verification-table"
         actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = true
       }

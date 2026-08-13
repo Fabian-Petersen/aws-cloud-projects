@@ -210,7 +210,7 @@ def get_last_completed_action(asset_id):
     return to_human_date(latest_action.get("completed_at"))
 
 # =========================================================================
-# Get the total cost of repairs
+# TOTAL COST OF REPAIRS
 # =========================================================================
 
 
@@ -263,7 +263,7 @@ def calculate_asset_cost(asset_id) -> float:
     return round(total_cost, 2)
 
 # =========================================================================
-# Get the total cost of repairs for an asset by month
+# TOTAL COST OF REPAIRS PER ASSET BY MONTH
 # =========================================================================
 
 

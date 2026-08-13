@@ -1,3 +1,9 @@
+"""
+This function return all the metrics values for the dashbaord display cards.
+
+"""
+
+
 import boto3
 import json
 from decimal import Decimal

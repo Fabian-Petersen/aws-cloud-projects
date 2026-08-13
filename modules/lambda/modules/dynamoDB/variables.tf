@@ -22,11 +22,16 @@ variable "lambda_functions" {
     path       = optional(string)
     invoked_by = optional(list(string), []) # e.g. ["apigateway", "s3", "eventbridge"]
 
-    dynamodb_permissions = map(object({
+    dynamodb_permissions = optional(map(object({
       table_name         = string
       actions            = list(string)
       allow_index_access = bool
-    }))
+    })), {})
+
+    lambda_permissions = optional(map(object({
+      function_name = string
+      actions       = optional(list(string), ["lambda:InvokeFunction"])
+    })), {})
 
     environment_variables = optional(map(string), {})
     scheduler_target      = optional(bool, false)
