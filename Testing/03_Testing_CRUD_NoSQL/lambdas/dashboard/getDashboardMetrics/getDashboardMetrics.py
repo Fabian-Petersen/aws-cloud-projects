@@ -4,6 +4,13 @@ from decimal import Decimal
 from concurrent.futures import ThreadPoolExecutor
 
 lambda_client = boto3.client("lambda")
+dynamodb = boto3.resource("dynamodb")
+
+users_table = dynamodb.Table("crud-nosql-app-users-table")
+
+# ======================================================================================
+# User Helpers
+# ======================================================================================
 
 
 def decimal_serializer(obj):
@@ -24,6 +31,49 @@ def decimal_serializer(obj):
             return int(obj)
         return float(obj)
     raise TypeError
+
+
+# ======================================================================================
+# Get the claims for the user
+# ======================================================================================
+
+def get_user_claims(event):
+    """
+    Extract user claims and location from the event.
+
+    Args:
+        event (dict): The event data passed to the Lambda function.
+
+    Returns:
+        tuple: A tuple containing (claims, location).
+               - claims (dict): User claims from the event.
+               - location (dict): Location details from the event.
+    """
+    print("Event:", json.dumps(event))
+
+    # Extract claims from the event
+    claims = event.get("requestContext", {}).get(
+        "authorizer", {}).get("claims", {})
+
+    return claims
+
+# ======================================================================================
+# Get the user sub
+# ======================================================================================
+
+
+def get_user_by_sub(user_sub):
+
+    if not user_sub:
+        return None
+
+    response = users_table.get_item(
+        Key={
+            "id": user_sub
+        }
+    )
+
+    return response.get("Item")
 
 
 def handle_request_metadata(event):
@@ -96,6 +146,21 @@ def invoke_lambda(function_name, event):
 
 
 def lambda_handler(event, context):
+    """
+    AWS Lambda handler for fetching dashboard metrics from multiple services.
+
+    This function aggregates metrics from various microservices by invoking
+    their respective Lambda functions concurrently using ThreadPoolExecutor.
+
+    Args:
+        event (dict): The event data passed to the Lambda function.
+        context (object): Runtime information of the Lambda function.
+
+    Returns:
+        dict: A formatted HTTP response containing aggregated metrics and necessary CORS headers.
+    """
+    print("event:", json.dumps(event))
+
     # CORS
     method, HEADERS = handle_request_metadata(event)
 
@@ -103,16 +168,30 @@ def lambda_handler(event, context):
     if options_response:
         return options_response
 
+    claims = get_user_claims(event)
+    user_sub = claims.get("sub")
+
+    user_record = get_user_by_sub(user_sub)
+
+    if not user_record:
+        return _response(
+            404,
+            {"message": "User not found"},
+            HEADERS
+        )
+
+    group = user_record.get("group")
+    location = user_record.get("location")
+
     functions = {
         "storeCost": "getStoreCostMetrics",
         "cards": "getCardMetrics",
-        "assets": "getAssetMetrics",
-        "transfers": "getTransferMetrics",
         "verification": "getVerificationMetrics",
+        # "assets": "getAssetMetrics",
+        # "transfers": "getTransferMetrics",
     }
 
-    with ThreadPoolExecutor(max_workers=5) as executor:
-
+    with ThreadPoolExecutor(max_workers=3) as executor:
         futures = {
             name: executor.submit(
                 invoke_lambda,
@@ -122,12 +201,20 @@ def lambda_handler(event, context):
             for name, function_name in functions.items()
         }
 
-        data = {
-            name: future.result()
-            for name, future in futures.items()
+        user = {
+            "role": group,
+            "location": location
         }
 
-        return _response(200, data, HEADERS)
+        data = {
+            "user": user,
+            **{
+                name: future.result()
+                for name, future in futures.items()
+            }
+        }
+
+    return _response(200, data, HEADERS)
 
 # ----------------------------
 # Response helper
@@ -148,6 +235,6 @@ def _response(status_code, body, headers):
     """
     return {
         "statusCode": status_code,
-        "headers": headers,
         "body": json.dumps(body, default=decimal_serializer),
+        "headers": headers,
     }

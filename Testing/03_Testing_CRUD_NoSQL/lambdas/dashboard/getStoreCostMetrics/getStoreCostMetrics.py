@@ -358,6 +358,7 @@ def get_store_jobs_by_month(store: str, month: str, year: str) -> dict:
             KeyConditionExpression=Key("location").eq(store.lower()),
             ProjectionExpression=(
                 "request_id, "
+                "id, "
                 "assetID, "
                 "actionCreated, "
                 "total_cost_parts, "
@@ -383,6 +384,7 @@ def get_store_jobs_by_month(store: str, month: str, year: str) -> dict:
                 )
                 jobs.append({
                     "request_id": job.get("request_id"),
+                    "action_id": job.get("id"),
                     "assetID": job.get("assetID"),
                     "date": date_str,
                     "costs": {
@@ -473,8 +475,6 @@ def lambda_handler(event, context):
         .get("claims", {},)
     )
 
-    # print('claims:', claims)
-
     user_sub = claims.get("sub")
     user = get_user_by_sub(user_sub)
     location = user.get("location") if user else None
@@ -548,31 +548,76 @@ def lambda_handler(event, context):
 
         return _response(200, {"message": "Success"}, HEADERS,)
 
-    # =========================================================================
-    # Main Logic
-    # =========================================================================
+
+# =========================================================================
+# Main Logic
+# =========================================================================
     try:
-        # Drilldown: location + year + month → individual jobs
+        # ---------------------------------------------------------------------
+        # Level 3: Store + Year + Month → individual jobs
+        # ---------------------------------------------------------------------
         if filter_location and filter_year and filter_month:
             data = get_store_jobs_by_month(
-                filter_location, filter_month, filter_year)
+                filter_location.lower(),
+                filter_month,
+                filter_year,
+            )
 
-        # Drilldown: location + year → monthly cost breakdown
+        # ---------------------------------------------------------------------
+        # Level 2: Store + Year → monthly cost breakdown
+        # ---------------------------------------------------------------------
         elif filter_location and filter_year:
-            data = get_store_cost_by_month(filter_location, filter_year)
+            data = get_store_cost_by_month(
+                filter_location.lower(),
+                filter_year,
+            )
 
-        # Overview: all stores by year
+        # ---------------------------------------------------------------------
+        # Level 1: Initial dashboard data
+        #
+        # Admin:
+        #   Return total cost per site
+        #
+        # Manager/User:
+        #   Return monthly cost for their assigned site
+        #
+        # IMPORTANT:
+        # Return ONLY the dictionary.
+        # The aggregator adds:
+        #
+        #   "storeCost": <this response>
+        # ---------------------------------------------------------------------
         else:
             if access_scope["full_access"]:
                 data = get_stores_cost_by_year()
+
             else:
                 scoped_location = access_scope["location"]
+
                 if not scoped_location:
-                    return _response(403, {"message": "No location assigned"}, HEADERS)
-                data = get_stores_cost_by_year(store_names=[scoped_location])
+                    return _response(
+                        403,
+                        {"message": "No location assigned"},
+                        HEADERS,
+                    )
+
+                # Use requested year when supplied, otherwise current year.
+                year = filter_year or str(datetime.now().year)
+
+                monthly_data = get_store_cost_by_month(
+                    scoped_location,
+                    year,
+                )
+
+                data = monthly_data["data"]
 
         return _response(200, data, HEADERS)
 
-    except Exception as error:
+    except Exception:
         traceback.print_exc()
-        return _response(500, {"message": "Failed to fetch dashboard metrics"}, HEADERS)
+
+        return _response(
+            500,
+            {"message": "Failed to fetch dashboard metrics"},
+            HEADERS,
+        )

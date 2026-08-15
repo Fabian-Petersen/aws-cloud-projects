@@ -120,10 +120,10 @@ api_parent_routes = {
 
   dashboard = {
     methods = {
-      GET = {
-        lambda        = "getCardMetrics"
-        authorization = "COGNITO_USER_POOLS"
-      }
+      # GET = {
+      #   lambda        = "getCardMetrics" # function invoked by getDashboardMetrics
+      #   authorization = "COGNITO_USER_POOLS"
+      # }
       OPTIONS = {
         authorization = "NONE"
       }
@@ -311,7 +311,7 @@ api_child_routes = {
     level      = 2
     methods = {
       GET = {
-        lambda        = "getAssetMetrics"
+        lambda        = "getAssetHistory"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -693,6 +693,21 @@ api_child_routes = {
     methods = {
       GET = {
         lambda        = "getTransferMetrics"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  verification-metrics = {
+    parent_key = "dashboard-metrics" // path: /api/dashboard/metrics/verification
+    path_part  = "verification"
+    level      = 2
+    methods = {
+      GET = {
+        lambda        = "getVerificationMetrics"
         authorization = "COGNITO_USER_POOLS"
       }
       OPTIONS = {
@@ -1823,20 +1838,28 @@ lambda_functions = {
         actions       = ["lambda:InvokeFunction"]
       }
 
-      asset_metrics = {
-        function_name = "getAssetMetrics"
-        actions       = ["lambda:InvokeFunction"]
-      }
+      # asset_metrics = {
+      #   function_name = "#create function"
+      #   actions       = ["lambda:InvokeFunction"]
+      # }
 
 
-      transfers_metrics = {
-        function_name = "getTransferMetrics"
-        actions       = ["lambda:InvokeFunction"]
-      }
+      # transfers_metrics = {
+      #   function_name = "getTransferMetrics" #add logic
+      #   actions       = ["lambda:InvokeFunction"]
+      # }
 
       verification_metrics = {
         function_name = "getVerificationMetrics"
         actions       = ["lambda:InvokeFunction"]
+      }
+    }
+
+    dynamodb_permissions = {
+      users_table = {
+        table_name         = "crud-nosql-app-users-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
       }
     }
   }
@@ -1867,7 +1890,7 @@ lambda_functions = {
     handler    = "getStoreCostMetrics.lambda_handler"
     runtime    = "python3.12"
     path       = "dashboard/getStoreCostMetrics"
-    invoked_by = ["lambda"]
+    invoked_by = ["lambda", "apigateway"]
 
     dynamodb_permissions = {
       actions_table = {
@@ -1883,12 +1906,12 @@ lambda_functions = {
     }
   }
 
-  getAssetMetrics = {
-    file_name  = "getAssetMetrics.py"
-    handler    = "getAssetMetrics.lambda_handler"
+  getAssetHistory = {
+    file_name  = "getAssetHistory.py"
+    handler    = "getAssetHistory.lambda_handler"
     runtime    = "python3.12"
-    path       = "dashboard/getAssetMetrics"
-    invoked_by = ["lambda"]
+    path       = "dashboard/getAssetHistory"
+    invoked_by = ["apigateway"]
 
     dynamodb_permissions = {
       jobs_table = {
@@ -1936,13 +1959,19 @@ lambda_functions = {
     handler    = "getVerificationMetrics.lambda_handler"
     runtime    = "python3.12"
     path       = "dashboard/getVerificationMetrics"
-    invoked_by = ["lambda"]
+    invoked_by = ["lambda", "apigateway"]
 
     dynamodb_permissions = {
-      transfers_table = {
-        table_name         = "crud-nosql-app-assets-verification-table"
+      assets_table = {
+        table_name         = "crud-nosql-app-assets-table"
         actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = true
+      }
+
+      users_table = {
+        table_name         = "crud-nosql-app-users-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
       }
     }
   }
