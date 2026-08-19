@@ -341,47 +341,32 @@ def get_jobs_for_scope(access_scope):
 # Metric Helpers
 # ======================================================================================
 
-def split_jobs_by_month(jobs):
-
+def split_jobs_by_month(jobs, date_field):
     ranges = get_month_ranges()
-
     current_jobs = []
-
     previous_jobs = []
 
     for job in jobs:
+        event_date = safe_parse_date(job.get(date_field))
 
-        created_at = safe_parse_date(
-            job.get("jobCreated")
-        )
-
-        if not created_at:
+        if not event_date:
             continue
 
-        if (
-            created_at
-            >= ranges["current_month_start"]
-        ):
-
+        if event_date >= ranges["current_month_start"]:
             current_jobs.append(job)
-
         elif (
             ranges["previous_month_start"]
-            <= created_at
+            <= event_date
             <= ranges["previous_month_end"]
         ):
-
             previous_jobs.append(job)
 
-    return (
-        current_jobs,
-        previous_jobs,
-    )
-
+    return current_jobs, previous_jobs
 
 # ======================================================================================
 # Pending Metrics
 # ======================================================================================
+
 
 def get_pending_metrics(jobs):
 
@@ -390,10 +375,10 @@ def get_pending_metrics(jobs):
         if job.get("status") == "pending"
     ]
 
-    current_jobs, previous_jobs = (
-        split_jobs_by_month(
-            pending_jobs
-        )
+    # Pending: a newly uploaded request
+    current_jobs, previous_jobs = split_jobs_by_month(
+        pending_jobs,
+        date_field="jobCreated",
     )
 
     return {
@@ -422,10 +407,10 @@ def get_approved_metrics(jobs):
         == "in progress"
     ]
 
-    current_jobs, previous_jobs = (
-        split_jobs_by_month(
-            approved_jobs
-        )
+    # Approved / in progress: the date it entered this status
+    current_jobs, previous_jobs = split_jobs_by_month(
+        approved_jobs,
+        date_field="statusUpdatedAt",
     )
 
     return {
@@ -470,11 +455,10 @@ def get_overdue_metrics(jobs):
         if due_date.date() < today:
             overdue_jobs.append(job)
 
-    current_jobs, previous_jobs = (
-        split_jobs_by_month(
-            overdue_jobs
+        current_jobs, previous_jobs = split_jobs_by_month(
+            overdue_jobs,
+            date_field="targetDate",
         )
-    )
 
     return {
         "overdueRequests": {
@@ -502,10 +486,10 @@ def get_completed_metrics(jobs):
         == "complete"
     ]
 
-    current_jobs, previous_jobs = (
-        split_jobs_by_month(
-            completed_jobs
-        )
+    # Completed: the date it was completed
+    current_jobs, previous_jobs = split_jobs_by_month(
+        completed_jobs,
+        date_field="statusUpdatedAt",
     )
 
     return {
@@ -528,7 +512,7 @@ def get_completed_metrics(jobs):
 
 def lambda_handler(event, context):
 
-    print('event:', event)
+    print('event:', json.dumps(event))
 
     # =========================================================================
     # User Claims

@@ -325,6 +325,11 @@ def lambda_handler(event, context):
         assign_to_sub = normalize_string(data.get("assign_to_sub"))
         assign_to_group = normalize_string(data.get("assign_to_group"))
 
+        # $ Include this on creation and whenever `status` is changed
+        SAST = timezone(timedelta(hours=2))
+        status_updated_at = datetime.now(
+            timezone.utc).astimezone(SAST).isoformat()
+
         # Get existing item first so we can read the sort key
         existing_item = get_request_by_id(request_id)
         if not existing_item:
@@ -347,7 +352,8 @@ def lambda_handler(event, context):
                 #td = :targetDate,
                 #an = :assign_to_name,
                 #as = :assign_to_sub,
-                #ag = :assign_to_group
+                #ag = :assign_to_group,
+                #su = :statusUpdatedAt
         """
 
         expression_attribute_names = {
@@ -355,7 +361,8 @@ def lambda_handler(event, context):
             "#td": "targetDate",
             "#an": "assign_to_name",
             "#as": "assign_to_sub",
-            "#ag": "assign_to_group"
+            "#ag": "assign_to_group",
+            "#su": "statusUpdatedAt"
         }
 
         expression_attribute_values = {
@@ -363,7 +370,8 @@ def lambda_handler(event, context):
             ":targetDate": targetDate,
             ":assign_to_name": assign_to_name,
             ":assign_to_sub": assign_to_sub,
-            ":assign_to_group": assign_to_group
+            ":assign_to_group": assign_to_group,
+            ":statusUpdatedAt": status_updated_at
         }
 
         if action_status == "approved":

@@ -158,7 +158,8 @@ def safe_parse_date(date_string):
 def get_stores_cost_by_year(store_names=None, filter_year=None, filter_location=None):
 
     if store_names is None:
-        store_names = ["maitland", "bellville", "wynberg", "phillipi"]
+        store_names = ["maitland", "bellville", "wynberg", "phillipi", "khyalistha",
+                       "golden acre", "somerset west", "middestad mall", "atlantic meat store"]
 
     # If drilling down into a specific store/year — return monthly breakdown
     if filter_location and filter_year:

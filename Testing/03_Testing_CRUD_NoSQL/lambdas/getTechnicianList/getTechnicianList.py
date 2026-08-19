@@ -138,6 +138,7 @@ def handle_options_request(method, headers):
 
 
 def lambda_handler(event, context):
+    print("event:", json.dumps(event, indent=2, default=decimal_serializer))
     # CORS
     method, HEADERS = handle_request_metadata(event)
 

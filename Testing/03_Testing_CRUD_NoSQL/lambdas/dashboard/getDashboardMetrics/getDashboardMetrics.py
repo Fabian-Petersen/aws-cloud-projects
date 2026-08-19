@@ -185,13 +185,14 @@ def lambda_handler(event, context):
 
     functions = {
         "storeCost": "getStoreCostMetrics",
+        "storeJobs": "getStoreJobMetrics",
         "cards": "getCardMetrics",
         "verification": "getVerificationMetrics",
         # "assets": "getAssetMetrics",
         # "transfers": "getTransferMetrics",
     }
 
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    with ThreadPoolExecutor(max_workers=4) as executor:
         futures = {
             name: executor.submit(
                 invoke_lambda,

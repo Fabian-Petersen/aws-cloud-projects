@@ -277,6 +277,10 @@ def lambda_handler(event, context):
         assetID = request_info.get("assetID", "")
         breakdown_time = request_info.get("breakdown_time", "")
 
+        # $ Include this on creation and whenever `status` is changed
+        status_updated_at = datetime.now(
+            timezone.utc).astimezone(SAST).isoformat()
+
         # data from the cognito user sign-in
         user_id = claims.get("sub")
         actioned_by = normalize_string(
@@ -285,7 +289,8 @@ def lambda_handler(event, context):
         # Check if the request was completed, if yes add a completed date.
         status = normalize_string(data.get("status") or "")
         if status == "complete":
-            completed_at = datetime.now(timezone.utc).isoformat()
+            completed_at = datetime.now(
+                timezone.utc).astimezone(SAST).isoformat()
         else:
             completed_at = ""
 
@@ -336,13 +341,15 @@ def lambda_handler(event, context):
         # $ Upddate the status of the request created status
         table_requests.update_item(
             Key={"id": data["selectedRowId"],
-                 "jobCreated": job_created},
-            UpdateExpression="SET #s = :status, action_id = :action_id",
+                 "jobCreated": job_created
+                 },
+            UpdateExpression="SET #s = :status, action_id = :action_id, statusUpdatedAt = :statusUpdatedAt",
             ExpressionAttributeNames={"#s": "status"},
             ExpressionAttributeValues={
                 ":status": data["status"],
                 # $ id passed to the request table to link the 'request made & action taken'
-                ":action_id": item_id
+                ":action_id": item_id,
+                ":statusUpdatedAt": status_updated_at
             },
             ConditionExpression="attribute_exists(id) AND attribute_exists(jobCreated)"
         )
