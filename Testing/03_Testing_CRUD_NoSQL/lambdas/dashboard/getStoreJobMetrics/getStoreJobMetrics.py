@@ -13,13 +13,9 @@ from collections import defaultdict
 
 dynamodb = boto3.resource("dynamodb")
 
-request_table = dynamodb.Table(
-    "crud-nosql-app-maintenance-request-table"
-)
-
-users_table = dynamodb.Table(
-    "crud-nosql-app-users-table"
-)
+request_table = dynamodb.Table("crud-nosql-app-maintenance-request-table")
+users_table = dynamodb.Table("crud-nosql-app-users-table")
+locations_table = dynamodb.Table("crud-nosql-app-locations-table")
 
 
 # ======================================================================================
@@ -181,6 +177,43 @@ def safe_parse_date(date_string):
 
 
 # ======================================================================================
+# GET: Store Locations
+# ======================================================================================
+
+
+def get_locations():
+    locations = []
+
+    try:
+        response = locations_table.scan(
+            ProjectionExpression="#loc, #code",
+            ExpressionAttributeNames={
+                "#loc": "location",
+                "#code": "code"
+            }
+        )
+
+        locations.extend(response.get("Items", []))
+
+        while "LastEvaluatedKey" in response:
+            response = locations_table.scan(
+                ProjectionExpression="#loc, #code",
+                ExpressionAttributeNames={
+                    "#loc": "location",
+                    "#code": "code"
+                },
+                ExclusiveStartKey=response["LastEvaluatedKey"]
+            )
+
+            locations.extend(response.get("Items", []))
+
+    except Exception as e:
+        print(f"Error fetching locations: {str(e)}")
+
+    return locations
+
+
+# ======================================================================================
 # DynamoDB Helpers
 # ======================================================================================
 
@@ -335,18 +368,29 @@ def get_jobs_by_status(status, locations=None, filter_year=None):
     # Convert to Recharts-compatible structure
     # -------------------------------------------------------------------------
 
+    locations_data = get_locations()
+
     result = {}
 
-    for year, locations_data in sorted(
-        grouped.items()
-    ):
+    years = sorted(grouped.keys())
+
+    if filter_year:
+        years = [str(filter_year)]
+
+    for year in years:
+
+        job_counts = grouped.get(year, {})
 
         result[year] = [
             {
-                "name": location,
-                "value": locations_data[location],
+                "name": location.get("location"),
+                "code": location.get("code"),
+                "value": job_counts.get(
+                    str(location.get("location")).lower(),
+                    0,
+                ),
             }
-            for location in sorted(locations_data)
+            for location in locations_data
         ]
 
     return result
@@ -819,11 +863,7 @@ def lambda_handler(event, context):
         #     "storeJobs": <this response>
         # =====================================================================
         print("data:", json.dumps(data))
-        return _response(
-            200,
-            data,
-            HEADERS,
-        )
+        return _response(200, data, HEADERS)
 
     except Exception:
 
@@ -837,6 +877,3 @@ def lambda_handler(event, context):
             },
             HEADERS,
         )
-
-
-0

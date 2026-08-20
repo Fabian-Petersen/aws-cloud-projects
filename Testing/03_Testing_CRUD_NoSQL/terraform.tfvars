@@ -1893,6 +1893,11 @@ lambda_functions = {
         actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = true
       }
+      locations_table = {
+        table_name         = "crud-nosql-app-locations-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
       users_table = {
         table_name         = "crud-nosql-app-users-table"
         actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
@@ -1918,6 +1923,11 @@ lambda_functions = {
         table_name         = "crud-nosql-app-maintenance-request-table"
         actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = true
+      }
+      locations_table = {
+        table_name         = "crud-nosql-app-locations-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
       }
       users_table = {
         table_name         = "crud-nosql-app-users-table"

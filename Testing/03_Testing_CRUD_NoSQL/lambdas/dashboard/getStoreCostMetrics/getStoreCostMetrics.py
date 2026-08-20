@@ -13,8 +13,20 @@ from collections import defaultdict
 
 dynamodb = boto3.resource("dynamodb")
 action_table = dynamodb.Table("crud-nosql-app-maintenance-action-table")
-# assets_table = dynamodb.Table("crud-nosql-app-assets-table")
+locations_table = dynamodb.Table("crud-nosql-app-locations-table")
 users_table = dynamodb.Table("crud-nosql-app-users-table")
+
+# STORE_NAMES = [
+#     "maitland",
+#     "bellville",
+#     "wynberg",
+#     "phillipi",
+#     "khyalistha",
+#     "golden acre",
+#     "somerset west",
+#     "middestad mall",
+#     "atlantic meat store",
+# ]
 
 # ======================================================================================
 # JSON Encoder
@@ -153,25 +165,74 @@ def safe_parse_date(date_string):
 
 
 # ======================================================================================
-# DynamoDB Queries
+# GET: Store Locations
 # ======================================================================================
-def get_stores_cost_by_year(store_names=None, filter_year=None, filter_location=None):
 
-    if store_names is None:
-        store_names = ["maitland", "bellville", "wynberg", "phillipi", "khyalistha",
-                       "golden acre", "somerset west", "middestad mall", "atlantic meat store"]
 
-    # If drilling down into a specific store/year — return monthly breakdown
+def get_locations():
+    locations = []
+
+    try:
+        response = locations_table.scan(
+            ProjectionExpression="#loc, #code",
+            ExpressionAttributeNames={
+                "#loc": "location",
+                "#code": "code"
+            }
+        )
+
+        locations.extend(response.get("Items", []))
+
+        while "LastEvaluatedKey" in response:
+            response = locations_table.scan(
+                ProjectionExpression="#loc, #code",
+                ExpressionAttributeNames={
+                    "#loc": "location",
+                    "#code": "code"
+                },
+                ExclusiveStartKey=response["LastEvaluatedKey"]
+            )
+
+            locations.extend(response.get("Items", []))
+
+    except Exception as e:
+        print(f"Error fetching locations: {str(e)}")
+
+    return locations
+
+# ======================================================================================
+# GET: Store cost by year
+# ======================================================================================
+
+
+def get_stores_cost_by_year(
+    filter_year=None,
+    filter_location=None
+):
+
     if filter_location and filter_year:
-        return get_store_cost_by_month(filter_location, filter_year)
+        return get_store_cost_by_month(
+            filter_location,
+            filter_year
+        )
+
+    locations = get_locations()
 
     grouped = defaultdict(lambda: defaultdict(float))
 
-    for store in store_names:
+    for item in locations:
+
+        store = item.get("location")
+
+        if not store:
+            continue
+
         try:
             resp = action_table.query(
                 IndexName="LocationIndex",
-                KeyConditionExpression=Key("location").eq(store.lower()),
+                KeyConditionExpression=Key("location").eq(
+                    store.lower()
+                ),
                 ProjectionExpression=(
                     "actionCreated, "
                     "total_cost_parts, "
@@ -179,91 +240,49 @@ def get_stores_cost_by_year(store_names=None, filter_year=None, filter_location=
                     "total_cost_contractor"
                 )
             )
+
             items = resp.get("Items", [])
 
             for job in items:
                 date_str = job.get("actionCreated")
+
                 if not date_str:
                     continue
+
                 try:
                     dt = datetime.fromisoformat(date_str)
                     year = str(dt.year)
+
                     total_cost = (
                         safe_float(job.get("total_cost_parts")) +
                         safe_float(job.get("total_cost_sundries")) +
                         safe_float(job.get("total_cost_contractor"))
                     )
+
                     grouped[year][store] += total_cost
+
                 except Exception:
                     continue
 
         except Exception as e:
-            print(f"Skipping store '{store}': {str(e)}")
-            continue
-
-    result = {}
-    for year, stores in grouped.items():
-        result[year] = [
-            {
-                "name": store,
-                "value": round(stores.get(store, 0), 2)
-            }
-            for store in store_names
-        ]
-
-    return result
-
-# ======================================================================================
-# GET: Store cost by year
-# ======================================================================================
-
-
-def get_store_cost_by_year(store: str) -> dict:
-
-    grouped = defaultdict(lambda: defaultdict(float))
-
-    resp = action_table.query(
-        IndexName="LocationIndex",
-        KeyConditionExpression=Key("location").eq(store),
-        ProjectionExpression=(
-            "actionCreated,"
-            "total_cost_parts,"
-            "total_cost_sundries,"
-            "total_cost_contractor"
-        )
-    )
-
-    items = resp.get("Items", [])
-
-    for job in items:
-        date_str = job.get("actionCreated")
-
-        if not date_str:
-            continue
-
-        try:
-            dt = datetime.fromisoformat(date_str)
-            year = str(dt.year)
-
-            total_cost = (
-                safe_float(job.get("total_cost_parts")) +
-                safe_float(job.get("total_cost_sundries")) +
-                safe_float(job.get("total_cost_contractor"))
+            print(
+                f"Skipping store '{store}': {str(e)}"
             )
 
-            grouped[year][store] += total_cost
-
-        except Exception:
-            continue
-
     result = {}
 
     for year, stores in grouped.items():
+
         result[year] = [
             {
-                "name": store,
-                "value": round(stores.get(store, 0), 2)
+                "name": item.get("location"),
+                "code": item.get("code"),
+                "value": round(
+                    stores.get(item.get("location"), 0),
+                    2
+                )
             }
+            for item in locations
         ]
 
     return result
@@ -431,7 +450,7 @@ def get_jobs_for_scope(access_scope):
     if not location:
         return []
 
-    store_cost_by_year = get_store_cost_by_year(location)
+    store_cost_by_year = get_stores_cost_by_year(location)
     # print('store_cost_by_year:', store_cost_by_year)
     return store_cost_by_year
 
@@ -611,6 +630,8 @@ def lambda_handler(event, context):
                 )
 
                 data = monthly_data["data"]
+
+        print('data:', json.dumps(data))
 
         return _response(200, data, HEADERS)
 
