@@ -305,8 +305,23 @@ api_child_routes = {
     }
   }
 
+  asset-options = {
+    parent_key = "assets" # /api/assets/options
+    path_part  = "options"
+    level      = 1
+    methods = {
+      GET = {
+        lambda        = "getJobsRequestAssetOptions"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
   asset-history = {
-    parent_key = "asset-id" # /api/assets/:id/history
+    parent_key = "asset-id" # invoked by lambda
     path_part  = "history"
     level      = 2
     methods = {
@@ -848,6 +863,11 @@ lambda_functions = {
         actions            = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = false
       }
+      locations_table = {
+        table_name         = "crud-nosql-app-locations-table"
+        actions            = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
     }
     statements = [
       {
@@ -1175,6 +1195,23 @@ lambda_functions = {
       }
     }
   }
+
+  getJobsRequestAssetOptions = {
+    file_name  = "getJobsRequestAssetOptions.py"
+    handler    = "getJobsRequestAssetOptions.lambda_handler"
+    runtime    = "python3.12"
+    path       = "jobs/getJobsRequestAssetOptions"
+    invoked_by = ["apigateway"]
+
+    dynamodb_permissions = {
+      assets_table = {
+        table_name         = "crud-nosql-app-assets-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+    }
+  }
+
 
   postCreateAsset = {
     file_name  = "postCreateAsset.py"
