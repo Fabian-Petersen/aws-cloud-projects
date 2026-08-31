@@ -46,128 +46,203 @@ def to_human_date(iso_string: str) -> str:
     return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
 
 
-def generate_test_event(event: dict) -> str:
-    """
-    Serialises a Lambda event into a compact JSON string suitable for reuse as a test fixture.
-
-    This function converts the incoming event dictionary into a single-line JSON string
-    without extra whitespace, making it easy to copy from logs (e.g. CloudWatch) and
-    reuse directly in event.json files or API Gateway test payloads.
-
-    Args:
-        event (dict): The Lambda event object received from API Gateway or another source.
-
-    Returns:
-        str: A compact JSON string representation of the event, formatted for test reuse.
-
-    Use:
-    The output of this function can be printed in the Lambda logs to capture the exact event structure for testing.
-    For example, you can run this function in your Lambda handler to print the event:
-
-    print("COPY_EVENT:", generate_test_event(event))
-    return {
-        "statusCode": 200,
-        "body": json.dumps({"message": "ok"})
-    }
-    """
-    return json.dumps(event, separators=(",", ":"))
-
-
 def normalize_string(value: str | None) -> str:
     return str(value or "").strip().lower()
 
 
 def lambda_handler(event, context):
+    print("event:", json.dumps(event))
     try:
         if not event.get("body"):
             return _response(400, {"message": "Missing request body"})
 
-        # $ Get the user information from the authoriser token.
         data = json.loads(event["body"])
-        claims = event.get("requestContext", {}).get(
-            "authorizer", {}).get("claims", {})
 
-        # $ Validate required fields (assetID and description is not required)
-        required_fields = ["transferReason", "locationFrom", "locationTo",
-                           "area", "equipment", "expectedDate"]
+        claims = (
+            event.get("requestContext", {})
+            .get("authorizer", {})
+            .get("claims", {})
+        )
+
+        # ------------------------------------------------------------------
+        # Validate transfer
+        # ------------------------------------------------------------------
+
+        required_fields = [
+            "transferReason",
+            "locationFrom",
+            "locationTo",
+            "expectedDate",
+            "assets",
+        ]
+
         for field in required_fields:
             if not data.get(field):
-                return _response(400, {"message": f"Missing or empty field: {field}"})
+                return _response(
+                    400,
+                    {"message": f"Missing or empty field: {field}"}
+                )
 
-        # Get the current time for the update
+        if not isinstance(data["assets"], list) or len(data["assets"]) == 0:
+            return _response(
+                400,
+                {"message": "At least one asset is required"}
+            )
+
+        # ------------------------------------------------------------------
+        # Metadata
+        # ------------------------------------------------------------------
+
         sast = timezone(timedelta(hours=2))
         now = datetime.now(sast).isoformat()
 
-        # $ Create backend meta data
         transfer_id = str(uuid.uuid4())
-        created_at = now
-        dateUpdated = now
-        status = str("pending")
 
-        # $ data from the cognito user sign-in
         user_id = claims.get("sub")
         user_name = claims.get("name", "")
-        requested_by = f'{claims.get("name", "")} {claims.get("family_name", "")}'
+        requested_by = (
+            f'{claims.get("name", "")} '
+            f'{claims.get("family_name", "")}'
+        )
         user_email = claims.get("email")
 
         presigned_urls = []
 
-        # $ Check if frontend included any files
-        for file_info in data.get("images", []):
+        # ------------------------------------------------------------------
+        # Transfer invoices URL
+        # ------------------------------------------------------------------
+
+        for file_info in data.get("transportInvoices", []):
+
             filename = file_info.get("filename")
-            content_type = file_info.get(
-                "content_type", "application/octet-stream")
             if not filename:
                 continue
 
-        # $ Generate presigned urls
-            key = f"transfers/{transfer_id}/{filename}"
+            content_type = file_info.get(
+                "content_type",
+                "application/octet-stream",
+            )
+
+            key = (
+                f"transfers/{transfer_id}/"
+                f"invoices/{filename}"
+            )
+
             url = s3.generate_presigned_url(
                 "put_object",
                 Params={
                     "Bucket": BUCKET_NAME,
                     "Key": key,
-                    "ContentType": content_type
+                    "ContentType": content_type,
                 },
-                ExpiresIn=3600  # 1 hour
+                ExpiresIn=3600,
             )
 
-            # The config above force the url to be af-south-1 region and the code below check if the url is region specific.
-            if "s3.af-south-1.amazonaws.com" not in url:
-                raise Exception(
-                    "Presigned URL generated with incorrect S3 endpoint")
+            presigned_urls.append({
+                "type": "invoices",
+                "filename": filename,
+                "url": url,
+                "key": key,
+                "content_type": content_type
+            })
 
-            presigned_urls.append(
-                {"filename": filename, "url": url, "key": key, "content_type": content_type})
+        # ------------------------------------------------------------------
+        # Assets & Images URL
+        # ------------------------------------------------------------------
 
-        # Save metadata to DynamoDB
+        processed_assets = []
+
+        for asset_index, asset in enumerate(data["assets"]):
+
+            for file_info in asset.get("images", []):
+
+                filename = file_info.get("filename")
+                if not filename:
+                    continue
+
+                content_type = file_info.get(
+                    "content_type",
+                    "application/octet-stream",
+                )
+
+                key = (
+                    f"transfers/{transfer_id}/"
+                    f"assets/{asset_index}/"
+                    f"images/{filename}"
+                )
+
+                url = s3.generate_presigned_url(
+                    "put_object",
+                    Params={
+                        "Bucket": BUCKET_NAME,
+                        "Key": key,
+                        "ContentType": content_type,
+                    },
+                    ExpiresIn=3600,
+                )
+
+                presigned_urls.append({
+                    "type": "images",
+                    "assetIndex": asset_index,
+                    "assetID": asset.get("assetID"),
+                    "filename": filename,
+                    "content_type": content_type,
+                    "url": url,
+                    "key": key,
+                })
+
+            processed_assets.append({
+                "assetIndex": asset_index,
+                "assetID": asset.get("assetID"),
+                "area": normalize_string(asset.get("area")),
+                "equipment": asset.get("equipment"),
+                "assetIssueReason": normalize_string(
+                    asset.get("assetIssueReason")
+                ),
+                "assetIssueDetails": asset.get(
+                    "assetIssueDetails",
+                    "",
+                ),
+                "images": [],
+            })
+
+        # ------------------------------------------------------------------
+        # Save transfer
+        # ------------------------------------------------------------------
+
         item = {
-            # $ created on backend
-            "id": transfer_id,
-            "transferCreated": created_at,  # % (SK)
-            "dateUpdated": dateUpdated,
-            "status": normalize_string(status),
+            "transferId": transfer_id,
+            "transferCreated": now,
+            "transportInvoices": [],
+            "status": "pending",
+            "dateUpdated": now,
+
             "requested_by": normalize_string(requested_by),
             "requestor_sub": user_id,
             "requestor_email": user_email,
             "requestor_name": normalize_string(user_name),
+
             "approval_reminder_count": 0,
-            "schedule_name": f'transfer-{transfer_id}-timeout',
-            # $ Frontend data
+            "schedule_name": f"transfer-{transfer_id}-timeout",
+
             "transferReason": data["transferReason"],
-            "locationFrom": normalize_string(data.get("locationFrom")),
-            "locationTo": normalize_string(data.get("locationTo")),
-            "area": normalize_string(data.get("area")),
-            "equipment": data["equipment"],
-            "assetID": data.get("assetID", ""),  # % (PK)
+            "locationFrom": normalize_string(data["locationFrom"]),
+            "locationTo": normalize_string(data["locationTo"]),
             "expectedDate": data["expectedDate"],
             "description": data.get("description", ""),
-            "images": []  # Will be updated by S3-triggered Lambda later
+
+            "assets": processed_assets,
         }
 
         table.put_item(Item=item)
 
-        return _response(200, {"data": item, "presigned_urls": presigned_urls})
+        return _response(
+            200,
+            {
+                "data": item,
+                "presigned_urls": presigned_urls,
+            },
+        )
 
     except Exception as exc:
         print("Error:", exc)

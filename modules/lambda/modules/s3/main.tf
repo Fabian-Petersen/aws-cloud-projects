@@ -67,6 +67,7 @@ resource "aws_iam_policy" "lambda_policy" {
           "${data.aws_s3_bucket.bucket.arn}/maintenance/*",
           "${data.aws_s3_bucket.bucket.arn}/assets/*",
           "${data.aws_s3_bucket.bucket.arn}/invoices/*",
+          "${data.aws_s3_bucket.bucket.arn}/transfers/*",
           "${data.aws_s3_bucket.bucket.arn}/maintenance_action/*"
         ]
       },
@@ -150,6 +151,12 @@ resource "aws_s3_bucket_notification" "s3_notification" {
     lambda_function_arn = aws_lambda_function.s3_event_lambda.arn
     events              = ["s3:ObjectCreated:Put"]
     filter_prefix       = "invoices/"
+  }
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.s3_event_lambda.arn
+    events              = ["s3:ObjectCreated:Put"]
+    filter_prefix       = "transfers/"
   }
 
   depends_on = [aws_lambda_permission.allow_s3]

@@ -48,13 +48,10 @@ def get_local_now() -> str:
 
 def get_transfer_by_id(transfer_id: str) -> dict | None:
     """
-    Retrieve an asset transfer using the IdIndex global secondary index.
+    Retrieve an asset with the transferId.
 
-    The asset transfers table uses `assetID` as the partition key and
-    `transferCreated` as the sort key. Since the frontend only provides the
-    unique transfer `id`, this function queries the `IdIndex` GSI to locate
-    the transfer and returns the complete item, including the primary key
-    attributes required for updates.
+    The asset transfers table uses `transferId` as the partition key and
+    `transferCreated` as the sort key.
 
     Args:
         transit_id: The unique transfer ID.
@@ -64,8 +61,7 @@ def get_transfer_by_id(transfer_id: str) -> dict | None:
     """
 
     response = table_transfers.query(
-        IndexName="IdIndex",
-        KeyConditionExpression=Key("id").eq(transfer_id),
+        KeyConditionExpression=Key("transferId").eq(transfer_id),
         Limit=1,
     )
 
@@ -79,7 +75,7 @@ def normalize_string(value: str | None) -> str:
 
 def generate_presigned_files(
     transfer_id: str,
-    folder: str,
+    type: str,
     files: list[dict]
 ):
     urls = []
@@ -91,7 +87,7 @@ def generate_presigned_files(
             "application/octet-stream"
         )
 
-        key = f"transfers/{transfer_id}/{folder}/{filename}"
+        key = f"transfers/{transfer_id}/{type}/{filename}"
 
         url = s3.generate_presigned_url(
             "put_object",
@@ -109,6 +105,7 @@ def generate_presigned_files(
 
         urls.append({
             "filename": filename,
+            "type": type,
             "key": key,
             "url": url,
             "content_type": content_type,
@@ -139,8 +136,8 @@ def lambda_handler(event, context):
         - trackingNumber
         - transportCost
         - transportNotes
-        - transitInvoices
-        - transitImages
+        - invoices
+        - images
 
     Args:
         event: API Gateway Lambda event containing:
@@ -178,7 +175,7 @@ def lambda_handler(event, context):
 
         data = json.loads(event["body"])
 
-        # $ Validate required fields (assetID and description is not required)
+        # $ Validate required fields (transferId and description is not required)
         required_fields = ["transportType", "transportName", "transportDate"]
         for field in required_fields:
             if not data.get(field):
@@ -212,7 +209,7 @@ def lambda_handler(event, context):
             return _response(400, {"message": "Only approved transfers can be moved in-transit."})
 
         transfer_created = transfer_item["transferCreated"]
-        asset_id = transfer_item["assetID"]
+        transfer_id = transfer_item["transferId"]
 
         inTransitSub = claims.get("sub", "")
         inTransitBy = f'{claims.get("name", "")} {claims.get("family_name", "")}'
@@ -220,19 +217,19 @@ def lambda_handler(event, context):
 
         image_urls = generate_presigned_files(
             transfer_id,
-            "transitImages",
+            "images",
             data.get("images", [])
         )
 
         invoice_urls = generate_presigned_files(
             transfer_id,
-            "transitInvoices",
-            data.get("invoices", [])
+            "invoices",
+            data.get("transportInvoices", [])
         )
 
-        response = table_transfers.update_item(
+        table_transfers.update_item(
             Key={
-                "assetID": asset_id,
+                "transferId": transfer_id,
                 "transferCreated": transfer_created,
             },
             UpdateExpression="""
@@ -246,8 +243,8 @@ def lambda_handler(event, context):
                     transportCost = :transportCost,
                     trackingNumber = :trackingNumber,
                     transportNotes = :transportNotes,
-                    transitImages = :transitImages,
-                    transitInvoices = :transitInvoices
+                    images = :images,
+                    invoices = :invoices
             """,
             ExpressionAttributeNames={
                 "#status": "status",
@@ -264,24 +261,24 @@ def lambda_handler(event, context):
                 ":trackingNumber": data.get("trackingNumber", ""),
                 ":transportCost": data.get("transportCost", ""),
                 ":transportNotes": data.get("transportNotes", ""),
-                ":transitImages": [],
-                ":transitInvoices": []
+                ":images": [],
+                ":invoices": []
             },
             ConditionExpression="""
-            attribute_exists(assetID) 
+            attribute_exists(transferId) 
             AND attribute_exists(transferCreated)
             AND #status = :approved
             """,
             ReturnValues="ALL_NEW"
         )
+
+        presigned_urls = image_urls + invoice_urls
+
         return _response(
             200,
             {
                 "message": "Transfer in transit successfully.",
-                "uploadUrls": {
-                    "images": image_urls,
-                    "invoices": invoice_urls
-                }
+                "presigned_urls": presigned_urls,
             },
         )
 

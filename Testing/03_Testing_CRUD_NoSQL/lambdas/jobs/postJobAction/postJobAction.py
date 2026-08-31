@@ -24,29 +24,10 @@ BUCKET_NAME = "crud-nosql-app-images"
 table = dynamodb.Table(TABLE_NAME)
 table_requests = dynamodb.Table(TABLE_NAME_REQUESTS)
 
-HEADERS = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "http://localhost:5173",
-    "Access-Control-Allow-Methods": "POST,PUT,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Requested-With",
-    "Access-Control-Allow-Credentials": "true"
-}
 
-
-def to_human_date(iso_string: str) -> str:
-    """
-    Convert an ISO 8601 timestamp string to a human-readable date in SAST.
-
-    Args:
-        iso_string (str): ISO formatted datetime string (e.g., "2024-01-01T12:00:00Z").
-
-    Returns:
-        str: Formatted date string (e.g., "01 Jan 2024, 14:00").
-    """
-    SAST = timezone(timedelta(hours=2))
-    dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
-    return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
-
+# ---------------------------------------------------------------------------- #
+#                               Helper Functions                               #
+# ---------------------------------------------------------------------------- #
 
 def decimal_serializer(obj):
     """
@@ -66,6 +47,19 @@ def decimal_serializer(obj):
             return int(obj)
         return float(obj)
     raise TypeError
+
+# ---------------------------------------------------------------------------- #
+#                                 CORS Helpers                                 #
+# ---------------------------------------------------------------------------- #
+
+
+HEADERS = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "http://localhost:5173",
+    "Access-Control-Allow-Methods": "POST,PUT,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Requested-With",
+    "Access-Control-Allow-Credentials": "true"
+}
 
 
 def handle_request_metadata(event):
@@ -124,6 +118,10 @@ def handle_options_request(method, headers):
 
 # $ Function to get the location and requested_by from requests table
 
+# ---------------------------------------------------------------------------- #
+#                            Get Fields by ID                                  #
+# ---------------------------------------------------------------------------- #
+
 
 def get_request_fields_by_id(table, request_id: str) -> dict:
     """
@@ -160,38 +158,17 @@ def get_request_fields_by_id(table, request_id: str) -> dict:
     }
 
 
-def generate_test_event(event: dict) -> str:
-    """
-    Serialises a Lambda event into a compact JSON string suitable for reuse as a test fixture.
-
-    This function converts the incoming event dictionary into a single-line JSON string
-    without extra whitespace, making it easy to copy from logs (e.g. CloudWatch) and
-    reuse directly in event.json files or API Gateway test payloads.
-
-    Args:
-        event (dict): The Lambda event object received from API Gateway or another source.
-
-    Returns:
-        str: A compact JSON string representation of the event, formatted for test reuse.
-
-    Use:
-    The output of this function can be printed in the Lambda logs to capture the exact event structure for testing.
-    For example, you can run this function in your Lambda handler to print the event:
-
-    print("COPY_EVENT:", generate_test_event(event))
-    return {
-        "statusCode": 200,
-        "body": json.dumps({"message": "ok"})
-    }
-    """
-    return json.dumps(event, separators=(",", ":"))
-
-
 def normalize_string(value: str | None) -> str:
     return str(value or "").strip().lower()
 
 
-# Generate the presigned url for the images and invoices
+# ---------------------------------------------------------------------------- #
+#                            Generate Presigned URL's                          #
+# ---------------------------------------------------------------------------- #
+"""
+Generate the presigned url for the images and invoices
+
+"""
 ACCEPTED_TYPES = {
     "images": ["image/jpeg", "image/png", "image/webp", "image/gif"],
     # invoices can be pdf or image
@@ -226,15 +203,8 @@ def generate_url(prefix: str, file_info: dict, accepted_types: list[str], item_i
 
 
 def lambda_handler(event, context):
-    # Run to capture a event.json to test the function code
-    # print("COPY_EVENT:", generate_test_event(event))
 
-    # return {
-    #     "statusCode": 200,
-    #     "body": json.dumps({"message": "ok"})
-    # }
-
-    print("event:", event)
+    print("event:", json.dumps(event))
     method, HEADERS = handle_request_metadata(event)
 
     options_response = handle_options_request(method, HEADERS)
@@ -388,4 +358,4 @@ if __name__ == "__main__":
         event = json.load(f)
 
     result = lambda_handler(event, None)
-    print(json.dumps(result, indent=2))
+    print(json.dumps(event))

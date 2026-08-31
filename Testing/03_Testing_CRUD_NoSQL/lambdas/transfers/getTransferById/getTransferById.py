@@ -35,10 +35,6 @@ STAGES = {
         "requested_by",
         "requestor_name",
         "requestor_sub",
-        "assetID",
-        "area",
-        "images",
-        "equipment",
         "description",
         "transferReason",
         "locationFrom",
@@ -54,7 +50,7 @@ STAGES = {
     ],
     "in-transit": [
         "transitId",
-        "dateCreated",
+        "dateTransitCreated",
         "inTransitSub",
         "transportType",
         "transportName",
@@ -96,7 +92,7 @@ DATE_FIELDS = {
     "transferCreated",
     "expectedDate",
     "approvedDate",
-    "dateCreated",
+    "dateTransitCreated",
     "transportDate",
     "dateReceived",
     "dateCancelled",
@@ -287,11 +283,13 @@ def format_dates(data):
 
 
 def build_transfer_response(item):
+    # print("item:", json.dumps(item, default=decimal_serializer))
     response = {
-        "id": item["id"],
-        "assetID": item["assetID"],
-        "status": item["status"],
+        "id": item["transferId"],
         "transferCreated": item["transferCreated"],
+        "assets": item["assets"],
+        "status": item["status"],
+        "transportInvoices": item["transportInvoices"]
     }
 
     for stage, fields in STAGES.items():
@@ -310,10 +308,9 @@ def build_transfer_response(item):
 # =========================================================================
 
 
-def get_transfer_by_id(table, request_id: str) -> dict:
+def get_transfer_by_id(table, transfer_id: str) -> dict:
     response = table.query(
-        IndexName="IdIndex",
-        KeyConditionExpression=Key("id").eq(request_id)
+        KeyConditionExpression=Key("transferId").eq(transfer_id)
     )
 
     items = response.get("Items", [])
@@ -328,14 +325,14 @@ def get_transfer_by_id(table, request_id: str) -> dict:
 # =========================================================================
 
 
-def get_transfer_request(request_id: str, headers) -> dict:
+def get_transfer_request(transfer_id: str, headers) -> dict:
     """
-    The frontend sends the request_id.
+    The frontend sends the transfer_id.
     Retrieve a transfer request by its unique ID.
     """
 
     try:
-        item = get_transfer_by_id(transfer_table, request_id)
+        item = get_transfer_by_id(transfer_table, transfer_id)
         response = build_transfer_response(item)
         format_dates(response)
         response = add_presigned_urls(response)
@@ -355,6 +352,8 @@ def get_transfer_request(request_id: str, headers) -> dict:
 
 
 def lambda_handler(event, context):
+    print("event:", json.dumps(event))
+
     # CORS
     method, HEADERS = handle_request_metadata(event)
 
@@ -362,15 +361,13 @@ def lambda_handler(event, context):
     if options_response:
         return options_response
 
-    print("event:", event)
-
     try:
-        request_id = event.get("pathParameters", {}).get("id")
+        transfer_id = event.get("pathParameters", {}).get("id")
 
-        if not request_id:
-            return _response(400, {"message": "Missing request id"}, HEADERS)
+        if not transfer_id:
+            return _response(400, {"message": "Missing transfer id"}, HEADERS)
 
-        return get_transfer_request(request_id, HEADERS)
+        return get_transfer_request(transfer_id, HEADERS)
 
     except Exception as exc:
         print("Error:", exc)

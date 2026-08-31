@@ -99,7 +99,7 @@ def get_transfer_by_id(transfer_id: str) -> dict | None:
     """
     Retrieve an asset transfer using the IdIndex global secondary index.
 
-    The asset transfers table uses `assetID` as the partition key and
+    The asset transfers table uses `transferId` as the partition key and
     `transferCreated` as the sort key. Since the frontend only provides the
     unique transfer `id`, this function queries the `IdIndex` GSI to locate
     the transfer and returns the complete item, including the primary key
@@ -113,8 +113,7 @@ def get_transfer_by_id(transfer_id: str) -> dict | None:
     """
 
     response = table_transfers.query(
-        IndexName="IdIndex",
-        KeyConditionExpression=Key("id").eq(transfer_id),
+        KeyConditionExpression=Key("transferId").eq(transfer_id),
         Limit=1,
     )
 
@@ -145,7 +144,7 @@ def lambda_handler(event, context):
         event: API Gateway Lambda event containing:
             body:
                 {
-                    "id": "<transfer-id>",
+                    "transferId": "<transfer-id>",
                     "status": "approved"
                 }
 
@@ -198,7 +197,7 @@ def lambda_handler(event, context):
             return _response(404, {"message": "Transfer not found"})
 
         transfer_created = transfer_item["transferCreated"]
-        asset_id = transfer_item["assetID"]
+        transfer_id = transfer_item["transferId"]
 
         approved_by = (
             f'{claims.get("name", "").strip()} '
@@ -211,7 +210,7 @@ def lambda_handler(event, context):
 
         response = table_transfers.update_item(
             Key={
-                "assetID": asset_id,
+                "transferId": transfer_id,
                 "transferCreated": transfer_created,
             },
             UpdateExpression="""
@@ -234,7 +233,7 @@ def lambda_handler(event, context):
                 ":approvalReminderCount": 0
             },
             ConditionExpression="""
-            attribute_exists(assetID) 
+            attribute_exists(transferId) 
             AND attribute_exists(transferCreated) 
             AND #status <> :status
             """,

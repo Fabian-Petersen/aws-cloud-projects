@@ -27,10 +27,6 @@ STAGES = {
         "requested_by",
         "requestor_name",
         "requestor_sub",
-        "assetID",
-        "area",
-        "images",
-        "equipment",
         "description",
         "transferReason",
         "locationFrom",
@@ -46,7 +42,8 @@ STAGES = {
     ],
     "in-transit": [
         "transitId",
-        "dateCreated",
+        "approvalReminderCount",
+        "dateTransitCreated",
         "inTransitSub",
         "transportType",
         "transportName",
@@ -86,15 +83,18 @@ STAGES = {
 }
 
 # $ Dates to be changed from ISO string to human readable date
-DATE_FIELDS = {
+DATE_TIME_FIELDS = {
     "transferCreated",
-    "expectedDate",
     "approvedDate",
-    "dateCreated",
+    "dateTransitCreated",
     "transportDate",
     "dateReceived",
     "dateCancelled",
     "dateReceiptCreated",
+}
+
+DATE_FIELDS = {
+    "expectedDate",
 }
 
 # ----------------------------
@@ -126,7 +126,7 @@ def decimal_serializer(obj):
 # ----------------------------
 
 
-def to_human_date(iso_string: str) -> str:
+def to_human_date_time(iso_string: str) -> str:
     """
     Convert an ISO 8601 timestamp string to a human-readable date in SAST.
 
@@ -139,6 +139,31 @@ def to_human_date(iso_string: str) -> str:
     SAST = timezone(timedelta(hours=2))
     dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
     return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
+
+
+def to_human_date_only(iso_string: str) -> str:
+    """
+    Convert an ISO 8601 date/timestamp to a date only.
+
+    This does NOT apply timezone conversion because
+    date-only fields should not shift by timezone.
+
+    Example:
+        2026-08-31
+        -> 31 Aug 2026
+
+        2026-08-31T00:00:00Z
+        -> 31 Aug 2026
+    """
+    # Handle a pure date: YYYY-MM-DD
+    if "T" not in iso_string:
+        dt = datetime.fromisoformat(iso_string)
+    else:
+        dt = datetime.fromisoformat(
+            iso_string.replace("Z", "+00:00")
+        )
+
+    return dt.strftime("%d %b %Y")
 
 
 # ----------------------------
@@ -174,8 +199,16 @@ def parse_groups(groups_claim):
 def format_dates(data):
     if isinstance(data, dict):
         for key, value in data.items():
-            if key in DATE_FIELDS and value:
-                data[key] = to_human_date(value)
+
+            if not value:
+                continue
+
+            if key in DATE_TIME_FIELDS:
+                data[key] = to_human_date_time(value)
+
+            elif key in DATE_FIELDS:
+                data[key] = to_human_date_only(value)
+
             else:
                 format_dates(value)
 
@@ -190,11 +223,11 @@ def format_dates(data):
 
 def build_transfer_response(item):
     response = {
-        "id": item["id"],
-        "assetID": item["assetID"],
-        "status": item["status"],
+        "id": item["transferId"],
         "transferCreated": item["transferCreated"],
-        "equipment": item["equipment"]
+        "status": item["status"],
+        "assets": item["assets"],
+        "transportInvoices": item["transportInvoices"]
     }
 
     for stage, fields in STAGES.items():
@@ -324,7 +357,8 @@ def handle_options_request(method, headers):
 
 
 def lambda_handler(event, context):
-    print("event:", event)
+    # print("event:", json.dumps(event.get("body"), indent=2))
+    print("event:", json.dumps(event))
 
     # Query params
     multi_query_params = event.get("multiValueQueryStringParameters") or {}

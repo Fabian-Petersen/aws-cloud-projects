@@ -1338,6 +1338,12 @@ lambda_functions = {
         allow_index_access = false
       }
     }
+    statements = [
+      {
+        actions   = ["s3:PutObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/transfers/*"]
+      }
+    ]
   }
 
   postTransferApproval = {
@@ -3059,7 +3065,7 @@ dynamodb_tables = {
   /* # $ ---------------------------- Assets Transfer Table --------------------------------- */
 
   crud-nosql-app-assets-transfer = {
-    pk                = "assetID"
+    pk                = "transferId"
     sk                = "transferCreated"
     enable_gsi        = true
     enable_stream     = true // enable stream to trigger lambda for transfer created
@@ -3072,27 +3078,27 @@ dynamodb_tables = {
         range_key       = "transferCreated"
         projection_type = "ALL"
       }
-      "IdIndex" = {
-        hash_key        = "id"
-        projection_type = "ALL"
-      }
+      # "IdIndex" = {
+      #   hash_key        = "id"
+      #   projection_type = "ALL"
+      # }
       "RequestorIndex" = {
         hash_key           = "requestorSub"
         range_key          = "transferCreated"
         projection_type    = "INCLUDE"
-        non_key_attributes = ["status", "assetID", "locationFrom", "locationTo", "transferReason"]
+        non_key_attributes = ["status", "transferId", "locationFrom", "locationTo", "transferReason"]
       }
       "ApproverIndex" = {
         hash_key           = "approvedBySub"
         range_key          = "transferCreated"
         projection_type    = "INCLUDE"
-        non_key_attributes = ["status", "assetID", "dateApproved", "locationFrom", "locationTo", "transferReason", "transportCost", "transportName"]
+        non_key_attributes = ["status", "transferId", "dateApproved", "locationFrom", "locationTo", "transferReason", "transportCost", "transportName"]
       }
       "RecipientIndex" = {
         hash_key           = "receivedBySub"
         range_key          = "transferCreated"
         projection_type    = "INCLUDE"
-        non_key_attributes = ["condition", "damageDetails", "assetID", "dateReceived", "locationFrom", "locationTo", "transferReason", "deliveryNoteUrl", "imageUrls"]
+        non_key_attributes = ["condition", "damageDetails", "transferId", "dateReceived", "locationFrom", "locationTo", "transferReason", "deliveryNoteUrl", "imageUrls"]
       }
     }
   }
