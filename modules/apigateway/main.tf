@@ -257,4 +257,6 @@ resource "aws_lambda_permission" "allow_api_gateway" {
   function_name = each.key
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.project_apigateway.execution_arn}/*/*"
+
+  depends_on = [aws_api_gateway_integration.integrations]
 }

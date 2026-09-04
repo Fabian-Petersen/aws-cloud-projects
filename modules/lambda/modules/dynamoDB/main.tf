@@ -2,11 +2,27 @@
 data "archive_file" "lambda_zip" {
   for_each = var.lambda_functions
   type     = "zip"
-  source_file = (
-    try(each.value.path, null) != null
-    ? "${path.root}/lambdas/${each.value.path}/${each.value.file_name}"
-    : "${path.root}/lambdas/${each.key}/${each.value.file_name}"
-  )
+
+  source {
+    content = file(
+      try(each.value.path, null) != null
+      ? "${path.root}/lambdas/${each.value.path}/${each.value.file_name}"
+      : "${path.root}/lambdas/${each.key}/${each.value.file_name}"
+    )
+    filename = each.value.file_name
+  }
+
+  dynamic "source" {
+    for_each = try(each.value.include_shared_utils, false) ? fileset(
+      "${path.root}/layers/python/shared_utils",
+      "**/*.py"
+    ) : []
+
+    content {
+      content  = file("${path.root}/layers/python/shared_utils/${source.value}")
+      filename = "shared_utils/${source.value}"
+    }
+  }
 
   output_path = (
     try(each.value.path, null) != null

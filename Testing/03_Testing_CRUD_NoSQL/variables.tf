@@ -176,6 +176,7 @@ variable "lambda_functions" {
 
     environment_variables = optional(map(string), {})
     scheduler_target      = optional(bool, false)
+    include_shared_utils  = optional(bool, false)
 
     statements = optional(list(object({
       sid       = optional(string)
@@ -205,6 +206,7 @@ variable "lambda_functions_custom" {
     environment_variables = optional(map(string), {})
     scheduler_target      = optional(bool, false)      # true lets lambda publish to schedule group
     sns_publish_topics    = optional(list(string), []) # true lets lambda publish to sns
+    include_shared_utils  = optional(bool, false)
 
     inline_policy_statements = optional(list(object({
       sid       = optional(string)

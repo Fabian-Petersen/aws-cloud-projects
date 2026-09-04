@@ -35,6 +35,7 @@ variable "lambda_functions" {
 
     environment_variables = optional(map(string), {})
     scheduler_target      = optional(bool, false)
+    include_shared_utils  = optional(bool, false)
 
     statements = optional(list(object({
       sid       = optional(string)

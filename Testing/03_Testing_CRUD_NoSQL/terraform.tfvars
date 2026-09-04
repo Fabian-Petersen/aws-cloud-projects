@@ -78,6 +78,14 @@ api_parent_routes = {
     }
   }
 
+  "disposals" = {
+    methods = {
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
 
   comments = {
     methods = {
@@ -486,6 +494,128 @@ api_child_routes = {
       }
     }
   }
+
+  /*#$ -------------------------------------------------------------------------- */
+  /*#$                                 Disposals                                  */
+  /*#$ -------------------------------------------------------------------------- */
+
+  disposals-id = {
+    parent_key = "disposals" # /api/disposals/{id}
+    path_part  = "{id}"
+    level      = 1
+    methods = {
+      GET = {
+        lambda        = "getDisposalById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      PUT = {
+        lambda        = "updateDisposalById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      DELETE = {
+        lambda        = "deleteDisposalById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  disposals-id-approve = {
+    parent_key = "disposals-id" # /api/disposals/{id}/approve
+    path_part  = "approve"
+    level      = 2
+    methods = {
+      POST = {
+        lambda        = "postDisposalApproval"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  disposals-id-reject = {
+    parent_key = "disposals-id" # /api/disposals/{id}/reject
+    path_part  = "reject"
+    level      = 2
+    methods = {
+      POST = {
+        lambda        = "postDisposalReject"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  disposals-id-completed = {
+    parent_key = "disposals-id" # /api/disposals/{id}/completed
+    path_part  = "completed"
+    level      = 2
+    methods = {
+      POST = {
+        lambda        = "postDisposalCompleted"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  disposals-requests = {
+    parent_key = "disposals" # /api/disposals/requests/
+    path_part  = "requests"
+    level      = 1
+    methods = {
+      GET = {
+        lambda        = "getDisposalList"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      POST = {
+        lambda        = "postDisposalRequest"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  disposals-completed = {
+    parent_key = "disposals" # /api/disposals/completed/
+    path_part  = "completed"
+    level      = 1
+    methods = {
+      GET = {
+        lambda        = "getDisposalCompletedList"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
+  disposals-id-documents = {
+    parent_key = "disposals-id" # /api/disposals/{id}/disposal-document
+    path_part  = "disposal-document"
+    level      = 2
+    methods = {
+      GET = {
+        lambda        = "getDisposalDocumentById"
+        authorization = "COGNITO_USER_POOLS"
+      }
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
 
   /*#$ -------------------------------------------------------------------------- */
   /*#$                                Notifications                               */
@@ -1613,6 +1743,297 @@ lambda_functions = {
 
   # % // ============================ END: Asset Transfer Lambdas ============================== // 
 
+
+  # $ // ========================== START: Asset Disposal Lambdas ============================== //
+  postDisposalRequest = {
+    file_name            = "postDisposalRequest.py"
+    handler              = "postDisposalRequest.lambda_handler"
+    runtime              = "python3.12"
+    path                 = "disposals/postDisposalRequest"
+    invoked_by           = ["apigateway"]
+    include_shared_utils = true
+
+    dynamodb_permissions = {
+      asset_disposal_table = {
+        table_name         = "crud-nosql-app-assets-disposal-table"
+        actions            = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+      assets_table = {
+        table_name         = "crud-nosql-app-assets-table"
+        actions            = ["dynamodb:Query"]
+        allow_index_access = true
+      }
+    }
+    statements = [
+      {
+        actions   = ["s3:PutObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/disposals/*"]
+      }
+    ]
+  }
+
+  postDisposalApproval = {
+    file_name            = "postDisposalApproval.py"
+    handler              = "postDisposalApproval.lambda_handler"
+    runtime              = "python3.12"
+    path                 = "disposals/postDisposalApproval"
+    invoked_by           = ["apigateway"]
+    include_shared_utils = true
+    environment_variables = {
+      SCHEDULER_GROUP = "/crud-nosql/scheduler_approval/scheduler_group_name"
+    }
+
+    dynamodb_permissions = {
+      asset_disposal_table = {
+        table_name         = "crud-nosql-app-assets-disposal-table"
+        actions            = ["dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+    }
+
+    // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
+    statements = [
+      {
+        sid = "ReadSchedulerFromSSM"
+        actions = [
+          "ssm:GetParameter"
+        ]
+        resources = [
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/scheduler_approval/scheduler_group_name",
+        ]
+        }, {
+        sid = "EventBridgeSchedulerAccess"
+
+        actions = [
+          "scheduler:DeleteSchedule",
+          "scheduler:GetSchedule",
+        ]
+
+        resources = [
+          "arn:aws:scheduler:af-south-1:157489943321:schedule/crud-nosql-schedules/*",
+          "arn:aws:scheduler:af-south-1:157489943321:schedule-group/crud-nosql-schedules"
+        ]
+      }
+    ]
+  }
+
+  postDisposalReject = {
+    file_name            = "postDisposalReject.py"
+    handler              = "postDisposalReject.lambda_handler"
+    runtime              = "python3.12"
+    path                 = "disposals/postDisposalReject"
+    invoked_by           = ["apigateway"]
+    include_shared_utils = true
+
+    dynamodb_permissions = {
+      asset_disposal_table = {
+        table_name         = "crud-nosql-app-assets-disposal-table"
+        actions            = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+    }
+
+    statements = [
+      {
+        actions   = ["s3:DeleteObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/disposals/*"]
+      }
+    ]
+  }
+
+  postDisposalCompleted = {
+    file_name            = "postDisposalCompleted.py"
+    handler              = "postDisposalCompleted.lambda_handler"
+    runtime              = "python3.12"
+    path                 = "disposals/postDisposalCompleted"
+    invoked_by           = ["apigateway"]
+    include_shared_utils = true
+    dynamodb_permissions = {
+      asset_disposal_table = {
+        table_name         = "crud-nosql-app-assets-disposal-table"
+        actions            = ["dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+    }
+  }
+
+  deleteDisposalById = {
+    file_name            = "deleteDisposalById.py"
+    handler              = "deleteDisposalById.lambda_handler"
+    runtime              = "python3.12"
+    path                 = "disposals/deleteDisposalById"
+    invoked_by           = ["apigateway"]
+    include_shared_utils = true
+
+    dynamodb_permissions = {
+      asset_disposal_table = {
+        table_name         = "crud-nosql-app-assets-disposal-table"
+        actions            = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  updateDisposalById = {
+    file_name            = "updateDisposalById.py"
+    handler              = "updateDisposalById.lambda_handler"
+    runtime              = "python3.12"
+    path                 = "disposals/updateDisposalById"
+    invoked_by           = ["apigateway"]
+    include_shared_utils = true
+
+    dynamodb_permissions = {
+      asset_disposal_table = {
+        table_name         = "crud-nosql-app-assets-disposal-table"
+        actions            = ["dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+
+    statements = [
+      {
+        actions   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/disposals/*"]
+      },
+      {
+        actions   = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images"]
+        conditions = [
+          {
+            test     = "StringLike"
+            variable = "s3:prefix"
+            values   = ["disposals/*"]
+          }
+        ]
+      }
+    ]
+  }
+
+
+  getDisposalList = {
+    file_name            = "getDisposalList.py"
+    handler              = "getDisposalList.lambda_handler"
+    runtime              = "python3.12"
+    path                 = "disposals/getDisposalList"
+    invoked_by           = ["apigateway"]
+    include_shared_utils = true
+
+    dynamodb_permissions = {
+      asset_disposal_table = {
+        table_name         = "crud-nosql-app-assets-disposal-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+    }
+
+    statements = [
+      {
+        actions   = ["s3:GetObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/disposals/*"]
+      },
+      {
+        actions   = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images"]
+        conditions = [
+          {
+            test     = "StringLike"
+            variable = "s3:prefix"
+            values   = ["disposals/*"]
+          }
+        ]
+      }
+    ]
+  }
+
+  getDisposalById = {
+    file_name            = "getDisposalById.py"
+    handler              = "getDisposalById.lambda_handler"
+    runtime              = "python3.12"
+    path                 = "disposals/getDisposalById"
+    invoked_by           = ["apigateway"]
+    include_shared_utils = true
+    dynamodb_permissions = {
+      asset_disposal_table = {
+        table_name         = "crud-nosql-app-assets-disposal-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+    }
+
+    statements = [
+      {
+        actions   = ["s3:GetObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/disposals/*"]
+      },
+      {
+        actions   = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images"]
+        conditions = [
+          {
+            test     = "StringLike"
+            variable = "s3:prefix"
+            values   = ["disposals/*"]
+          }
+        ]
+      }
+    ]
+  }
+  getDisposalCompletedList = {
+    file_name            = "getDisposalCompletedList.py"
+    handler              = "getDisposalCompletedList.lambda_handler"
+    runtime              = "python3.12"
+    path                 = "disposals/getDisposalCompletedList"
+    invoked_by           = ["apigateway"]
+    include_shared_utils = true
+
+    dynamodb_permissions = {
+      asset_disposal_table = {
+        table_name         = "crud-nosql-app-assets-disposal-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+    }
+  }
+
+  getDisposalDocumentById = {
+    file_name            = "getDisposalDocumentById.py"
+    handler              = "getDisposalDocumentById.lambda_handler"
+    runtime              = "python3.12"
+    path                 = "disposals/getDisposalDocumentById"
+    invoked_by           = ["apigateway"]
+    include_shared_utils = true
+    dynamodb_permissions = {
+      asset_disposal_table = {
+        table_name         = "crud-nosql-app-assets-disposal-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+    }
+
+    statements = [
+      {
+        actions   = ["s3:GetObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/disposal-documents/*"]
+      },
+      {
+        actions   = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images"]
+        conditions = [
+          {
+            test     = "StringLike"
+            variable = "s3:prefix"
+            values   = ["disposal-documents/*"]
+          }
+        ]
+      }
+    ]
+  }
+
+
+
+  # % // ============================ END: Asset Disposal Lambdas ============================== //
+
   getJobcardById = {
     file_name  = "getJobcardById.py"
     handler    = "getJobcardById.lambda_handler"
@@ -2519,7 +2940,7 @@ lambda_functions_custom = {
   }
 
   // Lamnda not invoked by API Gateway - Move to custom lambda's
-  // Lambda invoked by EventBridge Schedule.
+  # $ Transfer Lambdas invoked by EventBridge Schedule.
   checkApprovalTimeout = {
     file_name          = "checkApprovalTimeout.py"
     handler            = "checkApprovalTimeout.lambda_handler"
@@ -2903,11 +3324,340 @@ lambda_functions_custom = {
       },
     ]
   }
+
+  # $ // ============================ Disposals ==================================== //
+  checkDisposalApprovalTimeout = {
+    file_name            = "checkDisposalApprovalTimeout.py"
+    handler              = "checkDisposalApprovalTimeout.lambda_handler"
+    runtime              = "python3.12"
+    path                 = "disposals/checkDisposalApprovalTimeout"
+    invoked_by           = ["eventbridgeScheduler"]
+    include_shared_utils = true
+
+    scheduler_target = true
+
+    environment_variables = {
+      # SSM parameter storing the User Pool ID
+      NOTIFICATION_QUEUE_URL = "/crud-nosql/sqs/disposal_notification_queue_url"
+      SCHEDULER_ROLE_ARN     = "/crud-nosql/scheduler_approval/scheduler_role_arn"
+      REMINDER_TARGET_ARN    = "/crud-nosql/scheduler_approval/reminder_target_arn/checkDisposalApprovalTimeout"
+      SCHEDULER_GROUP_NAME   = "/crud-nosql/scheduler_approval/scheduler_group_name"
+    }
+
+    // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
+    inline_policy_statements = [
+      {
+        sid = "DynamoDBAssetDisposalTableAccess"
+        actions = [
+          "dynamodb:UpdateItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-assets-disposal-table",
+          # "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-assets-disposal-table/index/*" - add this later if necessary
+        ]
+      },
+      {
+        sid = "DisposalApprovalReminderQueue"
+        actions = [
+          "sqs:ReceiveMessage",
+          "sqs:SendMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:ChangeMessageVisibility",
+          "sqs:GetQueueUrl"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-disposal-notifications-queue"
+        ]
+      },
+      {
+        sid = "ReadQueueURLFromSSM"
+        actions = [
+          "ssm:GetParameter"
+        ]
+        resources = [
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/sqs/disposal_notification_queue_url",
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/scheduler_approval/scheduler_role_arn",
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/scheduler_approval/reminder_target_arn/checkDisposalApprovalTimeout",
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/scheduler_approval/scheduler_group_name",
+        ]
+      },
+      {
+        sid = "DisposalSchedulerAccess"
+        actions = [
+          "scheduler:DeleteSchedule"
+        ]
+        resources = [
+          "arn:aws:scheduler:af-south-1:157489943321:schedule/*/disposal-*-timeout"
+        ]
+      }
+    ]
+  }
+
+  assetDisposalRequest = {
+    file_name            = "assetDisposalRequest.py"
+    handler              = "assetDisposalRequest.lambda_handler"
+    runtime              = "python3.12"
+    path                 = "disposals/assetDisposalRequest"
+    invoked_by           = ["sqs"]
+    include_shared_utils = true
+
+    environment_variables = {
+      # SSM parameter storing the User Pool ID
+      NOTIFICATION_QUEUE_URL = "/crud-nosql/sqs/disposal_notification_queue_url"
+      SCHEDULER_ROLE_ARN     = "/crud-nosql/scheduler_approval/scheduler_role_arn"
+      REMINDER_TARGET_ARN    = "/crud-nosql/scheduler_approval/reminder_target_arn/checkDisposalApprovalTimeout"
+      SCHEDULER_GROUP_NAME   = "/crud-nosql/scheduler_approval/scheduler_group_name"
+    }
+
+    // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
+    inline_policy_statements = [
+      {
+        sid = "DynamoDBTableAccess"
+        actions = [
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-assets-table",
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-assets-table/index/*",
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table",
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table/index/*"
+        ]
+      },
+      {
+        sid = "DisposalRequestEvent"
+        actions = [
+          "sqs:SendMessage"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-disposal-notifications-queue"
+        ]
+      },
+      {
+        sid = "DisposalRequestQueueAccess"
+        actions = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:ChangeMessageVisibility",
+          "sqs:GetQueueUrl"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-disposal-request-queue"
+        ]
+      },
+      {
+        sid = "ReadQueueURLFromSSM"
+        actions = [
+          "ssm:GetParameter"
+        ]
+        resources = [
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/sqs/disposal_notification_queue_url",
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/scheduler_approval/scheduler_role_arn",
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/scheduler_approval/reminder_target_arn/checkDisposalApprovalTimeout",
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/scheduler_approval/scheduler_group_name",
+        ]
+      },
+      {
+        sid = "EventBridgeSchedulerAccess"
+
+        actions = [
+          "scheduler:CreateSchedule",
+          "scheduler:DeleteSchedule",
+          "scheduler:GetSchedule",
+          "scheduler:UpdateSchedule"
+        ]
+
+        resources = [
+          "arn:aws:scheduler:af-south-1:157489943321:schedule/crud-nosql-schedules/*",
+          "arn:aws:scheduler:af-south-1:157489943321:schedule-group/crud-nosql-schedules"
+        ]
+      },
+      {
+        sid = "AllowPassSchedulerRole"
+        actions = [
+          "iam:PassRole"
+        ]
+        resources = [
+          "arn:aws:iam::157489943321:role/crud-nosql-scheduler-role"
+        ]
+      }
+    ]
+  }
+  assetDisposalApproval = {
+    file_name            = "assetDisposalApproval.py"
+    handler              = "assetDisposalApproval.lambda_handler"
+    runtime              = "python3.12"
+    path                 = "disposals/assetDisposalApproval"
+    invoked_by           = ["sqs"]
+    include_shared_utils = true
+
+    environment_variables = {
+      # SSM parameter storing the User Pool ID
+      NOTIFICATION_QUEUE_URL = "/crud-nosql/sqs/disposal_notification_queue_url"
+    }
+
+
+    inline_policy_statements = [
+      {
+        sid = "DynamoDBTableAccess"
+        actions = [
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table",
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table/index/*"
+        ]
+      },
+      {
+        sid = "DisposalApprovalEvent"
+        actions = [
+          "sqs:SendMessage"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-disposal-notifications-queue"
+        ]
+      },
+      {
+        sid = "DisposalApprovalQueueAccess"
+        actions = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:ChangeMessageVisibility",
+          "sqs:GetQueueUrl"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-disposal-approval-queue"
+        ]
+      },
+      {
+        sid = "ReadQueueURLFromSSM"
+        actions = [
+          "ssm:GetParameter"
+        ]
+        resources = [
+          "arn:aws:ssm:af-south-1:157489943321:parameter/crud-nosql/sqs/disposal_notification_queue_url"
+        ]
+      }
+    ]
+  }
+
+  assetDisposalCompleted = {
+    file_name            = "assetDisposalCompleted.py"
+    handler              = "assetDisposalCompleted.lambda_handler"
+    runtime              = "python3.12"
+    path                 = "disposals/assetDisposalCompleted"
+    invoked_by           = ["sqs"]
+    include_shared_utils = true
+
+    environment_variables = {
+      # SSM parameter storing the User Pool ID
+      NOTIFICATION_QUEUE_URL = "/crud-nosql/sqs/disposal_notification_queue_url"
+    }
+
+    inline_policy_statements = [
+      {
+        sid = "DynamoDBTableUsersAccess"
+        actions = [
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table",
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-users-table/index/LocationIndex"
+        ]
+      },
+      {
+        sid = "DynamoDBTableAssetsAccess"
+        actions = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-assets-table",
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-assets-table/index/AssetIDIndex"
+        ]
+      },
+      {
+        sid = "DisposalReceiptEvent"
+        actions = [
+          "sqs:SendMessage"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-disposal-notifications-queue"
+        ]
+      },
+      {
+        sid = "DisposalCompletedQueueAccess"
+        actions = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:ChangeMessageVisibility",
+          "sqs:GetQueueUrl"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-disposal-completed-queue"
+        ]
+      },
+    ]
+  }
+
+  handleDisposalNotifications = {
+    file_name            = "handleDisposalNotifications.py"
+    handler              = "handleDisposalNotifications.lambda_handler"
+    runtime              = "python3.12"
+    path                 = "disposals/handleDisposalNotifications"
+    invoked_by           = ["sqs"]
+    include_shared_utils = true
+
+    // $ Update Statement for invoking SNS and also to access EventBridge Scheduler
+    # Inline policies required for Lambda
+    inline_policy_statements = [
+      {
+        sid = "DynamoDBNotificationsTableAccess"
+        actions = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        resources = [
+          "arn:aws:dynamodb:af-south-1:157489943321:table/crud-nosql-app-notifications-table"
+        ]
+      },
+      {
+        sid = "DisposalNotifyQueueAccess"
+        actions = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:ChangeMessageVisibility",
+          "sqs:GetQueueUrl"
+        ]
+        resources = [
+          "arn:aws:sqs:af-south-1:157489943321:asset-disposal-notifications-queue"
+        ]
+      },
+    ]
+  }
 }
 
-# $ // ================================================================================ // 
-# $ //                            SQS Queues                                            // 
-# $ // ================================================================================ // 
+# $ // ================================================================================ //
+# $ //                            SQS Queues                                            //
+# $ // ================================================================================ //
 
 
 queues = {
@@ -2938,6 +3688,29 @@ queues = {
   notification_events = {
     name = "asset-transfer-notifications-queue"
   }
+
+  # Disposals
+  disposal_request_events = {
+    name              = "asset-disposal-request-queue"
+    max_receive_count = 3
+    create_dlq        = true
+  }
+
+  disposal_approval_events = {
+    name              = "asset-disposal-approval-queue"
+    max_receive_count = 3
+    create_dlq        = true
+  }
+
+  disposal_completed_events = {
+    name              = "asset-disposal-completed-queue"
+    max_receive_count = 3
+    create_dlq        = true
+  }
+
+  disposal_notification_events = {
+    name = "asset-disposal-notifications-queue"
+  }
 }
 
 sqs_lambda_triggers = {
@@ -2963,6 +3736,27 @@ sqs_lambda_triggers = {
 
   notification_events = {
     function_name = "handleTransferNotifications"
+    batch_size    = 1
+  }
+
+  # Disposals Queues
+  disposal_request_events = {
+    function_name = "assetDisposalRequest"
+    batch_size    = 1 # keep 1 if you want per-record processing guarantees, bump toward the module default (10) if throughput matters more
+  }
+
+  disposal_approval_events = {
+    function_name = "assetDisposalApproval"
+    batch_size    = 1
+  }
+
+  disposal_completed_events = {
+    function_name = "assetDisposalCompleted"
+    batch_size    = 1
+  }
+
+  disposal_notification_events = {
+    function_name = "handleDisposalNotifications"
   }
 }
 
@@ -3078,10 +3872,6 @@ dynamodb_tables = {
         range_key       = "transferCreated"
         projection_type = "ALL"
       }
-      # "IdIndex" = {
-      #   hash_key        = "id"
-      #   projection_type = "ALL"
-      # }
       "RequestorIndex" = {
         hash_key           = "requestorSub"
         range_key          = "transferCreated"
@@ -3099,6 +3889,36 @@ dynamodb_tables = {
         range_key          = "transferCreated"
         projection_type    = "INCLUDE"
         non_key_attributes = ["condition", "damageDetails", "transferId", "dateReceived", "locationFrom", "locationTo", "transferReason", "deliveryNoteUrl", "imageUrls"]
+      }
+    }
+  }
+
+  /* # $ -------------------------------- Assets Disposal Table --------------------------------- */
+  crud-nosql-app-assets-disposal = {
+    pk                = "disposalId"
+    sk                = "disposalCreated"
+    enable_gsi        = true
+    enable_stream     = true // enable stream to trigger lambda for transfer created
+    stream_filter     = ["INSERT", "MODIFY"]
+    event_source      = "asset-disposal-service" # matches your rule
+    event_detail_type = "DisposalRequest"
+    gsis = {
+      "DisposalStatusIndex" = {
+        hash_key        = "status"
+        range_key       = "disposalCreated"
+        projection_type = "ALL"
+      }
+      "RequestorIndex" = {
+        hash_key           = "requestorSub"
+        range_key          = "disposalCreated"
+        projection_type    = "INCLUDE"
+        non_key_attributes = ["status", "disposalId", "location", "disposalReason"]
+      }
+      "ApproverIndex" = {
+        hash_key           = "approvedBySub"
+        range_key          = "disposalCreated"
+        projection_type    = "INCLUDE"
+        non_key_attributes = ["status", "disposalId", "dateApproved", "location", "disposalReason"]
       }
     }
   }
@@ -3265,7 +4085,7 @@ user_groups = {
 # $ s3FileUploadLambda - lambda triggers on s3 file upload
 # % Module lambda/s3
 file_name   = "s3FileUploadLambda.py"
-table_names = ["crud-nosql-app-maintenance-request-table", "crud-nosql-app-maintenance-action-table", "crud-nosql-app-assets-table", "crud-nosql-app-assets-transfer-table"]
+table_names = ["crud-nosql-app-maintenance-request-table", "crud-nosql-app-maintenance-action-table", "crud-nosql-app-assets-table", "crud-nosql-app-assets-transfer-table", "crud-nosql-app-assets-disposal-table"]
 bucket_name = "crud-nosql-app-images"
 handler     = "s3FileUploadLambda.lambda_handler"
 lambda_name = "s3FileUploadLambda"
@@ -3309,6 +4129,12 @@ parameters = {
     description = "app notifications queue"
     prefix      = "/crud-nosql/sqs"
   }
+
+  disposal_notification_queue_url = {
+    value       = "https://sqs.af-south-1.amazonaws.com/157489943321/asset-disposal-notifications-queue"
+    description = "app notifications queue"
+    prefix      = "/crud-nosql/sqs"
+  }
 }
 
 # ssm_prefix = "/crud-nosql/jobs/ses"
@@ -3330,7 +4156,6 @@ event_subscriptions = {
       detail-type = ["AssetVerified"]
       detail      = null
     }
-
 
     targets = [
       {
@@ -3456,12 +4281,90 @@ event_subscriptions = {
       }
     ]
   }
+
+  # $ Disposals
+
+  disposal-request = {
+    event_pattern = {
+      source      = ["asset-disposal-service"]
+      detail-type = ["DisposalRequest"]
+
+      detail = {
+        eventName = ["INSERT"]
+
+        dynamodb = {
+          NewImage = {
+            status = {
+              S = ["pending"]
+            }
+          }
+        }
+      }
+    }
+
+    targets = [
+      {
+        name        = "disposal_request_events"
+        target_type = "sqs"
+      }
+    ]
+  }
+
+  disposal-approval = {
+    event_pattern = {
+      source      = ["asset-disposal-service"]
+      detail-type = ["DisposalRequest"]
+      detail = {
+        eventName = ["MODIFY"]
+        dynamodb = {
+          OldImage = {
+            status = {
+              S = ["pending"]
+            }
+          }
+          NewImage = {
+            status = {
+              S = ["approved"]
+            }
+          }
+        }
+      }
+    }
+
+    targets = [
+      {
+        name        = "disposal_approval_events"
+        target_type = "sqs"
+      }
+    ]
+  }
+
+  asset-disposal-completed = {
+    event_pattern = {
+      source      = ["asset-disposal-service"]
+      detail-type = ["DisposalRequest"]
+      detail = {
+        eventName = ["MODIFY"]
+        dynamodb = {
+          OldImage = {
+            status = {
+              S = ["approved"]
+            }
+          }
+          NewImage = {
+            status = {
+              S = ["disposed"]
+            }
+          }
+        }
+      }
+    }
+
+    targets = [
+      {
+        name        = "disposal_completed_events"
+        target_type = "sqs"
+      }
+    ]
+  }
 }
-
-# schedule : arn:aws:scheduler:af-south-1:157489943321:schedule-group/crud-nosql-schedules
-
-# Scheduler Role
-# name: crud-nosql-scheduler-role
-# arn: arn:aws:iam::157489943321:role/crud-nosql-scheduler-role
-# ssm_parameter: arn:aws:iam::157489943321:role/crud-nosql-scheduler-role
-# ssm_name: /crud-nosql/scheduler_approval/scheduler_role_arn
