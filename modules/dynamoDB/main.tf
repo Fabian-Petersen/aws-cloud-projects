@@ -27,26 +27,10 @@ resource "aws_dynamodb_table" "dynamodb_table" {
     for_each = each.value.enable_gsi ? lookup(each.value, "gsis", {}) : {}
     content {
       name               = global_secondary_index.key
+      hash_key           = global_secondary_index.value.hash_key
+      range_key          = try(global_secondary_index.value.range_key, null)
       projection_type    = global_secondary_index.value.projection_type
       non_key_attributes = try(global_secondary_index.value.non_key_attributes, null)
-
-      dynamic "key_schema" {
-        for_each = concat(
-          [{
-            attribute_name = global_secondary_index.value.hash_key
-            key_type       = "HASH"
-          }],
-          try(global_secondary_index.value.range_key, null) != null ? [{
-            attribute_name = global_secondary_index.value.range_key
-            key_type       = "RANGE"
-          }] : []
-        )
-
-        content {
-          attribute_name = key_schema.value.attribute_name
-          key_type       = key_schema.value.key_type
-        }
-      }
     }
   }
 
