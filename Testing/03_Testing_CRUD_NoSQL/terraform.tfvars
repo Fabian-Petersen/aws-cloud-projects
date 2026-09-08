@@ -1849,6 +1849,11 @@ lambda_functions = {
     path                 = "disposals/postDisposalCompleted"
     invoked_by           = ["apigateway"]
     include_shared_utils = true
+    statements = [{
+      effect    = "Allow"
+      actions   = ["s3:PutObject"]
+      resources = ["arn:aws:s3:::crud-nosql-app-images/disposals/*/disposal/images/*", "arn:aws:s3:::crud-nosql-app-images/disposals/*/disposal/documents/*"]
+    }]
     dynamodb_permissions = {
       asset_disposal_table = {
         table_name         = "crud-nosql-app-assets-disposal-table"

@@ -25,12 +25,30 @@ resource "aws_dynamodb_table" "dynamodb_table" {
 
   dynamic "global_secondary_index" {
     for_each = each.value.enable_gsi ? lookup(each.value, "gsis", {}) : {}
+
     content {
       name               = global_secondary_index.key
-      hash_key           = global_secondary_index.value.hash_key
-      range_key          = try(global_secondary_index.value.range_key, null)
       projection_type    = global_secondary_index.value.projection_type
       non_key_attributes = try(global_secondary_index.value.non_key_attributes, null)
+
+      key_schema {
+        attribute_name = global_secondary_index.value.hash_key
+        key_type       = "HASH"
+      }
+
+      dynamic "key_schema" {
+        # Only include a sort key when this index defines one.
+        for_each = (
+          try(global_secondary_index.value.range_key, null) != null
+          ? [global_secondary_index.value.range_key]
+          : []
+        )
+
+        content {
+          attribute_name = key_schema.value
+          key_type       = "RANGE"
+        }
+      }
     }
   }
 
