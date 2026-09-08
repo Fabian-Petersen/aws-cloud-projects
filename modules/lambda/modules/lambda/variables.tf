@@ -1,3 +1,4 @@
+# $ Lambdas not tied to the dynamoDB routes, these lambdas use custom policies as needed
 variable "lambda_functions_custom" {
   type = map(object({
     file_name  = string
@@ -10,6 +11,7 @@ variable "lambda_functions_custom" {
     environment_variables = optional(map(string), {})
     scheduler_target      = optional(bool, false)      # true lets lambda publish to schedule group
     sns_publish_topics    = optional(list(string), []) # true lets lambda publish to sns
+    include_shared_utils  = optional(bool, false)
 
     inline_policy_statements = optional(list(object({
       sid       = optional(string)

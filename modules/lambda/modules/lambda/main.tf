@@ -3,11 +3,31 @@
 data "archive_file" "lambda_zip" {
   for_each = var.lambda_functions_custom
   type     = "zip"
-  source_file = (
-    try(each.value.path, null) != null
-    ? "${path.root}/lambdas/${each.value.path}/${each.value.file_name}"
-    : "${path.root}/lambdas/${each.key}/${each.value.file_name}"
-  )
+
+  source {
+    content = file(
+      try(each.value.path, null) != null
+      ? "${path.root}/lambdas/${each.value.path}/${each.value.file_name}"
+      : "${path.root}/lambdas/${each.key}/${each.value.file_name}"
+    )
+    filename = each.value.file_name
+  }
+
+  # Package the shared helper package only for Lambdas that request it.
+  # The archive paths retain the shared_utils/ prefix required by imports such
+  # as `from shared_utils.request import require_fields`.
+  dynamic "source" {
+    for_each = try(each.value.include_shared_utils, false) ? fileset(
+      "${path.root}/layers/python/shared_utils",
+      "**/*.py"
+    ) : []
+
+    content {
+      content  = file("${path.root}/layers/python/shared_utils/${source.value}")
+      filename = "shared_utils/${source.value}"
+    }
+  }
+
   output_path = (
     try(each.value.path, null) != null
     ? "${path.root}/lambdas/${each.value.path}/${replace(each.value.file_name, ".py", ".zip")}"

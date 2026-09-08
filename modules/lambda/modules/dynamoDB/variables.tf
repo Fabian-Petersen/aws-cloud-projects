@@ -53,7 +53,6 @@ variable "lambda_functions" {
 }
 
 
-
 variable "region" {
   description = "aws region for the project"
   type        = string
