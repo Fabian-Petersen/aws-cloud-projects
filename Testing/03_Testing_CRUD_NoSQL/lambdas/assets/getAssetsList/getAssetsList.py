@@ -14,8 +14,19 @@ HEADERS = {
     "Access-Control-Allow-Headers": "Content-Type",
 }
 
+# $ Dates to be changed from ISO string to human readable date
+DATE_TIME_FIELDS = {
+    "createdAt",
+    "last_verified_at",
+}
+
+DATE_FIELDS = {
+    "next_verification_due",
+}
+
+
 # $ Change the date format in the database to readible for humans
-def to_human_date(iso_string: str) -> str:
+def to_human_date_time(iso_string: str) -> str:
     """
     Convert an ISO 8601 timestamp string to a human-readable date in SAST.
 
@@ -28,6 +39,32 @@ def to_human_date(iso_string: str) -> str:
     SAST = timezone(timedelta(hours=2))
     dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
     return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
+
+
+def to_human_date_only(iso_string: str) -> str:
+    """
+    Convert an ISO 8601 date/timestamp to a date only.
+
+    This does NOT apply timezone conversion because
+    date-only fields should not shift by timezone.
+
+    Example:
+        2026-08-31
+        -> 31 Aug 2026
+
+        2026-08-31T00:00:00Z
+        -> 31 Aug 2026
+    """
+    # Handle a pure date: YYYY-MM-DD
+    if "T" not in iso_string:
+        dt = datetime.fromisoformat(iso_string)
+    else:
+        dt = datetime.fromisoformat(
+            iso_string.replace("Z", "+00:00")
+        )
+
+    return dt.strftime("%d %b %Y")
+
 
 def decimal_serializer(obj):
     """
@@ -48,28 +85,54 @@ def decimal_serializer(obj):
         return float(obj)
     raise TypeError
 
-    
+# =========================================================================
+# Format all the date fields in the STAGES
+# =========================================================================
+
+
+def format_dates(data):
+    if isinstance(data, dict):
+        for key, value in data.items():
+
+            if not value:
+                continue
+
+            if key in DATE_TIME_FIELDS:
+                data[key] = to_human_date_time(value)
+
+            elif key in DATE_FIELDS:
+                data[key] = to_human_date_only(value)
+
+            else:
+                format_dates(value)
+
+    elif isinstance(data, list):
+        for item in data:
+            format_dates(item)
+
+
 def lambda_handler(event, context):
-    #Grab the Origin header from the incoming request
+    print("event:", json.dumps(event))
+    # Grab the Origin header from the incoming request
     headers = event.get("headers") or {}
     origin = headers.get("origin") or headers.get("Origin") or ""
 
     allowedOrigins = [
-    'https://www.crud-nosql.app.fabian-portfolio.net',
-    'https://crud-nosql.app.fabian-portfolio.net',
-    'http://localhost:5173'
+        'https://www.crud-nosql.app.fabian-portfolio.net',
+        'https://crud-nosql.app.fabian-portfolio.net',
+        'http://localhost:5173'
     ]
 
     # Only allow known origins
     allowedOrigin = origin if origin in allowedOrigins else ""
-    
+
     HEADERS = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
-    "Access-Control-Allow-Credentials": "true"
-        }
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": allowedOrigin,
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+        "Access-Control-Allow-Credentials": "true"
+    }
 
     method = (
         event.get("httpMethod")
@@ -84,8 +147,10 @@ def lambda_handler(event, context):
         response = table.scan()
         items = response.get("Items", [])
         for item in items:
-            if "createdAt" in item:
-              item["createdAt"] = to_human_date(item["createdAt"])
+            format_dates(item)
+
+        print("response:", json.dumps(response.get(
+            "Items", []), default=decimal_serializer))
 
         return _response(200, response.get("Items", []), HEADERS)
 
@@ -93,12 +158,14 @@ def lambda_handler(event, context):
         print("Error:", exc)
         return _response(500, {"message": "Internal server error"})
 
+
 def _response(status_code, body, headers):
     return {
         "statusCode": status_code,
         "headers": headers,
         "body": json.dumps(body, default=decimal_serializer),
     }
+
 
 # --- Local testing ---
 if __name__ == "__main__":
