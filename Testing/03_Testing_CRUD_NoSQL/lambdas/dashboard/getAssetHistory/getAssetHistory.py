@@ -96,6 +96,21 @@ def get_user_scope(groups, claims):
 
 
 # ======================================================================================
+# GET ASSET
+# ======================================================================================
+
+def get_asset(asset_id) -> str:
+
+    response = assets_table.query(
+        KeyConditionExpression=Key("id").eq(asset_id)
+    )
+
+    item = response['Items'][0]
+
+    return item
+
+
+# ======================================================================================
 # GET ASSET BARCODE ID
 # ======================================================================================
 
@@ -427,47 +442,82 @@ HISTORY_ACTION_FIELDS = {
 }
 
 
-def build_completed_history(completed_actions: list, request_history: list) -> list:
+def build_completed_history(
+    completed_actions: list,
+    request_history: list
+) -> list:
     """
-    Merges completed action records with their parent request to produce
-    a clean history list containing only the dashboard fields.
+    Merges completed action records with their parent maintenance request.
 
-    Fields sourced from the requests table : jobCreated, description
-    Fields sourced from the actions table  : jobcardNumber, sundries,
-        total_cost_sundries, parts, total_cost_parts, contractor,
-        total_cost_contractor, actioned_by, completed_at
+    The returned `id` is the maintenance ACTION id, allowing the frontend
+    to use the id to retrieve the completed maintenance action/job card.
 
-    Args:
-        completed_actions: Filtered list of action items with status == "complete".
-        request_history:   Full list of request items for the same asset.
-
-    Returns:
-        List of dicts containing only the specified dashboard fields.
+    Fields:
+        id          -> maintenance-action table id
+        request_id  -> parent maintenance-request id
+        jobCreated  -> maintenance-request table
+        description -> maintenance-request table
+        equipment   -> maintenance-request table
+        remaining fields -> maintenance-action table
     """
-    # Build a lookup map from requestId -> request item for O(1) joins
-    request_map: dict = {r["id"]: r for r in request_history if "id" in r}
+
+    # ------------------------------------------------------------------
+    # Build request lookup:
+    # request id -> maintenance request
+    # ------------------------------------------------------------------
+    request_map = {
+        request["id"]: request
+        for request in request_history
+        if request.get("id")
+    }
 
     history = []
 
     for action in completed_actions:
+
+        # Parent maintenance request
         request_id = action.get("request_id")
+
+        # Maintenance action ID
+        action_id = action.get("id")
+
         request = request_map.get(request_id, {})
 
         record = {
-            # Standardised primary key for frontend
-            "id": request_id,
+            # ----------------------------------------------------------
+            # IMPORTANT:
+            # Frontend id must represent the ACTION, not the request.
+            # ----------------------------------------------------------
+            "id": action_id,
 
-            # From requests table
-            "jobCreated": to_human_date(request["jobCreated"]) if request.get("jobCreated") else None,
+            # Keep parent request id available separately
+            "request_id": request_id,
+
+            # ----------------------------------------------------------
+            # Request table fields
+            # ----------------------------------------------------------
+            "jobCreated": (
+                to_human_date(request["jobCreated"])
+                if request.get("jobCreated")
+                else None
+            ),
             "description": request.get("description"),
             "equipment": request.get("equipment"),
-            # From actions table — only the required fields
-            **{field: action.get(field) for field in HISTORY_ACTION_FIELDS},
+
+            # ----------------------------------------------------------
+            # Action table fields
+            # ----------------------------------------------------------
+            **{
+                field: action.get(field)
+                for field in HISTORY_ACTION_FIELDS
+            },
         }
 
-        # Convert completed_at to human-readable if present
+        # Convert completed_at to human-readable date
         if record.get("completed_at"):
-            record["completed_at"] = to_human_date(record["completed_at"])
+            record["completed_at"] = to_human_date(
+                record["completed_at"]
+            )
 
         history.append(record)
 
@@ -520,6 +570,9 @@ def lambda_handler(event, context):
         asset_id = (event.get("pathParameters") or {}).get("id")
 
         assetID = get_asset_barcode_id(asset_id)
+
+        location = get_asset(asset_id).get("location", "")
+        equipment = get_asset(asset_id).get("equipment", "")
 
         # print("assetID:", assetID)
 
@@ -599,6 +652,9 @@ def lambda_handler(event, context):
             200,
             {"last_completed_job": last_completed_job,
                 "assetId": asset_id,
+                "assetID": assetID,
+                "location": location,
+                "equipment": equipment,
                 "metrics": {
                     "pendingRequests": {
                         "value": len(pending_history),

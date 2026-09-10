@@ -31,8 +31,12 @@ HEADERS = {
 
 # $ Valid reasons for a missing/unreadable asset barcode.
 # $ Kept in sync with the frontend's assetIssueReason enum.
-VALID_ASSET_ISSUE_REASONS = {"No barcode visible",
-                             "barcode damaged", "rental unit", "", "other"}
+VALID_ASSET_ISSUE_REASONS = {
+    "no barcode visible",
+    "barcode damaged",
+    "rental unit",
+    "other",
+}
 
 # $ Module-level cache for locations, reused across warm Lambda
 # $ invocations within the same execution environment. Avoids a
@@ -102,7 +106,7 @@ def get_location_code_map(force_refresh: bool = False) -> dict[str, str]:
     if _LOCATIONS_CACHE is None or force_refresh:
         items = get_locations()
         _LOCATIONS_CACHE = {
-            item["location"]: item.get("code", "")
+            normalize_string(item["location"]): item.get("code", "")
             for item in items
             if item.get("location")
         }
@@ -159,44 +163,99 @@ def normalize_string(value: str | None) -> str:
     return str(value or "").strip().lower()
 
 
-def build_job_item(data: dict, meta: dict) -> dict:
-    """
-    Builds the DynamoDB item for a job request.
+def validate_and_build_assets(assets: object) -> list[dict]:
+    """Validate and normalize every asset in a job request."""
+    if not isinstance(assets, list) or not assets:
+        raise ValueError("At least one asset is required")
 
-    Any attribute with an empty-string value is omitted entirely rather
-    than written as "". This matters specifically for `assetID`, which
-    is a key attribute on the AssetIdIndex GSI. DynamoDB rejects empty
-    strings as index key values on a PutItem/UpdateItem call, and a
-    sparse GSI is designed to simply skip items that don't carry the
-    attribute at all — so omitting it is both the fix and the correct
-    modelling choice for "this job has no identified asset".
+    processed_assets = []
+    seen_asset_ids = set()
 
-    Args:
-        data: The parsed request body from the frontend.
-        meta: Backend-generated metadata (id, timestamps, requester info).
+    for asset_index, asset in enumerate(assets):
+        if not isinstance(asset, dict):
+            raise ValueError(f"Asset {asset_index} must be a JSON object")
 
-    Returns:
-        dict: The item ready for `table.put_item(Item=...)`.
-    """
+        for field in ("area", "equipment"):
+            if not str(asset.get(field) or "").strip():
+                raise ValueError(
+                    f"Missing or empty field for asset {asset_index}: {field}"
+                )
+
+        asset_id = str(asset.get("assetID") or "").strip()
+        issue_reason = normalize_string(asset.get("assetIssueReason"))
+        issue_details = str(asset.get("assetIssueDetails") or "").strip()
+        images = asset.get("images", [])
+
+        if not isinstance(images, list):
+            raise ValueError(f"Images for asset {asset_index} must be a list")
+        for file_info in images:
+            if not isinstance(file_info, dict):
+                raise ValueError(
+                    f"Every image for asset {asset_index} must be a JSON object"
+                )
+            filename = str(file_info.get("filename") or "").strip()
+            content_type = str(file_info.get("content_type") or "").strip()
+            if not filename or "/" in filename or "\\" in filename:
+                raise ValueError(
+                    f"Invalid image filename for asset {asset_index}"
+                )
+            if not content_type:
+                raise ValueError(
+                    f"Missing image content_type for asset {asset_index}"
+                )
+        if not asset_id and not issue_reason:
+            raise ValueError(
+                f"Either assetID or assetIssueReason is required for asset {asset_index}"
+            )
+        if issue_reason and issue_reason not in VALID_ASSET_ISSUE_REASONS:
+            raise ValueError(
+                f"Invalid assetIssueReason for asset {asset_index}: {issue_reason}"
+            )
+        if issue_reason == "other" and not issue_details:
+            raise ValueError(
+                "assetIssueDetails is required when assetIssueReason is 'other' "
+                f"for asset {asset_index}"
+            )
+        if not asset_id and not images:
+            raise ValueError(
+                f"Images are compulsory if no barcode is supplied for asset {asset_index}"
+            )
+
+        if asset_id:
+            duplicate_key = asset_id.casefold()
+            if duplicate_key in seen_asset_ids:
+                raise ValueError(f"Duplicate assetID: {asset_id}")
+            seen_asset_ids.add(duplicate_key)
+
+        processed_asset = {
+            "assetIndex": asset_index,
+            "area": normalize_string(asset.get("area")),
+            "equipment": asset["equipment"],
+            "assetIssueReason": issue_reason,
+            "assetIssueDetails": issue_details,
+            "images": [],
+        }
+        if asset_id:
+            processed_asset["assetID"] = asset_id
+        processed_assets.append(processed_asset)
+
+    return processed_assets
+
+
+def build_job_item(data: dict, meta: dict, assets: list[dict]) -> dict:
+    """Build the DynamoDB item for one job containing multiple assets."""
     item = {
         **meta,
         "location": normalize_string(data.get("location")),
         "type": data["type"],
         "priority": normalize_string(data.get("priority")),
-        "equipment": data["equipment"],
         "breakdown_time": data["breakdown_time"],
         "impact": data["impact"],
         "jobComments": data.get("jobComments", ""),
         "description": data["description"],
-        "area": normalize_string(data.get("area")),
-        "assetID": data.get("assetID", ""),
-        "assetIssueReason": data.get("assetIssueReason", ""),
-        "assetIssueDetails": data.get("assetIssueDetails", ""),
-        "images": [],  # Will be updated by S3-triggered Lambda later
+        "assets": assets,
     }
 
-    # Strip empty-string attributes so assetID (a GSI key) is omitted
-    # entirely rather than written as "".
     return {k: v for k, v in item.items() if v != ""}
 
 
@@ -212,17 +271,17 @@ def lambda_handler(event, context):
         claims = event.get("requestContext", {}).get(
             "authorizer", {}).get("claims", {})
 
-        # $ Validate required fields
-        #
-        # assetID is deliberately NOT in this list. A job request is
-        # valid either with a verified assetID OR with an
-        # assetIssueReason explaining why one isn't available — see
-        # the check below.
-        required_fields = ["location", "type", "priority", "equipment", "impact",
-                           "jobComments", "description", "area", "breakdown_time"]
+        # $ Validate job-level and asset-level fields.
+        required_fields = ["location", "type", "priority", "impact",
+                           "jobComments", "description", "breakdown_time", "assets"]
         for field in required_fields:
             if field not in data:
                 return _response(400, {"message": f"Missing field: {field}"})
+
+        try:
+            processed_assets = validate_and_build_assets(data["assets"])
+        except ValueError as exc:
+            return _response(400, {"message": str(exc)})
 
         # $ Validate the submitted location against DynamoDB rather
         # $ than a hardcoded list, so newly added stores work without
@@ -233,41 +292,6 @@ def lambda_handler(event, context):
         if location_codes and submitted_location not in location_codes:
             return _response(400, {
                 "message": f"Unknown location: {submitted_location}"
-            })
-
-        location_code = location_codes.get(submitted_location, "")
-
-        asset_id = str(data.get("assetID") or "").strip()
-        asset_issue_reason = str(data.get("assetIssueReason") or "").strip()
-        asset_issue_details = str(data.get("assetIssueDetails") or "").strip()
-        images = data.get("images", [])
-
-        # $ Business rule: the job needs either a verified assetID, or
-        # $ an explanation for why one couldn't be provided. Both being
-        # $ empty means the frontend cascade was bypassed (or the
-        # $ request was hand-crafted) — reject rather than silently
-        # $ writing an unidentified job with no context.
-        if not asset_id and not asset_issue_reason:
-            return _response(400, {
-                "message": "Either assetID or assetIssueReason is required"
-            })
-
-        if asset_issue_reason and asset_issue_reason not in VALID_ASSET_ISSUE_REASONS:
-            return _response(400, {
-                "message": f"Invalid assetIssueReason: {asset_issue_reason}"
-            })
-
-        # $ "other" requires a written explanation.
-        if asset_issue_reason == "other" and not asset_issue_details:
-            return _response(400, {
-                "message": "assetIssueDetails is required when assetIssueReason is 'other'"
-            })
-
-        # $ Photographic evidence is compulsory whenever there's no
-        # $ verified asset ID, regardless of which reason was given.
-        if asset_issue_reason and not images:
-            return _response(400, {
-                "message": "Images are compulsory if no barcode is supplied"
             })
 
         # Get the current time for the update
@@ -291,32 +315,42 @@ def lambda_handler(event, context):
         presigned_urls = []
 
         # $ Check if frontend included any files
-        for file_info in images:
-            filename = file_info.get("filename")
-            content_type = file_info.get(
-                "content_type", "application/octet-stream")
-            if not filename:
-                continue
+        for asset_index, asset in enumerate(data["assets"]):
+            for file_info in asset.get("images", []):
+                filename = str(file_info["filename"]).strip()
+                content_type = str(file_info["content_type"]).strip()
 
-        # $ Generate presigned urls
-            key = f"maintenance/{item_id}/{filename}"
-            url = s3.generate_presigned_url(
-                "put_object",
-                Params={
-                    "Bucket": BUCKET_NAME,
-                    "Key": key,
-                    "ContentType": content_type
-                },
-                ExpiresIn=3600  # 1 hour
-            )
+                # $ Generate presigned URLs for this asset's images.
+                key = (
+                    f"maintenance/{item_id}/assets/{asset_index}/"
+                    f"images/{filename}"
+                )
+                url = s3.generate_presigned_url(
+                    "put_object",
+                    Params={
+                        "Bucket": BUCKET_NAME,
+                        "Key": key,
+                        "ContentType": content_type
+                    },
+                    ExpiresIn=3600  # 1 hour
+                )
 
-            # The config above force the url to be af-south-1 region and the code below check if the url is region specific.
-            if "s3.af-south-1.amazonaws.com" not in url:
-                raise Exception(
-                    "Presigned URL generated with incorrect S3 endpoint")
+                if "s3.af-south-1.amazonaws.com" not in url:
+                    raise Exception(
+                        "Presigned URL generated with incorrect S3 endpoint")
 
-            presigned_urls.append(
-                {"filename": filename, "url": url, "key": key, "content_type": content_type})
+                upload = {
+                    "type": "images",
+                    "assetIndex": asset_index,
+                    "filename": filename,
+                    "url": url,
+                    "key": key,
+                    "content_type": content_type,
+                }
+                asset_id = str(asset.get("assetID") or "").strip()
+                if asset_id:
+                    upload["assetID"] = asset_id
+                presigned_urls.append(upload)
 
         # $ Backend-generated metadata, merged with request data by
         # $ build_job_item.
@@ -330,7 +364,7 @@ def lambda_handler(event, context):
             "user_name": normalize_string(user_name),
         }
 
-        item = build_job_item(data, meta)
+        item = build_job_item(data, meta, processed_assets)
         print("item:", json.dumps(item))
 
         table.put_item(Item=item)

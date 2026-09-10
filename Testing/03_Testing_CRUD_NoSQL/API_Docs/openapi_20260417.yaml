@@ -1121,17 +1121,17 @@ components:
         - location
         - type
         - priority
-        - equipment
         - impact
+        - jobComments
         - description
+        - breakdown_time
+        - assets
       properties:
         location:
           type: string
         type:
           type: string
         priority:
-          type: string
-        equipment:
           type: string
         impact:
           type: string
@@ -1140,10 +1140,39 @@ components:
           default: ""
         description:
           type: string
+        breakdown_time:
+          type: string
+          format: date-time
+        assets:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/JobRequestAsset'
+
+    JobRequestAsset:
+      type: object
+      required:
+        - area
+        - equipment
+      properties:
+        assetIndex:
+          type: integer
+          readOnly: true
         area:
+          type: string
+        equipment:
           type: string
         assetID:
           type: string
+        assetIssueReason:
+          type: string
+          enum: [no barcode visible, barcode damaged, rental unit, other, '']
+        assetIssueDetails:
+          type: string
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobImage'
           
     # Presigned Image Url Schema
     JobImage:

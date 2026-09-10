@@ -113,6 +113,42 @@ def append_file_to_table(
 
 
 # ============================================================
+# Maintenance request asset image
+# ============================================================
+
+def append_maintenance_asset_image(
+    item_id,
+    job_created,
+    asset_index,
+    file_data
+):
+    """Append an uploaded image to one maintenance-request asset."""
+    response = MAINTENANCE_TABLE.get_item(
+        Key={"id": item_id, "jobCreated": job_created},
+        ProjectionExpression="assets"
+    )
+    item = response.get("Item")
+    assets = item.get("assets", []) if item else []
+
+    if asset_index < 0 or asset_index >= len(assets):
+        print(
+            f"Asset index {asset_index} out of range for maintenance "
+            f"request {item_id}. Asset count: {len(assets)}"
+        )
+        return
+
+    image_path = f"assets[{asset_index}].images"
+    MAINTENANCE_TABLE.update_item(
+        Key={"id": item_id, "jobCreated": job_created},
+        UpdateExpression=(
+            f"SET {image_path} = list_append("
+            f"if_not_exists({image_path}, :empty), :file)"
+        ),
+        ExpressionAttributeValues={":file": [file_data], ":empty": []}
+    )
+
+
+# ============================================================
 # Transfer asset image
 # ============================================================
 
@@ -294,7 +330,8 @@ def lambda_handler(event, context):
             # ====================================================
             # Maintenance request images
             #
-            # maintenance/{id}/{filename}
+            # maintenance/{id}/{filename} (legacy)
+            # maintenance/{id}/assets/{asset_index}/images/{filename}
             # ====================================================
 
             if prefix == "maintenance":
@@ -312,15 +349,27 @@ def lambda_handler(event, context):
                     )
                     continue
 
-                append_file_to_table(
-                    table=MAINTENANCE_TABLE,
-                    key={
-                        "id": item_id,
-                        "jobCreated": job_created
-                    },
-                    attribute_name="images",
-                    file_data=file_data
-                )
+                if (
+                    len(parts) >= 6
+                    and parts[2] == "assets"
+                    and parts[4] == "images"
+                ):
+                    append_maintenance_asset_image(
+                        item_id=item_id,
+                        job_created=job_created,
+                        asset_index=int(parts[3]),
+                        file_data=file_data
+                    )
+                else:
+                    append_file_to_table(
+                        table=MAINTENANCE_TABLE,
+                        key={
+                            "id": item_id,
+                            "jobCreated": job_created
+                        },
+                        attribute_name="images",
+                        file_data=file_data
+                    )
 
             # ====================================================
             # Maintenance action images
