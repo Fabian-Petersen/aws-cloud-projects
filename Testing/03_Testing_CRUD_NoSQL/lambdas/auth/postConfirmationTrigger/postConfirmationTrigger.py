@@ -6,11 +6,13 @@ dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table("crud-nosql-app-users-table")
 
 def to_human_date(iso_string: str) -> str:
+    """Convert an ISO 8601 timestamp to a human-readable SAST date and time."""
     SAST = timezone(timedelta(hours=2))
     dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
     return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
 
 def lambda_handler(event, context):
+    """Mark the authenticated Cognito user as confirmed in DynamoDB."""
     print("event:", event)
     try:
         # Extract sub from Cognito authorizer claims
@@ -40,6 +42,7 @@ def lambda_handler(event, context):
 
 
 def _response(status_code: int, body: dict) -> dict:
+    """Build an API Gateway proxy response with a JSON-encoded body."""
     return {
         "statusCode": status_code,
         "headers": {"Content-Type": "application/json"},

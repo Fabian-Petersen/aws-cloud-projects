@@ -13,12 +13,13 @@ USER_POOL_PARAM = os.getenv("USER_POOL_PARAM", "/crud-nosql/cognito")
 
 
 def get_user_pool_id():
-    """Fetch the Cognito User Pool ID from SSM"""
+    """Fetch the Cognito user pool ID from the configured SSM parameter."""
     response = ssm.get_parameter(Name=USER_POOL_PARAM)
     return response["Parameter"]["Value"]
 
 
 def to_human_date(iso_string: str) -> str:
+    """Convert an ISO 8601 timestamp to a human-readable SAST date and time."""
     SAST = timezone(timedelta(hours=2))
     dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
     return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
@@ -50,6 +51,7 @@ def get_cognito_user_by_email(email: str, user_pool_id: str) -> dict | None:
 
 
 def lambda_handler(event, context):
+    """Create a user in Cognito, assign its group, and persist it in DynamoDB."""
     try:
         # --- 1. Parse and validate input ---
         body = json.loads(event.get("body", "{}"))
@@ -143,6 +145,7 @@ def lambda_handler(event, context):
 
 
 def _response(status_code: int, body: dict) -> dict:
+    """Build an API Gateway proxy response with a JSON-encoded body."""
     return {
         "statusCode": status_code,
         "headers": HEADERS,

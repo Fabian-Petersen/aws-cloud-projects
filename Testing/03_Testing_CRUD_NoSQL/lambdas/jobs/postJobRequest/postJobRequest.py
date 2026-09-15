@@ -251,7 +251,6 @@ def build_job_item(data: dict, meta: dict, assets: list[dict]) -> dict:
         "priority": normalize_string(data.get("priority")),
         "breakdown_time": data["breakdown_time"],
         "impact": data["impact"],
-        "jobComments": data.get("jobComments", ""),
         "description": data["description"],
         "assets": assets,
     }
@@ -272,8 +271,8 @@ def lambda_handler(event, context):
             "authorizer", {}).get("claims", {})
 
         # $ Validate job-level and asset-level fields.
-        required_fields = ["location", "type", "priority", "impact",
-                           "jobComments", "description", "breakdown_time", "assets"]
+        required_fields = ["location", "type", "priority",
+                           "impact", "description", "breakdown_time", "assets"]
         for field in required_fields:
             if field not in data:
                 return _response(400, {"message": f"Missing field: {field}"})
