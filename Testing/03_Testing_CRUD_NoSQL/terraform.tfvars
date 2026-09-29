@@ -9,7 +9,6 @@ profile_1            = "fabian-user"
 profile_2            = "fabian-user2"
 profile_1_account_id = "875431507944"
 profile_2_account_id = "157489943321"
-# key_name             = "uwc-booking-app_sshkey"
 
 #$ route53 variables
 primary_hosted_zone     = "fabian-portfolio.net"                # HZ in the main account (paid domain)
@@ -1421,10 +1420,17 @@ lambda_functions = {
     dynamodb_permissions = {
       assets_table = {
         table_name         = "crud-nosql-app-assets-table"
-        actions            = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:Scan"]
+        actions            = ["dynamodb:GetItem", "dynamodb:UpdateItem"]
         allow_index_access = false
       }
     }
+
+    statements = [
+      {
+        actions   = ["s3:PutObject", "s3:DeleteObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/assets/*"]
+      }
+    ]
   }
 
   postAssetVerify = {
@@ -3857,7 +3863,7 @@ dynamodb_tables = {
     enable_stream     = true // enable stream to trigger lambda for verification updates
     stream_filter     = ["INSERT"]
     event_source      = "asset-verify-service" # matches your rule
-    event_detail-type = "AssetVerified"
+    event_detail_type = "AssetVerified"
   }
 
 

@@ -66,3 +66,4 @@ coverage.xml
 
 # Ignore All sample Data which could have sensitive information
 sampleData/
+asset_upload_dynamoDB/

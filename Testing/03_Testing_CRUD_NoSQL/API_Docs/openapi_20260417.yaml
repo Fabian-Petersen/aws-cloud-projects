@@ -463,7 +463,7 @@ paths:
             - write:pets
             - read:pet
 
-  /assets-data/{assetId}:
+  /assets/{id}:
     get:
       tags:
         - assets
@@ -473,13 +473,13 @@ paths:
       x-lambda-function: getAssetById.py
       operationId: getAssetById
       parameters:
-        - name: assetId
+        - name: id
           in: path
-          description: ID of pet to update
+          description: Asset UUID
           required: true
           schema:
-            type: integer
-            format: int64
+            type: string
+            format: uuid
       responses:
         '200':
           description: successful operation
@@ -495,26 +495,84 @@ paths:
     put:
       tags:
         - assets
-      summary: Update single asset by assetId
-      description: ''
+      summary: Update an asset and reconcile its images
+      description: Existing images named in deleted_image_keys are removed from S3 and DynamoDB. New image metadata in images returns presigned PUT URLs.
       x-lambda-runtime: python v3.12
       x-lambda-function: updateAssetById.py
       operationId: updateAssetById
       parameters:
-        - name: assetId
+        - name: id
           in: path
-          description: ID of pet to update
+          description: Asset UUID
           required: true
           schema:
-            type: integer
-            format: int64
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                location:
+                  type: string
+                business_unit:
+                  type: string
+                area:
+                  type: string
+                equipment:
+                  type: string
+                assetType:
+                  type: string
+                category:
+                  type: string
+                replacementValue:
+                  type: number
+                assetID:
+                  type: string
+                condition:
+                  type: string
+                serialNumber:
+                  type: string
+                additional_notes:
+                  type: string
+                images:
+                  type: array
+                  description: Metadata for new images that still need to be uploaded.
+                  items:
+                    type: object
+                    required: [filename, content_type]
+                    properties:
+                      filename:
+                        type: string
+                      content_type:
+                        type: string
+                deleted_image_keys:
+                  type: array
+                  description: S3 keys of existing images to remove from this asset.
+                  items:
+                    type: string
       responses:
         '200':
-          description: successful operation
+          description: Asset metadata updated; includes presigned_urls for new image uploads.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AssetResponse'
+                type: object
+                properties:
+                  message:
+                    type: string
+                  asset:
+                    type: object
+                  presigned_urls:
+                    type: array
+                    items:
+                      type: object
+                  deleted_image_keys:
+                    type: array
+                    items:
+                      type: string
       security:
         - petstore_auth:
             - write:pets
@@ -529,13 +587,13 @@ paths:
       x-lambda-function: deleteAssetById.py
       operationId: deleteAssetById
       parameters:
-        - name: assetId
+        - name: id
           in: path
-          description: ID of pet to update
+          description: Asset UUID
           required: true
           schema:
-            type: integer
-            format: int64
+            type: string
+            format: uuid
       responses:
         '200':
           description: successful operation

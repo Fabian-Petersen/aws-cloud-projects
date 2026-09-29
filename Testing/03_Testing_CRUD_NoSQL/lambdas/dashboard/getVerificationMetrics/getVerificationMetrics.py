@@ -273,6 +273,17 @@ def get_data_scope(event):
 # ---------------------------------------------------------------------------- #
 
 
+def normalize_location(value):
+    """Return a canonical location value for reliable comparisons.
+
+    Location values were historically stored with inconsistent casing and
+    whitespace.  Keep the original value for display, but compare a collapsed,
+    case-insensitive representation so values such as ``Golden Acre`` and
+    `` golden  acre `` refer to the same site.
+    """
+    return " ".join(str(value or "").split()).casefold()
+
+
 def scan_all_items(location=None):
     """
     Scan asset verification data.
@@ -300,16 +311,22 @@ def scan_all_items(location=None):
         "ExpressionAttributeNames": expression_attribute_names,
     }
 
-    if location:
-        scan_kwargs["FilterExpression"] = "#location = :location"
-        scan_kwargs["ExpressionAttributeValues"] = {
-            ":location": location
-        }
+    normalized_location = normalize_location(location)
 
     while True:
         response = assets_table.scan(**scan_kwargs)
 
-        items.extend(response.get("Items", []))
+        page_items = response.get("Items", [])
+
+        if normalized_location:
+            page_items = [
+                item
+                for item in page_items
+                if normalize_location(item.get("location"))
+                == normalized_location
+            ]
+
+        items.extend(page_items)
 
         last_key = response.get("LastEvaluatedKey")
 
@@ -454,21 +471,20 @@ def lambda_handler(event, context):
             ],
         }
 
-        return _response(200, json.dumps(verification_data, default=decimal_serializer,
-                                         ), HEADERS)
+        return _response(200, verification_data, HEADERS)
 
     except Exception as e:
         print(
             f"Error fetching asset verification metrics: {e}"
         )
 
-        return _response(500, json.dumps(
+        return _response(
+            500,
             {
-                "error": (
-                    "Failed to fetch asset "
-                    "verification metrics"
-                )
-            }), HEADERS)
+                "error": "Failed to fetch asset verification metrics"
+            },
+            HEADERS,
+        )
 
 # ---------------------------------------------------------------------------- #
 #                                Response helper                               #
@@ -492,139 +508,3 @@ def _response(status_code, body, headers):
         "body": json.dumps(body, default=decimal_serializer),
         "headers": headers,
     }
-
-
-# import boto3
-# import json
-# import os
-# from datetime import datetime, timezone, timedelta
-# from decimal import Decimal
-
-# dynamodb = boto3.resource("dynamodb")
-# table = dynamodb.Table("crud-nosql-app-assets-table")
-
-# # How many days out counts as "Due" rather than comfortably "Verified"
-# DUE_SOON_DAYS = int(os.environ.get("DUE_SOON_DAYS", 30))
-
-
-# def decimal_serializer(obj):
-#     """
-#     Custom JSON serializer for handling DynamoDB Decimal types.
-#     Args:
-#         obj: Object to serialize.
-#     Returns:
-#         int | float: Converted numeric value.
-#     Raises:
-#         TypeError: If object type is not supported.
-#     """
-#     if isinstance(obj, Decimal):
-#         if obj % 1 == 0:
-#             return int(obj)
-#         return float(obj)
-#     raise TypeError
-
-
-# def parse_iso(date_str):
-#     """Parse an ISO8601 string (with or without offset) into an aware datetime."""
-#     if not date_str:
-#         return None
-#     try:
-#         dt = datetime.fromisoformat(date_str)
-#         if dt.tzinfo is None:
-#             dt = dt.replace(tzinfo=timezone.utc)
-#         return dt
-#     except ValueError:
-#         return None
-
-
-# def scan_all_items():
-#     items = []
-#     scan_kwargs = {
-#         "ProjectionExpression": "verify_status, next_verification_due, last_verified_at",
-#     }
-
-#     while True:
-#         response = table.scan(**scan_kwargs)
-#         items.extend(response.get("Items", []))
-
-#         last_key = response.get("LastEvaluatedKey")
-#         if not last_key:
-#             break
-#         scan_kwargs["ExclusiveStartKey"] = last_key
-
-#     return items
-
-
-# def classify_status(item, now, due_soon_cutoff):
-#     verify_status = (item.get("verify_status") or "").lower()
-#     last_verified_at = item.get("last_verified_at")
-#     next_due = parse_iso(item.get("next_verification_due"))
-
-#     # Never verified at all
-#     if verify_status != "verified" or not last_verified_at:
-#         return "Not Verified"
-
-#     # Verified, but no due date on record -> treat as verified
-#     if next_due is None:
-#         return "Verified"
-
-#     if next_due < now:
-#         return "Overdue"
-#     if next_due <= due_soon_cutoff:
-#         return "Due"
-#     return "Verified"
-
-
-# def lambda_handler(event, context):
-#     print("event:", json.dumps(event, default=decimal_serializer))
-#     try:
-#         items = scan_all_items()
-
-#         now = datetime.now(timezone.utc)
-#         due_soon_cutoff = now + timedelta(days=DUE_SOON_DAYS)
-
-#         status_counts = {
-#             "Verified": 0,
-#             "Due": 0,
-#             "Overdue": 0,
-#             "Not Verified": 0,
-#         }
-
-#         for item in items:
-#             status = classify_status(item, now, due_soon_cutoff)
-#             status_counts[status] += 1
-
-#         total = len(items)
-#         verified = status_counts["Verified"]
-#         compliance = round((verified / total) * 100) if total > 0 else 0
-
-#         verification_data = {
-#             "compliance": compliance,
-#             "total": total,
-#             "statuses": [
-#                 {"name": label, "value": status_counts[label]}
-#                 for label in ["Verified", "Due", "Overdue", "Not Verified"]
-#             ],
-#         }
-
-#         print("verificationData:", json.dumps(verification_data, default=decimal_serializer))
-
-#         return {
-#             "statusCode": 200,
-#             "headers": {
-#                 "Content-Type": "application/json",
-#                 "Access-Control-Allow-Origin": "*",
-#             },
-#             "body": json.dumps(verification_data, default=decimal_serializer),
-#         }
-
-#     except Exception as e:
-#         print(f"Error fetching asset verification metrics: {e}")
-#         return {
-#             "statusCode": 500,
-#             "headers": {
-#                 "Content-Type": "application/json",
-#                 "Access-Control-Allow-Origin": "*",
-#             },
-#             "body": json.dumps({"error": "Failed to fetch asset verification metrics"}),
-#         }
