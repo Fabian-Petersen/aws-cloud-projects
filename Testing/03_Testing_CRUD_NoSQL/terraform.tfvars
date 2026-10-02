@@ -2163,6 +2163,12 @@ lambda_functions = {
         allow_index_access = true
       }
 
+      locations_table = {
+        table_name         = "crud-nosql-app-locations-table"
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = true
+      }
+
       jobcard_sequences_table = {
         table_name         = "crud-nosql-app-jobcard-sequences-table"
         actions            = ["dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]

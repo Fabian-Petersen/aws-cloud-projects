@@ -128,7 +128,7 @@ def handle_options_request(method, headers):
         dict | None: HTTP _response if OPTIONS request, otherwise None.
     """
     if method == "OPTIONS":
-        return __response(200, {"message": "Success"}, headers)
+        return _response(200, {"message": "Success"}, headers)
     return None
 
 # ======================================================================================
@@ -192,13 +192,10 @@ def option(value):
 
 def get_all_locations():
     """
-    Locations are not queried from LocationIndex because we don't
-    have a location value to use as the partition key.
+    Retrieve all unique locations from the assets table.
 
-    Instead, scan only the location attribute.
-
-    ExpressionAttributeNames is used because "location" can be
-    treated as a reserved word by DynamoDB expressions.
+    Location values are returned exactly as stored in DynamoDB.
+    No title-case or other presentation formatting is applied.
     """
 
     locations = set()
@@ -214,9 +211,7 @@ def get_all_locations():
 
         while True:
 
-            result = assets_table.scan(
-                **scan_kwargs
-            )
+            result = assets_table.scan(**scan_kwargs)
 
             for item in result.get("Items", []):
 
@@ -224,28 +219,23 @@ def get_all_locations():
 
                 if is_valid_value(location):
                     locations.add(
-                        normalize(location)
+                        str(location).strip()
                     )
 
-            last_key = result.get(
-                "LastEvaluatedKey"
-            )
+            last_key = result.get("LastEvaluatedKey")
 
             if not last_key:
                 break
 
             scan_kwargs["ExclusiveStartKey"] = last_key
 
-        # We want the original display value.
-        #
-        # Since locations are normally consistently stored,
-        # title casing isn't performed here.
         sorted_locations = sorted(
-            locations
+            locations,
+            key=lambda value: value.lower()
         )
 
         return [
-            option(location.title())
+            option(location)
             for location in sorted_locations
         ]
 

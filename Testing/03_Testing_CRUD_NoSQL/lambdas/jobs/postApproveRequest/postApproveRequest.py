@@ -1,89 +1,191 @@
 import json
 import boto3
+
 from datetime import datetime, timezone, timedelta
+from decimal import Decimal
+
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
 
+
+# ---------------------------------------------------------------------------- #
+#                                  AWS SETUP                                   #
+# ---------------------------------------------------------------------------- #
+
 dynamodb = boto3.resource("dynamodb")
+
 
 TABLE_NAME_REQUESTS = "crud-nosql-app-maintenance-request-table"
 table_requests = dynamodb.Table(TABLE_NAME_REQUESTS)
 
+
 TABLE_NAME_JOBCARD_SEQUENCE = "crud-nosql-app-jobcard-sequences-table"
 table_jobcard_sequence = dynamodb.Table(TABLE_NAME_JOBCARD_SEQUENCE)
+
+
+TABLE_NAME_LOCATIONS = "crud-nosql-app-locations-table"
+table_locations = dynamodb.Table(TABLE_NAME_LOCATIONS)
+
 
 HEADERS = {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "http://localhost:5173",
     "Access-Control-Allow-Methods": "POST,PUT,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Requested-With",
-    "Access-Control-Allow-Credentials": "true"
+    "Access-Control-Allow-Headers":
+        "Content-Type,Authorization,X-Amz-Date,X-Api-Key,"
+        "X-Amz-Security-Token,X-Requested-With",
+    "Access-Control-Allow-Credentials": "true",
 }
+
+
+# ---------------------------------------------------------------------------- #
+#                               HELPER FUNCTIONS                               #
+# ---------------------------------------------------------------------------- #
+
+def decimal_serializer(obj):
+    """
+    Convert DynamoDB Decimal values into JSON serializable values.
+
+    DynamoDB numbers are returned by boto3 as Decimal objects.
+    Whole numbers are converted to int and decimal numbers to float.
+    """
+    if isinstance(obj, Decimal):
+        if obj % 1 == 0:
+            return int(obj)
+
+        return float(obj)
+
+    raise TypeError(
+        f"Object of type {obj.__class__.__name__} "
+        "is not JSON serializable"
+    )
+
+
+def normalize_string(value: str | None) -> str:
+    """
+    Normalize strings used by the backend.
+
+    All values are stripped and converted to lowercase.
+    """
+    return str(value or "").strip().lower()
 
 
 def get_request_by_id(request_id: str) -> dict | None:
     """
-    Retrieve a maintenance request from DynamoDB by its request ID. 
-    This function queries the maintenance request table using the `id`
-    partition key and returns the first matching item.  
-    Args:
-        request_id: The unique identifier of the request.   
-    Returns:
-        A dictionary representing the request item if found, otherwise `None`.  
-    Notes:
-        This function assumes:
-        - `id` is the partition key of the table.
-        - the query will return at most one logical request for the given ID.
+    Retrieve a maintenance request by its request ID.
+
+    The maintenance request table uses:
+        PK: id
+        SK: jobCreated
+
+    Since only the partition key is known at this stage, query for the
+    request ID and return the first matching item.
     """
     response = table_requests.query(
         KeyConditionExpression=Key("id").eq(request_id),
-        Limit=1
+        Limit=1,
     )
+
     items = response.get("Items", [])
+
     return items[0] if items else None
 
 
-locations = {
-    'phillipi': 'PHP',
-    'bellville': 'BTX',
-    'khayelitsha': 'IKH',
-    'wynberg': 'WBG',
-    'maitland': 'VTR',
-    'golden acre': 'GAC',
-    'distribution centre': 'DCN',
-    'central services': 'CTS'
-}
+def get_locations() -> dict[str, str]:
+    """
+    Retrieve all locations and their location codes from DynamoDB.
+
+    The locations table is the source of truth for valid locations.
+    This removes the need to maintain a hard-coded location dictionary
+    in every Lambda.
+
+    Expected DynamoDB items:
+
+        {
+            "location": "maitland",
+            "code": "VTR"
+        }
+
+    Returns:
+        {
+            "maitland": "VTR",
+            "bellville": "BTX",
+            ...
+        }
+
+    Location names are normalized to lowercase to match the backend
+    storage format.
+
+    Pagination is handled in case the table grows beyond a single
+    DynamoDB scan response.
+    """
+    locations = {}
+    last_evaluated_key = None
+
+    try:
+        while True:
+
+            params = {
+                "ProjectionExpression": "#loc, #code",
+                "ExpressionAttributeNames": {
+                    "#loc": "location",
+                    "#code": "code",
+                },
+            }
+
+            if last_evaluated_key:
+                params["ExclusiveStartKey"] = last_evaluated_key
+
+            response = table_locations.scan(**params)
+
+            for item in response.get("Items", []):
+
+                location = normalize_string(item.get("location"))
+                code = str(item.get("code") or "").strip().upper()
+
+                # Only add valid location/code combinations.
+                if location and code:
+                    locations[location] = code
+
+            last_evaluated_key = response.get("LastEvaluatedKey")
+
+            if not last_evaluated_key:
+                break
+
+        return locations
+
+    except ClientError as exc:
+        print(
+            "Error retrieving locations:",
+            exc.response.get("Error", {}).get("Message", str(exc)),
+        )
+        raise
 
 
 def get_cape_town_now() -> datetime:
     """
-    Return the current date and time in Cape Town.
-
-    Returns:
-        A timezone-aware datetime object representing the current
-        date and time in Cape Town (UTC+2).
+    Return the current Cape Town/SAST date and time.
     """
-    utc_now = datetime.now(timezone.utc)
-    return utc_now.astimezone(timezone(timedelta(hours=2)))
+    sast = timezone(timedelta(hours=2))
+
+    return datetime.now(timezone.utc).astimezone(sast)
 
 
 def get_month_bounds():
     """
-    Return the current month's date boundaries for Cape Town time.
-
-    This function calculates the start of the current month, the start of the
-    next month, and a formatted year-month string based on the current date
-    and time in Cape Town.
-
-    Returns:
-        A tuple containing:
-        - start_of_month: ISO 8601 string for the first moment of the current month
-        - next_month: ISO 8601 string for the first moment of the next month
-        - current_month_code: A string in YYYYMM format for the current month
+    Return the start of the current month, start of next month,
+    and YYYYMM code using Cape Town time.
     """
     now_ct = get_cape_town_now()
+
     start_of_month = now_ct.replace(
-        day=1, hour=0, minute=0, second=0, microsecond=0)
+        day=1,
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
+
     if now_ct.month == 12:
         next_month = now_ct.replace(
             year=now_ct.year + 1,
@@ -92,8 +194,9 @@ def get_month_bounds():
             hour=0,
             minute=0,
             second=0,
-            microsecond=0
+            microsecond=0,
         )
+
     else:
         next_month = now_ct.replace(
             month=now_ct.month + 1,
@@ -101,36 +204,22 @@ def get_month_bounds():
             hour=0,
             minute=0,
             second=0,
-            microsecond=0
+            microsecond=0,
         )
 
-    return start_of_month.isoformat(), next_month.isoformat(), now_ct.strftime("%Y%m")
+    current_month_code = now_ct.strftime("%Y%m")
+
+    return (
+        start_of_month.isoformat(),
+        next_month.isoformat(),
+        current_month_code,
+    )
 
 
 def get_monthly_jobcard_count(location: str) -> int:
     """
-    Return the number of requests for a given location in the current month.
-
-    This function queries the `LocationIndex` global secondary index in DynamoDB
-    and counts all request items where the `location` matches the given value
-    and the `jobCreated` date falls within the current month.
-
-    Pagination is handled automatically so that all matching items are counted,
-    even when the query result spans multiple pages.
-
-    Args:
-        location: The location name used to filter request records.
-
-    Returns:
-        The total number of request items for the specified location in the
-        current month.
-
-    Notes:
-        This function assumes:
-        - `LocationIndex` exists on the table.
-        - `location` is the partition key of `LocationIndex`.
-        - `jobCreated` is the sort key of `LocationIndex`.
-        - `jobCreated` is stored in a format that supports chronological range queries, such as ISO 8601.
+    Return the number of maintenance requests for a location
+    during the current month.
     """
     start_date, end_date, _ = get_month_bounds()
 
@@ -138,22 +227,25 @@ def get_monthly_jobcard_count(location: str) -> int:
     last_evaluated_key = None
 
     while True:
+
         params = {
             "IndexName": "LocationIndex",
             "KeyConditionExpression": (
-                Key("location").eq(location) &
-                Key("jobCreated").between(start_date, end_date)
+                Key("location").eq(normalize_string(location))
+                & Key("jobCreated").between(start_date, end_date)
             ),
-            "Select": "COUNT"
+            "Select": "COUNT",
         }
 
         if last_evaluated_key:
             params["ExclusiveStartKey"] = last_evaluated_key
 
         response = table_requests.query(**params)
+
         total_count += response.get("Count", 0)
 
         last_evaluated_key = response.get("LastEvaluatedKey")
+
         if not last_evaluated_key:
             break
 
@@ -162,36 +254,43 @@ def get_monthly_jobcard_count(location: str) -> int:
 
 def generate_jobcard_no(location: str, request_id: str) -> str:
     """
-    Generate the next jobcard number for a given location using an atomic
-    counter stored in a separate DynamoDB table.
+    Generate the next jobcard number for a location.
 
-    The counter is partitioned by location code and month (YYYYMM), so each
-    location has its own monthly sequence.
-
-    Counter item example:
-        {
-            "id": "JOBCARD#PHP#202603",
-            "lastSequence": 7,
-            "lastRequestId": "<request_id>",
-            "updatedAt": "<iso timestamp>"
-        }
+    Location information is retrieved from the locations DynamoDB table
+    instead of using a hard-coded dictionary.
 
     Format:
         Job-<LOCATION_CODE>-<YYYYMM>-<SEQUENCE>
 
     Example:
-        Job-PHP-202603-0008
+        Job-VTR-202610-0001
     """
-    location_id = locations.get(location)
-    if not location_id:
-        raise ValueError(f"Unknown location: {location}")
+
+    # Normalize the location stored on the maintenance request.
+    normalized_location = normalize_string(location)
+
+    # Retrieve the latest location/code mappings from DynamoDB.
+    locations = get_locations()
+
+    # Resolve the location code from the locations table.
+    location_code = locations.get(normalized_location)
+
+    if not location_code:
+        raise ValueError(
+            f"Location '{normalized_location}' does not have "
+            "a valid code in the locations table"
+        )
 
     _, _, job_date = get_month_bounds()
-    counter_id = f"JOBCARD#{location_id}#{job_date}"
+
+    counter_id = f"JOBCARD#{location_code}#{job_date}"
+
     now_iso = datetime.now(timezone.utc).isoformat()
 
     response = table_jobcard_sequence.update_item(
-        Key={"id": counter_id},
+        Key={
+            "id": counter_id,
+        },
         UpdateExpression="""
             SET lastSequence = if_not_exists(lastSequence, :zero) + :inc,
                 lastRequestId = :request_id,
@@ -201,110 +300,75 @@ def generate_jobcard_no(location: str, request_id: str) -> str:
             ":zero": 0,
             ":inc": 1,
             ":request_id": request_id,
-            ":updated_at": now_iso
+            ":updated_at": now_iso,
         },
-        ReturnValues="UPDATED_NEW"
+        ReturnValues="UPDATED_NEW",
     )
 
-    next_number = int(response["Attributes"]["lastSequence"])
-    return f"Job-{location_id}-{job_date}-{next_number:04d}"
+    next_number = int(
+        response["Attributes"]["lastSequence"]
+    )
+
+    return (
+        f"Job-{location_code}-"
+        f"{job_date}-"
+        f"{next_number:04d}"
+    )
 
 
 def generate_test_event(event: dict) -> str:
     """
-    Serialises a Lambda event into a compact JSON string suitable for reuse as a test fixture.
-
-    This function converts the incoming event dictionary into a single-line JSON string
-    without extra whitespace, making it easy to copy from logs (e.g. CloudWatch) and
-    reuse directly in event.json files or API Gateway test payloads.
-
-    Args:
-        event (dict): The Lambda event object received from API Gateway or another source.
-
-    Returns:
-        str: A compact JSON string representation of the event, formatted for test reuse.
-
-    Use:
-    The output of this function can be printed in the Lambda logs to capture the exact event structure for testing.
-    For example, you can run this function in your Lambda handler to print the event:
-
-    print("COPY_EVENT:", generate_test_event(event))
-    return {
-        "statusCode": 200,
-        "body": json.dumps({"message": "ok"})
-    }
+    Serialize a Lambda event into a compact JSON string that can be
+    copied from CloudWatch and reused as a Lambda test event.
     """
-    return json.dumps(event, separators=(",", ":"))
+    return json.dumps(
+        event,
+        separators=(",", ":"),
+        default=decimal_serializer,
+    )
 
 
-def normalize_string(value: str | None) -> str:
-    return str(value or "").strip().lower()
-
+# ---------------------------------------------------------------------------- #
+#                               LAMBDA HANDLER                                 #
+# ---------------------------------------------------------------------------- #
 
 def lambda_handler(event, context):
     """
-    Process a maintenance request approval.
+    Process maintenance request status updates and approvals.
 
-    This Lambda function validates the incoming API request body, retrieves the
-    existing maintenance request from DynamoDB, and updates the request with the
-    provided assignment and target date details.
+    When the incoming status is "Approved":
 
-    When the incoming status is `approved`, the function:
-    - changes the stored database status to `In Progress`
-    - generates a new jobcard number based on the request location
-    - records approval metadata, including the approval timestamp and approver details
+        - status becomes "in progress"
+        - technician/user assignment information is added
+        - target date is added
+        - approval metadata is added
+        - a new jobcard number is generated
 
-    For all other supported statuses, the function updates the request without
-    generating approval metadata.
-
-    Args:
-        event: The AWS Lambda event payload from API Gateway. Expected to contain:
-            - `body`: A JSON string with:
-                - `targetDate`
-                - `status`
-                - `selectedRowId`
-                - `assign_to_name`
-                - `assign_to_sub`
-                - `assign_to_group`
-            - `requestContext.authorizer.claims`: Cognito user claims for the authenticated user performing the action.
-        context: The AWS Lambda context runtime information. Not used directly
-            in this function.
-
-    Returns:
-        A dictionary containing:
-        - `statusCode`: HTTP response status code
-        - `headers`: Response headers
-        - `body`: JSON-encoded response message and, on success, the updated item
-
-    Response codes:
-        - 200: The request was updated successfully
-        - 400: The request body or required fields are missing
-        - 404: The request could not be found
-        - 500: A server-side or database error occurred
-
-    Notes:
-        This function assumes:
-        - the DynamoDB table uses `id` as the partition key and `jobCreated`
-        as the sort key
-        - `get_request_by_id()` returns the existing request item
-        - `generate_jobcard_no()` returns a valid jobcard number for the
-        request location
-        - the frontend may send `Approved`, but the database stores this as
-        `In Progress`
+    Location codes are dynamically retrieved from the locations table.
     """
-    # print("COPY_EVENT:", generate_test_event(event))
-    # return {
-    #     "statusCode": 200,
-    #     "body": json.dumps({"message": "ok"})
-    # }
 
     try:
+
+        # -------------------------------------------------------------------- #
+        # Validate request body
+        # -------------------------------------------------------------------- #
+
         if not event.get("body"):
-            return _response(400, {"message": "Missing request body"})
+            return _response(
+                400,
+                {
+                    "message": "Missing request body",
+                },
+            )
 
         data = json.loads(event["body"])
-        claims = event.get("requestContext", {}).get(
-            "authorizer", {}).get("claims", {})
+
+        claims = (
+            event
+            .get("requestContext", {})
+            .get("authorizer", {})
+            .get("claims", {})
+        )
 
         required_fields = [
             "targetDate",
@@ -312,40 +376,117 @@ def lambda_handler(event, context):
             "selectedRowId",
             "assign_to_name",
             "assign_to_sub",
-            "assign_to_group"
+            "assign_to_group",
         ]
+
         for field in required_fields:
+
             if field not in data or data[field] == "":
-                return _response(400, {"message": f"Missing field: {field}"})
+                return _response(
+                    400,
+                    {
+                        "message": f"Missing field: {field}",
+                    },
+                )
 
-        request_id = data["selectedRowId"]
-        action_status = normalize_string(data.get("status"))
-        targetDate = data["targetDate"]
-        assign_to_name = normalize_string(data.get("assign_to_name"))
-        assign_to_sub = normalize_string(data.get("assign_to_sub"))
-        assign_to_group = normalize_string(data.get("assign_to_group"))
+        # -------------------------------------------------------------------- #
+        # Normalize request data
+        # -------------------------------------------------------------------- #
 
-        # $ Include this on creation and whenever `status` is changed
-        SAST = timezone(timedelta(hours=2))
-        status_updated_at = datetime.now(
-            timezone.utc).astimezone(SAST).isoformat()
+        request_id = str(
+            data["selectedRowId"]
+        ).strip()
 
-        # Get existing item first so we can read the sort key
-        existing_item = get_request_by_id(request_id)
+        action_status = normalize_string(
+            data.get("status")
+        )
+
+        target_date = str(
+            data["targetDate"]
+        ).strip()
+
+        assign_to_name = normalize_string(
+            data.get("assign_to_name")
+        )
+
+        assign_to_sub = str(
+            data.get("assign_to_sub") or ""
+        ).strip()
+
+        assign_to_group = normalize_string(
+            data.get("assign_to_group")
+        )
+
+        # -------------------------------------------------------------------- #
+        # Status timestamp
+        # -------------------------------------------------------------------- #
+
+        status_updated_at = (
+            get_cape_town_now().isoformat()
+        )
+
+        # -------------------------------------------------------------------- #
+        # Retrieve existing maintenance request
+        # -------------------------------------------------------------------- #
+
+        existing_item = get_request_by_id(
+            request_id
+        )
+
         if not existing_item:
-            return _response(404, {"message": "Request not found"})
+            return _response(
+                404,
+                {
+                    "message": "Request not found",
+                },
+            )
 
-        job_created = existing_item.get("jobCreated")
+        job_created = existing_item.get(
+            "jobCreated"
+        )
+
         if not job_created:
-            return _response(500, {"message": "Existing item missing jobCreated"})
+            return _response(
+                500,
+                {
+                    "message":
+                        "Existing item missing jobCreated",
+                },
+            )
 
-        # $ Get the location when we need to build the jobcard
-        location = existing_item.get("location")
-        if action_status == "approved" and not location:
-            return _response(500, {"message": "Location not found"})
+        # -------------------------------------------------------------------- #
+        # Get the request location
+        # -------------------------------------------------------------------- #
 
-        # Frontend action -> DB status
-        db_status = "in progress" if action_status == "approved" else action_status
+        location = normalize_string(
+            existing_item.get("location")
+        )
+
+        if (
+            action_status == "approved"
+            and not location
+        ):
+            return _response(
+                500,
+                {
+                    "message":
+                        "Location not found on maintenance request",
+                },
+            )
+
+        # -------------------------------------------------------------------- #
+        # Translate frontend action into database status
+        # -------------------------------------------------------------------- #
+
+        db_status = (
+            "in progress"
+            if action_status == "approved"
+            else action_status
+        )
+
+        # -------------------------------------------------------------------- #
+        # Base update
+        # -------------------------------------------------------------------- #
 
         update_expression = """
             SET #s = :status,
@@ -362,24 +503,51 @@ def lambda_handler(event, context):
             "#an": "assign_to_name",
             "#as": "assign_to_sub",
             "#ag": "assign_to_group",
-            "#su": "statusUpdatedAt"
+            "#su": "statusUpdatedAt",
         }
 
         expression_attribute_values = {
             ":status": db_status,
-            ":targetDate": targetDate,
+            ":targetDate": target_date,
             ":assign_to_name": assign_to_name,
             ":assign_to_sub": assign_to_sub,
             ":assign_to_group": assign_to_group,
-            ":statusUpdatedAt": status_updated_at
+            ":statusUpdatedAt": status_updated_at,
         }
 
+        condition_expression = (
+            "attribute_exists(id) "
+            "AND attribute_exists(jobCreated)"
+        )
+
+        # -------------------------------------------------------------------- #
+        # Approval-specific data
+        # -------------------------------------------------------------------- #
+
         if action_status == "approved":
-            jobcardNumber = generate_jobcard_no(location, request_id)
-            approved_at = datetime.now(timezone.utc).isoformat()
-            approved_by = f'{claims.get("name", "").strip()} {claims.get("family_name", "").strip()}'.strip(
+
+            # --------------------------------------------------------------- #
+            # Dynamically retrieve the location code and generate jobcard
+            # --------------------------------------------------------------- #
+
+            jobcard_number = generate_jobcard_no(
+                location,
+                request_id,
             )
-            approved_by_sub = claims.get("sub", "")
+
+            approved_at = (
+                datetime.now(timezone.utc)
+                .isoformat()
+            )
+
+            approved_by = (
+                f'{claims.get("name", "").strip()} '
+                f'{claims.get("family_name", "").strip()}'
+            ).strip()
+
+            approved_by_sub = (
+                claims.get("sub", "")
+            )
 
             update_expression += """,
                 approved_at = :approved_at,
@@ -387,50 +555,155 @@ def lambda_handler(event, context):
                 approved_by_sub = :approved_by_sub,
                 jobcardNumber = :jobcardNumber
             """
-            expression_attribute_values[":approved_at"] = approved_at
-            expression_attribute_values[":approved_by"] = approved_by
-            expression_attribute_values[":approved_by_sub"] = approved_by_sub
-            expression_attribute_values[":jobcardNumber"] = jobcardNumber
 
-            condition_expression = "attribute_exists(id) AND attribute_exists(jobCreated)"
+            expression_attribute_values[
+                ":approved_at"
+            ] = approved_at
 
-            if action_status == "approved":
-                condition_expression += " AND attribute_not_exists(jobcardNumber)"
+            expression_attribute_values[
+                ":approved_by"
+            ] = approved_by
 
-            response = table_requests.update_item(
-                Key={
-                    "id": request_id,
-                    "jobCreated": job_created
-                },
-                UpdateExpression=update_expression,
-                ExpressionAttributeNames=expression_attribute_names,
-                ExpressionAttributeValues=expression_attribute_values,
-                ConditionExpression=condition_expression,
-                ReturnValues="ALL_NEW"
+            expression_attribute_values[
+                ":approved_by_sub"
+            ] = approved_by_sub
+
+            expression_attribute_values[
+                ":jobcardNumber"
+            ] = jobcard_number
+
+            # Prevent the same request from receiving another jobcard number.
+            condition_expression += (
+                " AND attribute_not_exists(jobcardNumber)"
             )
 
-        return _response(200, {
-            "message": "Request updated successfully...",
-            "data": response.get("Attributes", {})
-        })
+        # -------------------------------------------------------------------- #
+        # Update maintenance request
+        # -------------------------------------------------------------------- #
+
+        response = table_requests.update_item(
+            Key={
+                "id": request_id,
+                "jobCreated": job_created,
+            },
+            UpdateExpression=update_expression,
+            ExpressionAttributeNames=(
+                expression_attribute_names
+            ),
+            ExpressionAttributeValues=(
+                expression_attribute_values
+            ),
+            ConditionExpression=condition_expression,
+            ReturnValues="ALL_NEW",
+        )
+
+        # -------------------------------------------------------------------- #
+        # Response
+        # -------------------------------------------------------------------- #
+
+        return _response(
+            200,
+            {
+                "message":
+                    "Request updated successfully",
+                "data": response.get(
+                    "Attributes",
+                    {},
+                ),
+            },
+        )
+
+    # ------------------------------------------------------------------------ #
+    # DynamoDB Errors
+    # ------------------------------------------------------------------------ #
 
     except ClientError as exc:
-        error_code = exc.response["Error"]["Code"]
 
-        if error_code == "ConditionalCheckFailedException":
-            return _response(404, {"message": "Request not found"})
+        error_code = (
+            exc.response
+            .get("Error", {})
+            .get("Code")
+        )
 
-        print("DynamoDB Error:", exc)
-        return _response(500, {"message": "Database error"})
+        if (
+            error_code
+            == "ConditionalCheckFailedException"
+        ):
+            return _response(
+                409,
+                {
+                    "message":
+                        "Request could not be updated. "
+                        "It may already have been approved.",
+                },
+            )
+
+        print(
+            "DynamoDB Error:",
+            exc.response.get("Error", {}),
+        )
+
+        return _response(
+            500,
+            {
+                "message": "Database error",
+            },
+        )
+
+    # ------------------------------------------------------------------------ #
+    # Validation / Location Errors
+    # ------------------------------------------------------------------------ #
+
+    except ValueError as exc:
+
+        print(
+            "Validation Error:",
+            str(exc),
+        )
+
+        return _response(
+            400,
+            {
+                "message": str(exc),
+            },
+        )
+
+    # ------------------------------------------------------------------------ #
+    # Unexpected Errors
+    # ------------------------------------------------------------------------ #
 
     except Exception as exc:
-        print("Error:", exc)
-        return _response(500, {"message": "Internal server error"})
 
+        print(
+            "Error:",
+            str(exc),
+        )
+
+        return _response(
+            500,
+            {
+                "message":
+                    "Internal server error",
+            },
+        )
+
+
+# ---------------------------------------------------------------------------- #
+#                                  RESPONSE                                    #
+# ---------------------------------------------------------------------------- #
 
 def _response(status_code, body):
+    """
+    Build an API Gateway response.
+
+    decimal_serializer is required because DynamoDB returns numeric
+    attributes as Decimal objects.
+    """
     return {
         "statusCode": status_code,
         "headers": HEADERS,
-        "body": json.dumps(body),
+        "body": json.dumps(
+            body,
+            default=decimal_serializer,
+        ),
     }
