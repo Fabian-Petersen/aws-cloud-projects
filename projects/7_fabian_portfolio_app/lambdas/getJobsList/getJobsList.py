@@ -1,5 +1,5 @@
 """
-This function returns all the jobs in the maintenance request table. Admins and technicians can see all jobs, while regular users only see their own jobs. The function also supports filtering by job status using a GSI for efficient queries. CORS headers are dynamically set based on the request origin, and dates are formatted for human readability in SAST. The function handles OPTIONS requests for CORS preflight and includes robust error handling for missing user information or database issues.
+This function returns all the jobs in the maintenance request table. Admins and maintenances can see all jobs, while regular users only see their own jobs. The function also supports filtering by job status using a GSI for efficient queries. CORS headers are dynamically set based on the request origin, and dates are formatted for human readability in SAST. The function handles OPTIONS requests for CORS preflight and includes robust error handling for missing user information or database issues.
 
 """
 
@@ -207,14 +207,14 @@ def lambda_handler(event, context):
         return options_response
 
     try:
-        is_admin_or_technician = any(
-            group in ["admin", "technician"] for group in groups)
+        is_admin_or_maintenance = any(
+            group in ["admin", "maintenance"] for group in groups)
 
         # ----------------------------
         # DATA FETCH LOGIC
         # ----------------------------
 
-        if is_admin_or_technician:
+        if is_admin_or_maintenance:
             # ✅ USE GSI IF STATUS EXISTS
             if status:
                 items = query_by_status(status)

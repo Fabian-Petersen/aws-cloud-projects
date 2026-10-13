@@ -64,6 +64,24 @@ terraform init
 terraform apply
 ```
 
+Sync Application with atlantic-meat repository:
+
+Account 1 commit
+
+```bash
+git add .
+git commit -m "Update backend"
+git push origin main
+```
+
+sync with repository in account 2
+
+```bash
+git subtree push \
+  --prefix=Testing/03_Testing_CRUD_NoSQL \
+  aws-backend main
+```
+
 ## 💬 Contact
 
 Author: Fabian Petersen <br>

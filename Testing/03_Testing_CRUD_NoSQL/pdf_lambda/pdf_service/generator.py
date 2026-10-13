@@ -40,6 +40,8 @@ class PDFGenerator:
 
         doc = build_doc(buffer)
         styles = getSampleStyleSheet()
+        styles["Heading3"].spaceBefore = 6
+        styles["Heading3"].spaceAfter = 3
         meta_styles = meta_style(styles)
 
         story = []
@@ -48,7 +50,7 @@ class PDFGenerator:
         story += build_header(styles, width, self.assets_dir)
         story += build_job_info(jobcard, width, meta_styles)
         story += build_description(jobcard, styles)
-        story += build_services(jobcard, styles)
+        story += build_services(jobcard, styles, width)
         story += build_findings(jobcard, styles)
         story += build_work_completed(jobcard, styles)
         story += build_signature(jobcard, styles)

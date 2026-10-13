@@ -4,5 +4,5 @@ def build_work_completed(jobcard, styles):
     return [
         Paragraph("<b>Work Completed</b>", styles["Heading3"]),
         Paragraph(jobcard.get("work_completed", ""), styles["Normal"]),
-        Spacer(1, 10)
+        Spacer(1, 6)
     ]

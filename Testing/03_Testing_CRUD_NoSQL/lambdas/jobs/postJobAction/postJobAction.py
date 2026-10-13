@@ -5,8 +5,13 @@ from decimal import Decimal
 from datetime import datetime, timezone, timedelta
 from botocore.config import Config
 from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.types import TypeSerializer
+from botocore.exceptions import ClientError
 
 dynamodb = boto3.resource("dynamodb")
+dynamodb_client = boto3.client("dynamodb")
+serializer = TypeSerializer()
+
 s3 = boto3.client(
     "s3",
     region_name="af-south-1",
@@ -47,6 +52,14 @@ def decimal_serializer(obj):
             return int(obj)
         return float(obj)
     raise TypeError
+
+
+def serialize_dynamodb_item(item: dict) -> dict:
+    """Convert a Python dictionary to DynamoDB's low-level attribute format."""
+    return {
+        key: serializer.serialize(value)
+        for key, value in item.items()
+    }
 
 # ---------------------------------------------------------------------------- #
 #                                 CORS Helpers                                 #
@@ -176,7 +189,13 @@ ACCEPTED_TYPES = {
 }
 
 
-def generate_url(prefix: str, file_info: dict, accepted_types: list[str], item_id: str) -> dict | None:
+def generate_url(
+    prefix: str,
+    upload_type: str,
+    file_info: dict,
+    accepted_types: list[str],
+    item_id: str,
+) -> dict | None:
     filename = file_info.get("filename")
     content_type = file_info.get("content_type", "application/octet-stream")
 
@@ -199,7 +218,13 @@ def generate_url(prefix: str, file_info: dict, accepted_types: list[str], item_i
     if "s3.af-south-1.amazonaws.com" not in url:
         raise Exception("Presigned URL generated with incorrect S3 endpoint")
 
-    return {"filename": filename, "url": url, "key": key, "content_type": content_type}
+    return {
+        "type": upload_type,
+        "filename": filename,
+        "url": url,
+        "key": key,
+        "content_type": content_type,
+    }
 
 
 def lambda_handler(event, context):
@@ -215,13 +240,13 @@ def lambda_handler(event, context):
         if not event.get("body"):
             return _response(400, {"message": "Missing request body"}, HEADERS)
 
-        data = json.loads(event["body"])
+        data = json.loads(event["body"], parse_float=Decimal)
         # Get the user information from the authoriser token.
         claims = event.get("requestContext", {}).get(
             "authorizer", {}).get("claims", {})
 
         # Validate required fields
-        required_fields = ["start_time", "end_time", "total_km", "work_order_number", "work_completed",
+        required_fields = ["start_time", "end_time", "total_km", "work_completed",
                            "status", "root_cause", "findings", "signature", "selectedRowId", "signedBy"]
         for field in required_fields:
             if field not in data:
@@ -244,7 +269,11 @@ def lambda_handler(event, context):
         requested_by = normalize_string(request_info.get("requested_by"))
         jobcardNumber = request_info.get("jobcardNumber", "")
         job_created = request_info.get("jobCreated")
-        assetID = request_info.get("assetID", "")
+        # assetID is the partition key for AssetIdIndex. DynamoDB does not
+        # permit NULL (or an empty string) for an index key, so retain it only
+        # for legacy single-asset requests that actually have a value. Newer
+        # multi-asset requests legitimately have no top-level assetID.
+        asset_id = str(request_info.get("assetID") or "").strip()
         breakdown_time = request_info.get("breakdown_time", "")
 
         # $ Include this on creation and whenever `status` is changed
@@ -267,11 +296,23 @@ def lambda_handler(event, context):
         presigned_urls = []
 
         for file_info in data.get("images", []):
-            if result := generate_url("maintenance_action", file_info, ACCEPTED_TYPES["images"], item_id):
+            if result := generate_url(
+                "maintenance_action",
+                "images",
+                file_info,
+                ACCEPTED_TYPES["images"],
+                item_id,
+            ):
                 presigned_urls.append(result)
 
         for file_info in data.get("invoices", []):
-            if result := generate_url("invoices", file_info, ACCEPTED_TYPES["invoices"], item_id):
+            if result := generate_url(
+                "invoices",
+                "invoices",
+                file_info,
+                ACCEPTED_TYPES["invoices"],
+                item_id,
+            ):
                 presigned_urls.append(result)
 
         # Save metadata to DynamoDB
@@ -285,13 +326,11 @@ def lambda_handler(event, context):
             "requested_by": requested_by,  # % from requests-table
             "location": location,  # % from requests-table
             "jobcardNumber": jobcardNumber,  # % from requests-table
-            "assetID": assetID,  # % from the requests-table
             "breakdown_time": breakdown_time,  # % from the requests-table
             "start_time": data["start_time"],
             "end_time": data["end_time"],
             "total_km": data["total_km"],
-            "work_order_number": data["work_order_number"],
-            "status": normalize_string(data.get("status")),
+            "status": status,
             "root_cause": data["root_cause"],
             "work_completed": data["work_completed"],
             "findings": data["findings"],
@@ -308,29 +347,84 @@ def lambda_handler(event, context):
             "signature": data["signature"]
         }
 
-        # $ Upddate the status of the request created status
-        table_requests.update_item(
-            Key={"id": data["selectedRowId"],
-                 "jobCreated": job_created
-                 },
-            UpdateExpression="SET #s = :status, action_id = :action_id, statusUpdatedAt = :statusUpdatedAt",
-            ExpressionAttributeNames={"#s": "status"},
-            ExpressionAttributeValues={
-                ":status": data["status"],
-                # $ id passed to the request table to link the 'request made & action taken'
-                ":action_id": item_id,
-                ":statusUpdatedAt": status_updated_at
-            },
-            ConditionExpression="attribute_exists(id) AND attribute_exists(jobCreated)"
-        )
+        if asset_id:
+            item["assetID"] = asset_id  # % from legacy single-asset requests
 
-        table.put_item(Item=item)
+        # Commit both records atomically so the request stream cannot expose
+        # `complete` before the linked maintenance action exists.
+
+        print("request_id:", request_id)
+        print("request_id type:", type(request_id))
+
+        dynamodb_client.transact_write_items(
+            TransactItems=[
+                {
+                    "Put": {
+                        "TableName": TABLE_NAME,
+                        "Item": serialize_dynamodb_item(item),
+                        "ConditionExpression": "attribute_not_exists(id)",
+                    }
+                },
+                {
+                    "Update": {
+                        "TableName": TABLE_NAME_REQUESTS,
+                        "Key": serialize_dynamodb_item({
+                            "id": request_id,
+                            "jobCreated": job_created,
+                        }),
+                        "UpdateExpression": (
+                            "SET #s = :status, "
+                            "action_id = :action_id, "
+                            "statusUpdatedAt = :statusUpdatedAt"
+                        ),
+                        "ExpressionAttributeNames": {"#s": "status"},
+                        "ExpressionAttributeValues": serialize_dynamodb_item({
+                            ":status": status,
+                            ":action_id": item_id,
+                            ":statusUpdatedAt": status_updated_at,
+                        }),
+                        "ConditionExpression": (
+                            "attribute_exists(id) "
+                            "AND attribute_exists(jobCreated)"
+                        ),
+                    }
+                },
+            ]
+        )
 
         return _response(200, {"data": item, "presigned_urls": presigned_urls}, HEADERS)
 
+    except ClientError as exc:
+        print(
+            "DynamoDB ClientError:",
+            json.dumps(exc.response, default=str, indent=2)
+        )
+
+        cancellation_reasons = exc.response.get("CancellationReasons", [])
+
+        for index, reason in enumerate(cancellation_reasons):
+            print(
+                f"Transaction item {index}:",
+                json.dumps(reason, default=str)
+            )
+
+        return _response(
+            500,
+            {
+                "message": "DynamoDB transaction failed",
+                "error": exc.response.get("Error", {}).get("Message"),
+                "cancellationReasons": cancellation_reasons,
+            },
+            HEADERS,
+        )
+
     except Exception as exc:
-        print("Error:", exc)
-        return _response(500, {"message": "Internal server error"})
+        print("Error:", repr(exc))
+        return _response(
+            500,
+            {"message": "Internal server error"},
+            HEADERS,
+        )
 
 
 def _response(status_code, body, headers):

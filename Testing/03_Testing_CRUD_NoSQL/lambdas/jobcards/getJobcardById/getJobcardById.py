@@ -1,9 +1,14 @@
 import json
+
 import boto3
 from boto3.dynamodb.conditions import Key
-from datetime import datetime
 from botocore.config import Config
 from botocore.exceptions import ClientError
+
+
+TABLE_NAME = "crud-nosql-app-maintenance-request-table"
+BUCKET = "crud-nosql-app-images"
+MISSING_OBJECT_CODES = {"404", "NoSuchKey", "NotFound"}
 
 dynamodb = boto3.resource("dynamodb")
 s3 = boto3.client(
@@ -12,97 +17,117 @@ s3 = boto3.client(
     config=Config(
         s3={"addressing_style": "virtual"},
         signature_version="s3v4",
-        region_name="af-south-1"
-    )
+        region_name="af-south-1",
+    ),
 )
-
-TABLE_NAME = "crud-nosql-app-maintenance-request-table"
-BUCKET = "crud-nosql-app-images"
 table = dynamodb.Table(TABLE_NAME)
 
 HEADERS = {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "http://localhost:5173",
     "Access-Control-Allow-Methods": "GET,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Requested-With",
-    "Access-Control-Allow-Credentials": "true"
+    "Access-Control-Allow-Headers": (
+        "Content-Type,Authorization,X-Amz-Date,X-Api-Key,"
+        "X-Amz-Security-Token,X-Requested-With"
+    ),
+    "Access-Control-Allow-Credentials": "true",
 }
 
 
-def to_human_date(iso_string: str) -> str:
-    """
-    Convert an ISO 8601 datetime string into a human-readable format.
-
-    Args:
-        iso_string: Datetime string in ISO 8601 format.
-
-    Returns:
-        A formatted datetime string in the form 'DD Mon YYYY, HH:MM'.
-    """
-    dt = datetime.fromisoformat(iso_string)
-    return dt.strftime("%d %b %Y, %H:%M")
+def log_event(stage: str, **details) -> None:
+    print(json.dumps({"stage": stage, **details}, default=str))
 
 
 def get_request_by_action_id(action_id: str) -> dict | None:
-    """
-    Find a maintenance request record by querying the ActionIdIndex GSI.
-
-    Args:
-        action_id: The action identifier received from the frontend.
-
-    Returns:
-        The matched DynamoDB item as a dictionary, or None if not found.
-    """
+    """Resolve an action ID to its maintenance request via ActionIdIndex."""
     response = table.query(
         IndexName="ActionIdIndex",
-        KeyConditionExpression=Key("action_id").eq(action_id)
+        KeyConditionExpression=Key("action_id").eq(action_id),
+        Limit=1,
     )
     items = response.get("Items", [])
     return items[0] if items else None
 
 
 def lambda_handler(event, context):
-    """
-    Handle the Lambda request to generate a presigned S3 URL for a jobcard PDF.
+    action_id = str(
+        (event.get("pathParameters") or {}).get("id") or ""
+    ).strip()
 
-    This function:
-    1. Reads the action id from the API Gateway path parameters.
-    2. Queries the ActionIdIndex GSI to find the matching maintenance request.
-    3. Extracts the request id and jobcard number from the matched item.
-    4. Builds the S3 object key using the request id.
-    5. Verifies the PDF exists in S3.
-    6. Generates a presigned download URL for the PDF.
-    7. Returns the URL in a JSON response.
+    if not action_id:
+        return _response(
+            400,
+            {
+                "success": False,
+                "code": "ACTION_ID_REQUIRED",
+                "message": "Missing action id.",
+            },
+        )
 
-    Args:
-        event: AWS Lambda event object containing request details.
-        context: AWS Lambda context object provided at runtime.
+    log_event("JOBCARD_DOWNLOAD_REQUESTED", action_id=action_id)
 
-    Returns:
-        A dictionary representing the HTTP response expected by API Gateway.
-        - 200 if the URL is generated successfully
-        - 400 if the action id is missing
-        - 404 if the request or PDF is not found
-        - 500 for any unexpected internal error
-    """
     try:
-        action_id = (event.get("pathParameters") or {}).get("id")
-        if not action_id:
-            return _response(400, {"message": "Missing action id"})
-
         item = get_request_by_action_id(action_id)
         if not item:
-            return _response(404, {"message": "No request found for the provided action id"})
+            log_event(
+                "JOBCARD_NOT_FOUND",
+                action_id=action_id,
+                reason="maintenance_request_not_found",
+            )
+            return _response(
+                404,
+                {
+                    "success": False,
+                    "code": "REQUEST_NOT_FOUND",
+                    "message": (
+                        "No maintenance request was found for the action id."
+                    ),
+                },
+            )
 
-        request_id = item.get("id")
+        request_id = str(item.get("id") or "").strip()
         if not request_id:
-            return _response(404, {"message": "Request id not found on matched item"})
+            log_event(
+                "JOBCARD_NOT_FOUND",
+                action_id=action_id,
+                reason="request_id_missing",
+            )
+            return _response(
+                404,
+                {
+                    "success": False,
+                    "code": "REQUEST_NOT_FOUND",
+                    "message": "The matched maintenance request has no id.",
+                },
+            )
 
-        jobcardNumber = item.get("jobcardNumber", "jobcard")
+        jobcard_number = item.get("jobcardNumber") or "jobcard"
         key = f"jobcards/{request_id}.pdf"
 
-        # Verify the file exists before generating the URL
-        s3.head_object(Bucket=BUCKET, Key=key)
+        try:
+            s3.head_object(Bucket=BUCKET, Key=key)
+        except ClientError as exc:
+            error_code = exc.response.get("Error", {}).get("Code")
+            if error_code in MISSING_OBJECT_CODES:
+                log_event(
+                    "JOBCARD_NOT_FOUND",
+                    request_id=request_id,
+                    action_id=action_id,
+                    jobcardNumber=jobcard_number,
+                    pdf_s3_key=key,
+                    reason="pdf_not_generated",
+                )
+                return _response(
+                    404,
+                    {
+                        "success": False,
+                        "code": "JOBCARD_NOT_GENERATED",
+                        "message": (
+                            "The jobcard PDF has not yet been generated."
+                        ),
+                    },
+                )
+            raise
 
         url = s3.generate_presigned_url(
             ClientMethod="get_object",
@@ -110,36 +135,55 @@ def lambda_handler(event, context):
                 "Bucket": BUCKET,
                 "Key": key,
                 "ResponseContentType": "application/pdf",
-                "ResponseContentDisposition": f'attachment; filename="{jobcardNumber}.pdf"',
+                "ResponseContentDisposition": (
+                    f'attachment; filename="{jobcard_number}.pdf"'
+                ),
             },
             ExpiresIn=600,
         )
 
+        log_event(
+            "JOBCARD_PRESIGNED_URL_CREATED",
+            request_id=request_id,
+            action_id=action_id,
+            jobcardNumber=jobcard_number,
+            pdf_s3_key=key,
+        )
         return _response(200, {"jobcard_url": url})
 
     except ClientError as exc:
-        error_code = exc.response.get("Error", {}).get("Code")
-        if error_code in ("404", "NoSuchKey", "NotFound"):
-            return _response(404, {"message": "PDF not found"})
-        print("ClientError:", exc)
-        return _response(500, {"message": "Internal server error"})
-
+        log_event(
+            "JOBCARD_DOWNLOAD_FAILED",
+            action_id=action_id,
+            error_code=exc.response.get("Error", {}).get("Code"),
+            error=str(exc),
+        )
+        return _response(
+            500,
+            {
+                "success": False,
+                "code": "JOBCARD_DOWNLOAD_FAILED",
+                "message": "Unable to create the jobcard download link.",
+            },
+        )
     except Exception as exc:
-        print("Error:", exc)
-        return _response(500, {"message": "Internal server error"})
+        log_event(
+            "JOBCARD_DOWNLOAD_FAILED",
+            action_id=action_id,
+            error_type=type(exc).__name__,
+            error=str(exc),
+        )
+        return _response(
+            500,
+            {
+                "success": False,
+                "code": "JOBCARD_DOWNLOAD_FAILED",
+                "message": "Unable to create the jobcard download link.",
+            },
+        )
 
 
 def _response(status_code, body):
-    """
-    Build a standard HTTP response for API Gateway.
-
-    Args:
-        status_code: HTTP status code to return.
-        body: Response payload to be JSON-serialized.
-
-    Returns:
-        A dictionary containing the status code, headers, and JSON body.
-    """
     return {
         "statusCode": status_code,
         "headers": HEADERS,

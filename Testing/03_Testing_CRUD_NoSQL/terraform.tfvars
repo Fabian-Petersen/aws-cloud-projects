@@ -1174,13 +1174,13 @@ lambda_functions = {
     dynamodb_permissions = {
       maintenance_action_table = {
         table_name         = "crud-nosql-app-maintenance-action-table"
-        actions            = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem"]
+        actions            = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:TransactWriteItems"]
         allow_index_access = false
       }
 
       maintenance_request_table = {
         table_name         = "crud-nosql-app-maintenance-request-table"
-        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:UpdateItem"]
+        actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:TransactWriteItems"]
         allow_index_access = false
       }
     }
@@ -2354,6 +2354,11 @@ lambda_functions = {
         actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = true
       }
+      actions_table = {
+        table_name         = "crud-nosql-app-maintenance-action-table"
+        actions            = ["dynamodb:Scan", "dynamodb:Query"]
+        allow_index_access = false
+      }
       users_table = {
         table_name         = "crud-nosql-app-users-table"
         actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
@@ -2373,6 +2378,11 @@ lambda_functions = {
         table_name         = "crud-nosql-app-maintenance-action-table"
         actions            = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"]
         allow_index_access = true
+      }
+      requests_table = {
+        table_name         = "crud-nosql-app-maintenance-request-table"
+        actions            = ["dynamodb:Scan"]
+        allow_index_access = false
       }
       locations_table = {
         table_name         = "crud-nosql-app-locations-table"
@@ -4049,36 +4059,6 @@ users = {
       "name"         = "fabian"
     }
   }
-  # leon = {
-  #   username = "c2ktech100@gmail.com"
-  #   group    = "technician"
-  #   attributes = {
-  #     email          = "c2ktech100@gmail.com"
-  #     email_verified = "true"
-  #     family_name    = "matalay"
-  #     "name"         = "leon"
-  #   }
-  # }
-  # deon = {
-  #   username = "fpetersen2@gmail.com"
-  #   group    = "admin"
-  #   attributes = {
-  #     email          = "fpetersen2@gmail.com"
-  #     email_verified = "true"
-  #     family_name    = "williams"
-  #     "name"         = "deon"
-  #   }
-  # }
-  # chrystal = {
-  #   username = "cristalfk@gmail.com"
-  #   group    = "user"
-  #   attributes = {
-  #     email          = "cristalfk@gmail.com"
-  #     email_verified = "true"
-  #     family_name    = "petersen"
-  #   "name"         = "chrystal"
-  # }
-  # }
 }
 
 user_groups = {
@@ -4096,6 +4076,9 @@ user_groups = {
   }
   "contractor" = {
     precedence = 5
+  }
+  "maintenance" = {
+    precedence = 6
   }
 }
 
@@ -4115,7 +4098,7 @@ packageType         = "Image"
 s3_bucket           = "crud-nosql.app.fabian-portfolio.net"
 runtime             = "python3.12"
 lambda_handler      = "handler.lambda_handler"
-image_uri           = "157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v2"
+image_uri           = "157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v4"
 
 # $ ECR Repository
 repository_name      = "crud-nosql-pdf-generator"

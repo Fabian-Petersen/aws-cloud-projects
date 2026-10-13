@@ -8,7 +8,7 @@ import boto3
 import json
 from decimal import Decimal
 from datetime import datetime, timezone, timedelta
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Attr, Key
 
 
 # ======================================================================================
@@ -18,6 +18,7 @@ from boto3.dynamodb.conditions import Key
 dynamodb = boto3.resource("dynamodb")
 
 jobs_table = dynamodb.Table("crud-nosql-app-maintenance-request-table")
+actions_table = dynamodb.Table("crud-nosql-app-maintenance-action-table")
 users_table = dynamodb.Table("crud-nosql-app-users-table")
 
 # ======================================================================================
@@ -37,12 +38,6 @@ class DecimalEncoder(json.JSONEncoder):
 # ======================================================================================
 # Access Control
 # ======================================================================================
-
-FULL_ACCESS_GROUPS = {
-    "admin",
-    "technician",
-}
-
 
 def parse_groups(groups_claim):
 
@@ -81,21 +76,30 @@ def get_user_access_scope(groups, claims):
 
     normalized_groups = set(groups)
 
-    has_full_access = bool(
-        FULL_ACCESS_GROUPS.intersection(
-            normalized_groups
-        )
-    )
-
     # =========================================================================
-    # Admin / Technician
+    # Admin
     # =========================================================================
 
-    if has_full_access:
+    if "admin" in normalized_groups:
 
         return {
+            "role": "admin",
             "full_access": True,
             "location": None,
+            "user_sub": claims.get("sub"),
+        }
+
+    # =========================================================================
+    # Maintenance
+    # =========================================================================
+
+    if "maintenance" in normalized_groups:
+
+        return {
+            "role": "maintenance",
+            "full_access": True,
+            "location": None,
+            "user_sub": claims.get("sub"),
         }
 
     # =========================================================================
@@ -105,18 +109,23 @@ def get_user_access_scope(groups, claims):
     user_sub = claims.get("sub")
 
     user = get_user_by_sub(user_sub)
-    location = user.get("location")
 
     if not user:
 
         return {
+            "role": "location",
             "full_access": False,
             "location": None,
+            "user_sub": user_sub,
         }
 
+    location = user.get("location")
+
     return {
+        "role": "location",
         "full_access": False,
         "location": location.lower() if location else None,
+        "user_sub": user_sub,
     }
 
 
@@ -279,6 +288,33 @@ def query_jobs_by_location(location):
 
     return items
 
+
+def query_completed_actions_by_user(user_sub):
+
+    if not user_sub:
+        return []
+
+    items = []
+    filter_expression = (
+        Attr("action_sub").eq(user_sub)
+        & Attr("status").eq("complete")
+    )
+
+    response = actions_table.scan(
+        FilterExpression=filter_expression,
+    )
+    items.extend(response.get("Items", []))
+
+    while "LastEvaluatedKey" in response:
+
+        response = actions_table.scan(
+            FilterExpression=filter_expression,
+            ExclusiveStartKey=response["LastEvaluatedKey"],
+        )
+        items.extend(response.get("Items", []))
+
+    return items
+
 # ======================================================================================
 # User Helpers
 # ======================================================================================
@@ -304,7 +340,7 @@ def get_user_by_sub(user_sub):
 
 def get_jobs_for_scope(access_scope):
 
-    # Admin / Technician
+    # Admin / maintenance
     if access_scope["full_access"]:
 
         pending_jobs = query_jobs_by_status(
@@ -315,9 +351,12 @@ def get_jobs_for_scope(access_scope):
             "in progress"
         )
 
-        completed_jobs = query_jobs_by_status(
-            "complete"
-        )
+        completed_jobs = []
+
+        if access_scope["role"] == "admin":
+            completed_jobs = query_jobs_by_status(
+                "complete"
+            )
 
         return (
             pending_jobs
@@ -455,10 +494,10 @@ def get_overdue_metrics(jobs):
         if due_date.date() < today:
             overdue_jobs.append(job)
 
-        current_jobs, previous_jobs = split_jobs_by_month(
-            overdue_jobs,
-            date_field="targetDate",
-        )
+    current_jobs, previous_jobs = split_jobs_by_month(
+        overdue_jobs,
+        date_field="targetDate",
+    )
 
     return {
         "overdueRequests": {
@@ -478,7 +517,7 @@ def get_overdue_metrics(jobs):
 # Completed Metrics
 # ======================================================================================
 
-def get_completed_metrics(jobs):
+def get_completed_metrics(jobs, date_field="statusUpdatedAt"):
 
     completed_jobs = [
         job for job in jobs
@@ -489,7 +528,7 @@ def get_completed_metrics(jobs):
     # Completed: the date it was completed
     current_jobs, previous_jobs = split_jobs_by_month(
         completed_jobs,
-        date_field="statusUpdatedAt",
+        date_field=date_field,
     )
 
     return {
@@ -593,11 +632,23 @@ def lambda_handler(event, context):
 
         jobs = get_jobs_for_scope(access_scope)
 
+        completed_jobs = jobs
+        completed_date_field = "statusUpdatedAt"
+
+        if access_scope["role"] == "maintenance":
+            completed_jobs = query_completed_actions_by_user(
+                access_scope["user_sub"]
+            )
+            completed_date_field = "completed_at"
+
         dashboard_metrics = {
             **get_pending_metrics(jobs),
             **get_approved_metrics(jobs),
             **get_overdue_metrics(jobs),
-            **get_completed_metrics(jobs),
+            **get_completed_metrics(
+                completed_jobs,
+                date_field=completed_date_field,
+            ),
         }
 
         return _response(200, dashboard_metrics, HEADERS,)

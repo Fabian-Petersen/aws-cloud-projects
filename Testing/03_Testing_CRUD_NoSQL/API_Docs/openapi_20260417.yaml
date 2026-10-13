@@ -8,7 +8,7 @@ info:
     You can help improve the API by updating the definition or the implementation. Over time, this will allow us to enhance features and expose new capabilities in OAS3.
 
     _If you're looking for the Swagger 2.0/OAS 2.0 version of Petstore, then click [here](https://editor.swagger.io/?url=https://petstore.swagger.io/v2/swagger.yaml). Alternatively, you can load via the `Edit > Load Petstore OAS 2.0` menu option!_
-    
+
     Some useful links:
     - [The Pet Store repository](https://github.com/swagger-api/swagger-petstore)
     - [The source API definition for the Pet Store](https://github.com/swagger-api/swagger- - -petstore/blob/master/src/main/resources/openapi.yaml)
@@ -27,7 +27,7 @@ servers:
   # https://txq4ruy68k.execute-api.af-south-1.amazonaws.com/dev
 tags:
   - name: Atlantic Meat
-    description: '' 
+    description: ""
     externalDocs:
       description: Find out more
       url: https://crud-nosql.app.fabian-portfolio.net
@@ -38,7 +38,7 @@ tags:
   #     url: http://swagger.io
   # - name: user
   #   description: Operations about user
-  
+
   # /jobs:
   # get:
   #   summary: Get all jobs (filterable)
@@ -60,29 +60,29 @@ paths:
       x-database: crud-nosql-app-maintenance-requests-table
       operationId: getJobsList
       parameters:
-       - name: status
-         in: query
-         schema:
-           type: string
-           enum: [pending, in_progress, rejected, completed]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, in_progress, rejected, completed]
       responses:
-        '200':
+        "200":
           description: success
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/JobResponse'
-        '400':
+                  $ref: "#/components/schemas/JobResponse"
+        "400":
           description: Invalid ID supplied
-        '404':
+        "404":
           description: Job not found
-        '405':
+        "405":
           description: Validation exception
       security:
         - BearerAuth: []
-        
+
     post:
       tags:
         - jobs
@@ -97,22 +97,22 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/JobRequest'
+              $ref: "#/components/schemas/JobRequest"
         required: true
       responses:
-        '200':
+        "200":
           description: Successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/JobResponse'          
-        '405':
+                $ref: "#/components/schemas/JobResponse"
+        "405":
           description: Invalid input
       security:
         - petstore_auth:
             - write:pets
             - read:pets
-  
+
   /jobs/completed:
     get:
       tags:
@@ -124,35 +124,35 @@ paths:
       x-database: crud-nosql-app-maintenance-requests-table
       operationId: getJobsActionedList
       parameters:
-       - name: group
-         in: query
-         schema:
-           type: string
-           enum: [technician, contractor]
+        - name: group
+          in: query
+          schema:
+            type: string
+            enum: [technician, contractor]
       responses:
-        '200':
+        "200":
           description: success
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/JobResponse'
-        '400':
+                  $ref: "#/components/schemas/JobResponse"
+        "400":
           description: Invalid ID supplied
-        '404':
+        "404":
           description: Job not found
-        '405':
+        "405":
           description: Validation exception
       security:
         - BearerAuth: []
-            
-  /jobs/{jobId}/approve: 
+
+  /jobs/{jobId}/approve:
     post:
       tags:
         - jobs
       summary: Approve an job "status === pending --> in progress"
-      description: ''
+      description: ""
       x-lambda-runtime: python v3.12
       x-lambda-function: postApproveRequest.py
       x-database: crud-nosql-app-maintenance-requests-table
@@ -162,28 +162,28 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/JobApproveRequest'
+              $ref: "#/components/schemas/JobApproveRequest"
         required: true
       responses:
-        '200':
+        "200":
           description: Successful operation
           content:
             application/json:
               schema:
-                $ref:  '#/components/schemas/JobApprovedResponse'
-        '405':
+                $ref: "#/components/schemas/JobApprovedResponse"
+        "405":
           description: Invalid input
       security:
         - petstore_auth:
             - write:pets
             - read:pets
-  
-  /jobs/{jobId}/reject: 
+
+  /jobs/{jobId}/reject:
     post:
       tags:
         - jobs
       summary: Reject a pending job Set "status === pending --> rejected"
-      description: ''
+      description: ""
       x-lambda-runtime: python v3.12
       x-lambda-function: postRejectRequest.py
       operationId: addRejectJob
@@ -193,37 +193,37 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Pet'
+              $ref: "#/components/schemas/Pet"
           application/xml:
             schema:
-              $ref: '#/components/schemas/Pet'
+              $ref: "#/components/schemas/Pet"
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Pet'
+              $ref: "#/components/schemas/Pet"
         required: true
       responses:
-        '200':
+        "200":
           description: Successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Pet'          
+                $ref: "#/components/schemas/Pet"
             application/xml:
               schema:
-                $ref: '#/components/schemas/Pet'
-        '405':
+                $ref: "#/components/schemas/Pet"
+        "405":
           description: Invalid input
       security:
         - petstore_auth:
             - write:pets
             - read:pets
-            
-  /jobs/{jobId}/action: 
+
+  /jobs/{jobId}/action:
     post:
       tags:
         - jobs
       summary: technician action a job "status === in progess --> complete"
-      description: ''
+      description: ""
       x-lambda-runtime: python v3.12
       x-lambda-function: postJobAction.py
       x-database: crud-nosql-app-maintenance-action-table
@@ -233,22 +233,22 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/JobApproveRequest'
+              $ref: "#/components/schemas/JobApproveRequest"
         required: true
       responses:
-        '200':
+        "200":
           description: Successful operation
           content:
             application/json:
               schema:
-                $ref:  '#/components/schemas/JobApprovedResponse'
-        '405':
+                $ref: "#/components/schemas/JobApprovedResponse"
+        "405":
           description: Invalid input
       security:
         - petstore_auth:
             - write:pets
             - read:pets
-            
+
   /jobs/{jobId}:
     get:
       tags:
@@ -270,30 +270,30 @@ paths:
         - name: status
           in: query
           schema:
-           type: string
-           enum: [pending, in_progress, rejected, completed]
+            type: string
+            enum: [pending, in_progress, rejected, completed]
 
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Pet'          
+                  $ref: "#/components/schemas/Pet"
             application/xml:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Pet'
-        '400':
+                  $ref: "#/components/schemas/Pet"
+        "400":
           description: Invalid status value
       security:
         - petstore_auth:
             - write:pets
             - read:pets
-  
+
     put:
       tags:
         - jobs
@@ -314,23 +314,23 @@ paths:
         - name: status
           in: query
           schema:
-           type: string
-           enum: [pending, in_progress]
+            type: string
+            enum: [pending, in_progress]
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Pet'          
+                  $ref: "#/components/schemas/Pet"
             application/xml:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Pet'
-        '400':
+                  $ref: "#/components/schemas/Pet"
+        "400":
           description: Invalid status value
       security:
         - petstore_auth:
@@ -356,66 +356,65 @@ paths:
         - name: status
           in: query
           schema:
-           type: string
-           enum: [pending, in_progress]
+            type: string
+            enum: [pending, in_progress]
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Pet'          
+                  $ref: "#/components/schemas/Pet"
             application/xml:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Pet'
-        '400':
+                  $ref: "#/components/schemas/Pet"
+        "400":
           description: Invalid status value
       security:
         - petstore_auth:
             - write:pets
             - read:pets
-            
-  /jobs/{jobId}/jobcard:
+
+  /jobs/{id}/jobcard:
     get:
       tags:
         - jobs
       summary: Return a jobcard for a single job
-      description: Returns a single approved job
+      description: Returns a presigned URL for an existing jobcard PDF. The path ID is the maintenance action ID.
       x-lambda-runtime: python v3.12
-      x-lambda-function: getMaintenanceJobcardById.py
-      operationId: getMaintenanceJobcardById
+      x-lambda-function: getJobcardById.py
+      operationId: getJobcardById
       parameters:
-        - name: jobId
+        - name: id
           in: path
-          description: ID of job to return
+          description: Maintenance action ID used to resolve the related request
           required: true
           schema:
-            type: integer
-            format: int64
+            type: string
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Pet'          
+                $ref: "#/components/schemas/Pet"
             application/xml:
               schema:
-                $ref: '#/components/schemas/Pet'
-        '400':
+                $ref: "#/components/schemas/Pet"
+        "400":
           description: Invalid ID supplied
-        '404':
+        "404":
           description: Pet not found
       security:
         - api_key: []
         - petstore_auth:
             - write:pets
             - read:pets
-            
+
   /assets-data:
     get:
       tags:
@@ -426,22 +425,22 @@ paths:
       x-lambda-function: getAssetsList.py
       operationId: getAssetsList
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AssetResponse'
+                $ref: "#/components/schemas/AssetResponse"
       security:
         - petstore_auth:
             - write:pets
             - read:pets
-            
+
     post:
       tags:
         - assets
       summary: create a new asset
-      description: ''
+      description: ""
       x-lambda-runtime: python v3.12
       x-lambda-function: postCreateAsset.py
       operationId: postCreateAsset
@@ -452,12 +451,12 @@ paths:
               type: string
               format: binary
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AssetRequest'
+                $ref: "#/components/schemas/AssetRequest"
       security:
         - petstore_auth:
             - write:pets
@@ -468,7 +467,7 @@ paths:
       tags:
         - assets
       summary: Get single asset by assetId
-      description: ''
+      description: ""
       x-lambda-runtime: python v3.12
       x-lambda-function: getAssetById.py
       operationId: getAssetById
@@ -481,17 +480,17 @@ paths:
             type: string
             format: uuid
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AssetResponse'
+                $ref: "#/components/schemas/AssetResponse"
       security:
         - petstore_auth:
             - write:pets
             - read:pets
-  
+
     put:
       tags:
         - assets
@@ -554,7 +553,7 @@ paths:
                   items:
                     type: string
       responses:
-        '200':
+        "200":
           description: Asset metadata updated; includes presigned_urls for new image uploads.
           content:
             application/json:
@@ -577,12 +576,12 @@ paths:
         - petstore_auth:
             - write:pets
             - read:pets
-  
+
     delete:
       tags:
         - assets
       summary: Delete single asset by assetId
-      description: ''
+      description: ""
       x-lambda-runtime: python v3.12
       x-lambda-function: deleteAssetById.py
       operationId: deleteAssetById
@@ -595,98 +594,97 @@ paths:
             type: string
             format: uuid
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AssetResponse'
+                $ref: "#/components/schemas/AssetResponse"
       security:
         - petstore_auth:
             - write:pets
             - read:pets
-            
+
   /assets-data/location:
     get:
       tags:
         - assets
       summary: Get assets by location assigned to user
-      description: ''
+      description: ""
       x-lambda-runtime: python v3.12
       x-lambda-function: getAssetsByLocation.py
       x-database-1: crud-nosql-app-users-table
       x-database-2: crud-nosql-app-assets-table
       operationId: getAssetByLocation
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AssetResponse'
-        '401':
+                $ref: "#/components/schemas/AssetResponse"
+        "401":
           description: Unauthorized
-        '500':
+        "500":
           description: Server exception
-          
+
       security:
         - petstore_auth:
             - write:pets
             - read:pets
-            
-            
-  /users/get-current-user: 
+
+  /users/get-current-user:
     get:
       tags:
         - users
       summary: Return the current signed in user
-      description: ''
+      description: ""
       x-lambda-runtime: python v3.12
       x-lambda-function: getUser.py
       operationId: getUser
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
                 schema:
-                $ref: '#/components/schemas/UserResponse'
+                $ref: "#/components/schemas/UserResponse"
       security:
         - api_key: []
-            
-  /users: 
+
+  /users:
     get:
       tags:
         - users
       summary: get all the users from database (filterable)
-      description: ''
+      description: ""
       x-lambda-runtime: python v3.12
       x-lambda-function: getUserList.py
       operationId: getUserList
       parameters:
-       - name: group
-         in: query
-         schema:
-           type: string
-           enum: [technicians, contractors, users, manager]
+        - name: group
+          in: query
+          schema:
+            type: string
+            enum: [technicians, contractors, users, manager]
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/UserResponse'
+                  $ref: "#/components/schemas/UserResponse"
       security:
         - api_key: []
-        
+
     post:
       tags:
         - users
       summary: Create a new user
-      description: ''
+      description: ""
       x-lambda-runtime: python v3.12
       x-lambda-function: postUser.py
       operationId: postUser
@@ -697,23 +695,23 @@ paths:
               type: string
               format: binary
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: "#/components/schemas/User"
       security:
         - petstore_auth:
             - write:pets
             - read:pet
-  
+
   /users/{userId}:
     get:
       tags:
         - users
       summary: Get user by userId
-      description: ''
+      description: ""
       x-lambda-runtime: python v3.12
       x-lambda-function: getUserById.py
       operationId: getUserById
@@ -726,22 +724,22 @@ paths:
             type: integer
             format: int64
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                $ref: "#/components/schemas/ApiResponse"
       security:
         - petstore_auth:
             - write:pets
             - read:pets
-            
+
     put:
       tags:
         - users
       summary: Update user by userId
-      description: ''
+      description: ""
       x-lambda-runtime: python v3.12
       x-lambda-function: updateUserById.py
       operationId: updateUserById
@@ -754,22 +752,22 @@ paths:
             type: integer
             format: int64
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                $ref: "#/components/schemas/ApiResponse"
       security:
         - petstore_auth:
             - write:pets
             - read:pets
-            
+
     delete:
       tags:
         - users
       summary: Delete user by userId
-      description: ''
+      description: ""
       x-lambda-runtime: python v3.12
       x-lambda-function: deleteUserById.py
       operationId: deleteUserById
@@ -782,17 +780,17 @@ paths:
             type: integer
             format: int64
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                $ref: "#/components/schemas/ApiResponse"
       security:
         - petstore_auth:
             - write:pets
             - read:pets
-            
+
   /admin/confirm-user-signup:
     post:
       tags:
@@ -803,44 +801,44 @@ paths:
       x-lambda-function: postConfirmationTrigger.py
       operationId: postConfirmationTrigger
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                $ref: "#/components/schemas/ApiResponse"
       security:
         - petstore_auth:
             - write:pets
             - read:pets
-            
+
   /admin/resend-temp-password:
     options:
       tags:
         - admin
       summary: Resend the temporary password
-      description: ''
+      description: ""
       x-lambda-runtime: python v3.12
       x-lambda-function: postConfirmationTrigger.py
       operationId: optionsResendTempPassword
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                $ref: "#/components/schemas/ApiResponse"
       security:
         - petstore_auth:
             - write:pets
             - read:pets
-            
+
   /admin/resend-temp-password/{userId}:
     post:
       tags:
         - admin
       summary: Resend the temporary password
-      description: ''
+      description: ""
       x-lambda-runtime: python v3.12
       x-lambda-function: postResendTempPassword.py
       operationId: postResendTempPassword
@@ -853,60 +851,60 @@ paths:
             type: integer
             format: int64
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                $ref: "#/components/schemas/ApiResponse"
       security:
         - petstore_auth:
             - write:pets
             - read:pets
-        
+
   /comments:
     get:
       tags:
         - comments
       summary: Get the list of comments
-      description: ''
+      description: ""
       x-lambda-runtime: python v3.12
       x-lambda-function: getCommentsList.py
       operationId: getCommentsList
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Order'
-        '405':
+                $ref: "#/components/schemas/Order"
+        "405":
           description: Invalid input
-          
+
     post:
       tags:
         - comments
       summary: Create a new comment
-      description: ''
+      description: ""
       x-lambda-runtime: python v3.12
       x-lambda-function: postComment.py
       operationId: postComment
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Order'
-        '405':
+                $ref: "#/components/schemas/Order"
+        "405":
           description: Invalid input
-          
+
   /comments/{commentId}:
     get:
       tags:
         - comments
       summary: Get comment by ID
-      description: ''
+      description: ""
       operationId: getCommentById
       parameters:
         - name: commentId
@@ -917,25 +915,25 @@ paths:
             type: integer
             format: int64
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Order'          
+                $ref: "#/components/schemas/Order"
             application/xml:
               schema:
-                $ref: '#/components/schemas/Order'
-        '400':
+                $ref: "#/components/schemas/Order"
+        "400":
           description: Invalid ID supplied
-        '404':
+        "404":
           description: Comment not found
-    
+
     put:
       tags:
         - comments
       summary: Update comment by userId
-      description: ''
+      description: ""
       x-lambda-runtime: python v3.12
       x-lambda-function: updateCommentById.py
       operationId: updateCommentById
@@ -955,20 +953,20 @@ paths:
             type: integer
             format: int64
       responses:
-        '200':
+        "200":
           description: successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                $ref: "#/components/schemas/ApiResponse"
       security:
         - petstore_auth:
             - write:pets
             - read:pets
-          
+
 components:
   schemas:
-    # Schema for Users "POST, PUT" 
+    # Schema for Users "POST, PUT"
     UserRequest:
       type: object
       properties:
@@ -976,7 +974,7 @@ components:
           type: string
           format: email
           example: "user@example.com"
-        
+
         group:
           type: string
           description: User role/group
@@ -987,7 +985,8 @@ components:
             - contractor
             - manager
             - user
-        
+            - maintenance
+
         family_name:
           type: string
           description: User surname
@@ -1112,7 +1111,7 @@ components:
 
       xml:
         name: userResponse
-        
+
     AssetRequest:
       type: object
       required:
@@ -1156,7 +1155,7 @@ components:
 
     AssetResponse:
       allOf:
-        - $ref: '#/components/schemas/AssetRequest'
+        - $ref: "#/components/schemas/AssetRequest"
         - type: object
           required:
             - id
@@ -1170,8 +1169,8 @@ components:
             images:
               type: array
               items:
-                $ref: '#/components/schemas/AssetImage'
-    
+                $ref: "#/components/schemas/AssetImage"
+
     # Job Request
     JobRequest:
       type: object
@@ -1205,7 +1204,7 @@ components:
           type: array
           minItems: 1
           items:
-            $ref: '#/components/schemas/JobRequestAsset'
+            $ref: "#/components/schemas/JobRequestAsset"
 
     JobRequestAsset:
       type: object
@@ -1224,14 +1223,14 @@ components:
           type: string
         assetIssueReason:
           type: string
-          enum: [no barcode visible, barcode damaged, rental unit, other, '']
+          enum: [no barcode visible, barcode damaged, rental unit, other, ""]
         assetIssueDetails:
           type: string
         images:
           type: array
           items:
-            $ref: '#/components/schemas/JobImage'
-          
+            $ref: "#/components/schemas/JobImage"
+
     # Presigned Image Url Schema
     JobImage:
       type: object
@@ -1242,12 +1241,12 @@ components:
           type: string
         filename:
           type: string
-  
+
         #  Job Requests "Pending / Rejected"
-        
-    JobResponse: 
+
+    JobResponse:
       allOf:
-        - $ref: '#/components/schemas/JobRequest'
+        - $ref: "#/components/schemas/JobRequest"
         - type: object
           required:
             - id
@@ -1272,7 +1271,7 @@ components:
             images:
               type: array
               items:
-                $ref: '#/components/schemas/JobImage'
+                $ref: "#/components/schemas/JobImage"
             reject_message:
               type: string
             rejected_at:
@@ -1280,11 +1279,11 @@ components:
               format: date-time
             rejected_by:
               type: string
-              
+
     # Job Response 'status === approved'
     JobApprovedResponse:
       allOf:
-        - $ref: '#/components/schemas/JobRequest'
+        - $ref: "#/components/schemas/JobRequest"
         - type: object
           required:
             - id
@@ -1318,7 +1317,7 @@ components:
         images:
           type: array
           items:
-            $ref: '#/components/schemas/JobImage'
+            $ref: "#/components/schemas/JobImage"
 
   securitySchemes:
     BearerAuth:

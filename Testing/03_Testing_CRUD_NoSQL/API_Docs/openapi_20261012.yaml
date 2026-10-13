@@ -1,0 +1,1879 @@
+openapi: 3.0.3
+info:
+  title: Atlantic Meat Maintenance and Asset Management API
+  version: "2026-10-12"
+  description: |
+    API contract for the currently deployed maintenance and asset-management application.
+    Unless stated otherwise, operations require a Cognito JWT access token.
+servers:
+  - url: https://crud-nosql.app.fabian-portfolio.net
+    description: Production
+security:
+  - BearerAuth: []
+tags:
+  - name: Jobs
+  - name: Assets
+  - name: Transfers
+  - name: Disposals
+  - name: Users
+  - name: Comments
+  - name: Notifications
+  - name: Dashboard
+
+paths:
+  /api/jobs/requests:
+    get:
+      tags: [Jobs]
+      summary: List active maintenance requests
+      operationId: getJobsList
+      x-lambda-runtime: python3.12
+      x-lambda-function: getJobsList
+      x-database: crud-nosql-app-maintenance-request-table
+      parameters:
+        - $ref: "#/components/parameters/StatusQuery"
+      responses:
+        "200":
+          description: Maintenance requests visible to the caller
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MaintenanceRequest" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    post:
+      tags: [Jobs]
+      summary: Create a maintenance request
+      operationId: postJobRequest
+      x-lambda-runtime: python3.12
+      x-lambda-function: postJobRequest
+      x-database: crud-nosql-app-maintenance-request-table
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MaintenanceRequestCreate" }
+      responses:
+        "201":
+          description: Request created; presigned URLs are returned for declared images
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, presigned_urls]
+                properties:
+                  data: { $ref: "#/components/schemas/MaintenanceRequest" }
+                  presigned_urls:
+                    type: array
+                    items: { $ref: "#/components/schemas/PresignedUpload" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/jobs/completed:
+    get:
+      tags: [Jobs]
+      summary: List completed maintenance jobs visible to the caller
+      operationId: getJobsCompletedList
+      x-lambda-runtime: python3.12
+      x-lambda-function: getJobsCompletedList
+      x-database: crud-nosql-app-maintenance-request-table
+      x-database-1: crud-nosql-app-maintenance-action-table
+      responses:
+        "200":
+          description: Completed jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MaintenanceAction" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/jobs/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    get:
+      tags: [Jobs]
+      summary: Get a maintenance request
+      operationId: getJobById
+      x-lambda-runtime: python3.12
+      x-lambda-function: getJobById
+      x-database: crud-nosql-app-maintenance-request-table
+      responses:
+        "200":
+          description: Maintenance request
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MaintenanceRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    put:
+      tags: [Jobs]
+      summary: Update a maintenance request
+      operationId: updateJobById
+      x-lambda-runtime: python3.12
+      x-lambda-function: updateJobById
+      x-database: crud-nosql-app-maintenance-request-table
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FreeformObject" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    delete:
+      tags: [Jobs]
+      summary: Delete a maintenance request
+      operationId: deleteJobById
+      x-lambda-runtime: python3.12
+      x-lambda-function: deleteJobById
+      x-database: crud-nosql-app-maintenance-request-table
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/jobs/{id}/approve:
+    post:
+      tags: [Jobs]
+      summary: Approve and assign a maintenance request
+      operationId: postApproveRequest
+      x-lambda-runtime: python3.12
+      x-lambda-function: postApproveRequest
+      x-database: crud-nosql-app-maintenance-request-table
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/JobApproval" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/jobs/{id}/reject:
+    post:
+      tags: [Jobs]
+      summary: Reject a maintenance request
+      operationId: postRejectRequest
+      x-lambda-runtime: python3.12
+      x-lambda-function: postRejectRequest
+      x-database: crud-nosql-app-maintenance-request-table
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/JobRejection" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/jobs/{id}/action:
+    post:
+      tags: [Jobs]
+      summary: Record maintenance work and complete a job
+      operationId: postJobAction
+      x-lambda-runtime: python3.12
+      x-lambda-function: postJobAction
+      x-database: crud-nosql-app-maintenance-action-table
+      x-database-1: crud-nosql-app-maintenance-request-table
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MaintenanceActionCreate" }
+      responses:
+        "201":
+          description: Action recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/MaintenanceAction" }
+                  presigned_urls:
+                    type: array
+                    items: { $ref: "#/components/schemas/PresignedUpload" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/jobs/{id}/jobcard:
+    get:
+      tags: [Jobs]
+      summary: Get a presigned PDF jobcard URL
+      description: The path ID is the maintenance action ID used to locate the generated jobcard.
+      operationId: getJobcardById
+      x-lambda-runtime: python3.12
+      x-lambda-function: getJobcardById
+      x-database: crud-nosql-app-maintenance-request-table
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Presigned URL for the PDF
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [jobcard_url]
+                properties:
+                  jobcard_url: { type: string, format: uri }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/assets:
+    get:
+      tags: [Assets]
+      summary: List assets visible to the caller
+      operationId: getAssetsList
+      x-lambda-runtime: python3.12
+      x-lambda-function: getAssetsList
+      x-database: crud-nosql-app-assets-table
+      responses:
+        "200":
+          description: Assets
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Asset" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    post:
+      tags: [Assets]
+      summary: Create an asset
+      operationId: postCreateAsset
+      x-lambda-runtime: python3.12
+      x-lambda-function: postCreateAsset
+      x-database: crud-nosql-app-assets-table
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AssetCreate" }
+      responses:
+        "201":
+          description: Asset created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  presigned_urls:
+                    type: array
+                    items: { $ref: "#/components/schemas/PresignedUpload" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/assets/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    get:
+      tags: [Assets]
+      summary: Get an asset
+      operationId: getAssetById
+      x-lambda-runtime: python3.12
+      x-lambda-function: getAssetById
+      x-database: crud-nosql-app-assets-table
+      responses:
+        "200":
+          description: Asset
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Asset" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    put:
+      tags: [Assets]
+      summary: Update an asset
+      operationId: updateAssetById
+      x-lambda-runtime: python3.12
+      x-lambda-function: updateAssetById
+      x-database: crud-nosql-app-assets-table
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AssetUpdate" }
+      responses:
+        "200":
+          description: Asset updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  presigned_urls:
+                    type: array
+                    items: { $ref: "#/components/schemas/PresignedUpload" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    delete:
+      tags: [Assets]
+      summary: Delete an asset
+      operationId: deleteAssetById
+      x-lambda-runtime: python3.12
+      x-lambda-function: deleteAssetById
+      x-database: crud-nosql-app-assets-table
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/assets/location:
+    get:
+      tags: [Assets]
+      summary: List assets for a location
+      operationId: getAssetsByLocation
+      x-lambda-runtime: python3.12
+      x-lambda-function: getAssetsByLocation
+      x-database: crud-nosql-app-assets-table
+      parameters:
+        - $ref: "#/components/parameters/LocationQuery"
+      responses:
+        "200":
+          description: Assets in the location
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Asset" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/assets/options:
+    get:
+      tags: [Assets]
+      summary: Get assets formatted as maintenance-request options
+      operationId: getJobsRequestAssetOptions
+      x-lambda-runtime: python3.12
+      x-lambda-function: getJobsRequestAssetOptions
+      x-database: crud-nosql-app-assets-table
+      parameters:
+        - $ref: "#/components/parameters/LocationQuery"
+      responses:
+        "200":
+          description: Asset options
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FreeformObject" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/assets/{id}/history:
+    get:
+      tags: [Assets]
+      summary: Get an asset's maintenance history
+      operationId: getAssetHistory
+      x-lambda-runtime: python3.12
+      x-lambda-function: getAssetHistory
+      x-database: crud-nosql-app-maintenance-request-table
+      x-database-1: crud-nosql-app-maintenance-action-table
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Asset history
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FreeformObject" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/assets/{id}/verify:
+    post:
+      tags: [Assets]
+      summary: Record an asset verification
+      operationId: postAssetVerify
+      x-lambda-runtime: python3.12
+      x-lambda-function: postAssetVerify
+      x-database: crud-nosql-app-assets-table
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [latitude, longitude]
+              properties:
+                latitude: { type: number, format: double, example: -33.9249 }
+                longitude: { type: number, format: double, example: 18.4241 }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/transfers/requests:
+    get:
+      tags: [Transfers]
+      summary: List active asset-transfer requests
+      operationId: getTransferList
+      x-lambda-runtime: python3.12
+      x-lambda-function: getTransferList
+      x-database: crud-nosql-app-assets-transfer-table
+      parameters:
+        - $ref: "#/components/parameters/StatusQuery"
+      responses:
+        "200":
+          description: Transfer requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AssetTransfer" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    post:
+      tags: [Transfers]
+      summary: Create an asset-transfer request
+      operationId: postTransferRequest
+      x-lambda-runtime: python3.12
+      x-lambda-function: postTransferRequest
+      x-database: crud-nosql-app-assets-transfer-table
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AssetTransferCreate" }
+      responses:
+        "201":
+          description: Transfer created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AssetTransfer" }
+                  presigned_urls:
+                    type: array
+                    items: { $ref: "#/components/schemas/PresignedUpload" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/transfers/completed:
+    get:
+      tags: [Transfers]
+      summary: List completed transfers
+      operationId: getTransferCompletedList
+      x-lambda-runtime: python3.12
+      x-lambda-function: getTransferCompletedList
+      x-database: crud-nosql-app-assets-transfer-table
+      responses:
+        "200":
+          description: Completed transfers
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AssetTransfer" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/transfers/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    get:
+      tags: [Transfers]
+      summary: Get a transfer
+      operationId: getTransferById
+      x-lambda-runtime: python3.12
+      x-lambda-function: getTransferById
+      x-database: crud-nosql-app-assets-transfer-table
+      responses:
+        "200":
+          description: Transfer
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssetTransfer" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    put:
+      tags: [Transfers]
+      summary: Update a transfer
+      description: The current Lambda is a placeholder and returns a success string.
+      operationId: updateTransferById
+      x-lambda-runtime: python3.12
+      x-lambda-function: updateTransferById
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FreeformObject" }
+      responses:
+        "200":
+          description: Placeholder success response
+          content:
+            application/json:
+              schema: { type: string, example: "Success: updateTransferById" }
+    delete:
+      tags: [Transfers]
+      summary: Delete a transfer
+      operationId: deleteTransferById
+      x-lambda-runtime: python3.12
+      x-lambda-function: deleteTransferById
+      x-database: crud-nosql-app-assets-transfer-table
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/transfers/{id}/approve:
+    post:
+      tags: [Transfers]
+      summary: Approve a transfer
+      operationId: postTransferApproval
+      x-lambda-runtime: python3.12
+      x-lambda-function: postTransferApproval
+      x-database: crud-nosql-app-assets-transfer-table
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, status]
+              properties:
+                id: { type: string }
+                status: { type: string, enum: [approved] }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/transfers/{id}/reject:
+    post:
+      tags: [Transfers]
+      summary: Reject a transfer
+      operationId: postTransferReject
+      x-lambda-runtime: python3.12
+      x-lambda-function: postTransferReject
+      x-database: crud-nosql-app-assets-transfer-table
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, status, reason]
+              properties:
+                id: { type: string }
+                status: { type: string, enum: [rejected] }
+                reason: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/transfers/{id}/in-transit:
+    post:
+      tags: [Transfers]
+      summary: Mark a transfer in transit
+      operationId: postTransferTransit
+      x-lambda-runtime: python3.12
+      x-lambda-function: postTransferTransit
+      x-database: crud-nosql-app-assets-transfer-table
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TransferInTransit" }
+      responses:
+        "200":
+          description: Transfer updated and upload URLs created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  presigned_urls:
+                    type: array
+                    items: { $ref: "#/components/schemas/PresignedUpload" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/transfers/{id}/receipt:
+    post:
+      tags: [Transfers]
+      summary: Record receipt of a transfer
+      operationId: postTransferReceipt
+      x-lambda-runtime: python3.12
+      x-lambda-function: postTransferReceipt
+      x-database: crud-nosql-app-assets-transfer-table
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TransferReceipt" }
+      responses:
+        "200":
+          description: Receipt recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  uploadUrls:
+                    type: object
+                    properties:
+                      images:
+                        type: array
+                        items: { $ref: "#/components/schemas/PresignedUpload" }
+                      deliveryNote: { $ref: "#/components/schemas/PresignedUpload" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/transfers/{id}/transfer-document:
+    get:
+      tags: [Transfers]
+      summary: Get the transfer document response
+      description: The current implementation uses jobcard lookup logic and returns a jobcard_url property.
+      operationId: getTransferDocumentById
+      x-lambda-runtime: python3.12
+      x-lambda-function: getTransferDocumentById
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Current document response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobcard_url: { type: string, format: uri }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/disposals/requests:
+    get:
+      tags: [Disposals]
+      summary: List active disposal requests
+      operationId: getDisposalList
+      x-lambda-runtime: python3.12
+      x-lambda-function: getDisposalList
+      x-database: crud-nosql-app-assets-disposal-table
+      parameters:
+        - $ref: "#/components/parameters/StatusQuery"
+      responses:
+        "200":
+          description: Disposal requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Disposal" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    post:
+      tags: [Disposals]
+      summary: Create a disposal request
+      operationId: postDisposalRequest
+      x-lambda-runtime: python3.12
+      x-lambda-function: postDisposalRequest
+      x-database: crud-nosql-app-assets-disposal-table
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DisposalCreate" }
+      responses:
+        "201":
+          description: Disposal request created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Disposal" }
+                  presigned_urls:
+                    type: array
+                    items: { $ref: "#/components/schemas/PresignedUpload" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/disposals/completed:
+    get:
+      tags: [Disposals]
+      summary: List completed disposals
+      operationId: getDisposalCompletedList
+      x-lambda-runtime: python3.12
+      x-lambda-function: getDisposalCompletedList
+      x-database: crud-nosql-app-assets-disposal-table
+      responses:
+        "200":
+          description: Completed disposals
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Disposal" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/disposals/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    get:
+      tags: [Disposals]
+      summary: Get a disposal request
+      operationId: getDisposalById
+      x-lambda-runtime: python3.12
+      x-lambda-function: getDisposalById
+      x-database: crud-nosql-app-assets-disposal-table
+      responses:
+        "200":
+          description: Disposal request
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Disposal" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    put:
+      tags: [Disposals]
+      summary: Update a disposal request
+      description: The current Lambda is a placeholder and returns a success string.
+      operationId: updateDisposalById
+      x-lambda-runtime: python3.12
+      x-lambda-function: updateDisposalById
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FreeformObject" }
+      responses:
+        "200":
+          description: Placeholder success response
+          content:
+            application/json:
+              schema: { type: string, example: "Success: updateDisposalById" }
+    delete:
+      tags: [Disposals]
+      summary: Delete a disposal request
+      operationId: deleteDisposalById
+      x-lambda-runtime: python3.12
+      x-lambda-function: deleteDisposalById
+      x-database: crud-nosql-app-assets-disposal-table
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/disposals/{id}/approve:
+    post:
+      tags: [Disposals]
+      summary: Approve a disposal request
+      operationId: postDisposalApproval
+      x-lambda-runtime: python3.12
+      x-lambda-function: postDisposalApproval
+      x-database: crud-nosql-app-assets-disposal-table
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, status]
+              properties:
+                id: { type: string }
+                status: { type: string, enum: [approved] }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/disposals/{id}/reject:
+    post:
+      tags: [Disposals]
+      summary: Reject a disposal request
+      operationId: postDisposalReject
+      x-lambda-runtime: python3.12
+      x-lambda-function: postDisposalReject
+      x-database: crud-nosql-app-assets-disposal-table
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, status, reason]
+              properties:
+                id: { type: string }
+                status: { type: string, enum: [rejected] }
+                reason: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/disposals/{id}/completed:
+    post:
+      tags: [Disposals]
+      summary: Complete a disposal
+      operationId: postDisposalCompleted
+      x-lambda-runtime: python3.12
+      x-lambda-function: postDisposalCompleted
+      x-database: crud-nosql-app-assets-disposal-table
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DisposalCompletion" }
+      responses:
+        "200":
+          description: Disposal completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  data: { $ref: "#/components/schemas/Disposal" }
+                  presigned_urls:
+                    type: array
+                    items: { $ref: "#/components/schemas/PresignedUpload" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/disposals/{id}/disposal-document:
+    get:
+      tags: [Disposals]
+      summary: Get the disposal-document response
+      description: The current Lambda is a placeholder and returns a success message string.
+      operationId: getDisposalDocumentById
+      x-lambda-runtime: python3.12
+      x-lambda-function: getDisposalDocumentById
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Placeholder response
+          content:
+            application/json:
+              schema: { type: string, example: "Successfully created a new disposal request" }
+
+  /api/users:
+    get:
+      tags: [Users]
+      summary: List users
+      operationId: getUserList
+      x-lambda-runtime: python3.12
+      x-lambda-function: getUserList
+      x-database: crud-nosql-app-users-table
+      parameters:
+        - name: group
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Users
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/User" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    post:
+      tags: [Users]
+      summary: Create a Cognito application user
+      operationId: postUser
+      x-lambda-runtime: python3.12
+      x-lambda-function: postUser
+      x-database: crud-nosql-app-users-table
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UserCreate" }
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  user: { $ref: "#/components/schemas/User" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409":
+          description: User already exists
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/users/get-current-user:
+    get:
+      tags: [Users]
+      summary: Get the authenticated user
+      operationId: getUser
+      x-lambda-runtime: python3.12
+      x-lambda-function: getUser
+      x-database: crud-nosql-app-users-table
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/users/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    get:
+      tags: [Users]
+      summary: Get a user
+      operationId: getUserById
+      x-lambda-runtime: python3.12
+      x-lambda-function: getUserById
+      x-database: crud-nosql-app-users-table
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    put:
+      tags: [Users]
+      summary: Update a user
+      operationId: updateUserById
+      x-lambda-runtime: python3.12
+      x-lambda-function: updateUserById
+      x-database: crud-nosql-app-users-table
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UserUpdate" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    delete:
+      tags: [Users]
+      summary: Delete a user
+      operationId: deleteUserById
+      x-lambda-runtime: python3.12
+      x-lambda-function: deleteUserById
+      x-database: crud-nosql-app-users-table
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/users/technicians:
+    get:
+      tags: [Users]
+      summary: List technician users
+      operationId: getTechnicianList
+      x-lambda-runtime: python3.12
+      x-lambda-function: getTechnicianList
+      x-database: crud-nosql-app-users-table
+      parameters:
+        - $ref: "#/components/parameters/LocationQueryOptional"
+      responses:
+        "200":
+          description: Technicians
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/User" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/users/contractors:
+    get:
+      tags: [Users]
+      summary: List contractors
+      operationId: getContractorList
+      x-lambda-runtime: python3.12
+      x-lambda-function: getContractorList
+      x-database: crud-nosql-app-contractor-table
+      responses:
+        "200":
+          description: Contractors
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Contractor" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    post:
+      tags: [Users]
+      summary: Create a contractor
+      operationId: postCreateContractor
+      x-lambda-runtime: python3.12
+      x-lambda-function: postCreateContractor
+      x-database: crud-nosql-app-contractor-table
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContractorCreate" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/users/contractors/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    get:
+      tags: [Users]
+      summary: Get a contractor
+      operationId: getContractorById
+      x-lambda-runtime: python3.12
+      x-lambda-function: getContractorById
+      x-database: crud-nosql-app-maintenance-contractor-table
+      responses:
+        "200":
+          description: Contractor
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Contractor" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    put:
+      tags: [Users]
+      summary: Update a contractor
+      operationId: updateContractorById
+      x-lambda-runtime: python3.12
+      x-lambda-function: updateContractorById
+      x-database: crud-nosql-app-contractor-table
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContractorUpdate" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    delete:
+      tags: [Users]
+      summary: Delete a contractor
+      operationId: deleteContractorById
+      x-lambda-runtime: python3.12
+      x-lambda-function: deleteContractorById
+      x-database: crud-nosql-app-contractor-table
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/admin/resend-temp-password/{id}:
+    post:
+      tags: [Users]
+      summary: Resend a user's temporary password
+      operationId: postResendTempPassword
+      x-lambda-runtime: python3.12
+      x-lambda-function: postResendTempPassword
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/admin/confirm-user-signup:
+    post:
+      tags: [Users]
+      summary: Confirm a user's Cognito signup
+      operationId: postConfirmationTrigger
+      x-lambda-runtime: python3.12
+      x-lambda-function: postConfirmationTrigger
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/comments:
+    get:
+      tags: [Comments]
+      summary: List comments
+      operationId: getCommentsList
+      x-lambda-runtime: python3.12
+      x-lambda-function: getCommentsList
+      x-database: crud-nosql-app-comments-table
+      responses:
+        "200":
+          description: Comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Comment" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    post:
+      tags: [Comments]
+      summary: Create a request comment
+      operationId: postComment
+      x-lambda-runtime: python3.12
+      x-lambda-function: postComment
+      x-database: crud-nosql-app-comments-table
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [comment, request_id]
+              properties:
+                comment: { type: string }
+                request_id: { type: string }
+      responses:
+        "201":
+          description: Comment created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Comment" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/comments/{id}:
+    get:
+      tags: [Comments]
+      summary: List comments for a request
+      description: The path ID is the related request ID.
+      operationId: getCommentById
+      x-lambda-runtime: python3.12
+      x-lambda-function: getCommentById
+      x-database: crud-nosql-app-comments-table
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Request comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Comment" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/notifications:
+    get:
+      tags: [Notifications]
+      summary: Get notifications grouped by status
+      operationId: getNotificationsList
+      x-lambda-runtime: python3.12
+      x-lambda-function: getNotificationsList
+      x-database: crud-nosql-app-notifications-table
+      responses:
+        "200":
+          description: Grouped notifications and counts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationSummary" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    post:
+      tags: [Notifications]
+      summary: Update an existing notification
+      description: Despite the POST route name, the current handler updates a notification.
+      operationId: postNotification
+      x-lambda-runtime: python3.12
+      x-lambda-function: postNotification
+      x-database: crud-nosql-app-notifications-table
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [recipientSub, notificationCreated, status, id]
+              properties:
+                recipientSub: { type: string }
+                notificationCreated: { type: string, format: date-time }
+                status: { type: string }
+                id: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/notifications/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdPath"
+    put:
+      tags: [Notifications]
+      summary: Update a notification timestamp
+      operationId: updateNotificationById
+      x-lambda-runtime: python3.12
+      x-lambda-function: updateNotificationById
+      x-database: crud-nosql-app-notifications-table
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [notificationCreated]
+              properties:
+                notificationCreated: { type: string, format: date-time }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+    delete:
+      tags: [Notifications]
+      summary: Delete a notification
+      description: The current Lambda reads recipientSub, notificationCreated, and id from a JSON body, although OpenAPI tooling does not model request bodies for DELETE operations.
+      operationId: deleteNotificationById
+      x-lambda-runtime: python3.12
+      x-lambda-function: deleteNotificationById
+      x-database: crud-nosql-app-notifications-table
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/dashboard/metrics:
+    get:
+      tags: [Dashboard]
+      summary: Get overall dashboard metrics
+      operationId: getDashboardMetrics
+      x-lambda-runtime: python3.12
+      x-lambda-function: getDashboardMetrics
+      responses:
+        "200":
+          description: Dashboard metrics
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FreeformObject" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/dashboard/metrics/jobs:
+    get:
+      tags: [Dashboard]
+      summary: Get maintenance-card metrics
+      operationId: getCardMetrics
+      x-lambda-runtime: python3.12
+      x-lambda-function: getCardMetrics
+      x-database: crud-nosql-app-maintenance-request-table
+      responses:
+        "200":
+          description: Card metrics; administrators and maintenance users can query all locations, while managers and users remain restricted to their own location
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FreeformObject" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/dashboard/metrics/charts:
+    get:
+      tags: [Dashboard]
+      summary: Get store maintenance-cost metrics
+      operationId: getStoreCostMetrics
+      x-lambda-runtime: python3.12
+      x-lambda-function: getStoreCostMetrics
+      x-database: crud-nosql-app-maintenance-action-table
+      x-database-1: crud-nosql-app-locations-table
+      x-database-2: crud-nosql-app-users-table
+      parameters:
+        - $ref: "#/components/parameters/LocationQueryOptional"
+        - $ref: "#/components/parameters/YearQuery"
+        - $ref: "#/components/parameters/MonthQuery"
+      responses:
+        "200":
+          description: Cost metrics; administrators and maintenance users can query all locations, while managers and users remain restricted to their own location
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FreeformObject" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/dashboard/metrics/transfers:
+    get:
+      tags: [Dashboard]
+      summary: Get transfer metrics
+      operationId: getTransferMetrics
+      x-lambda-runtime: python3.12
+      x-lambda-function: getTransferMetrics
+      responses:
+        "200":
+          description: Current placeholder response
+          content:
+            application/json:
+              schema: { type: string, example: "Success: getTransferMetrics" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/dashboard/metrics/verification:
+    get:
+      tags: [Dashboard]
+      summary: Get asset-verification metrics
+      operationId: getVerificationMetrics
+      x-lambda-runtime: python3.12
+      x-lambda-function: getVerificationMetrics
+      x-database: crud-nosql-app-assets-table
+      parameters:
+        - $ref: "#/components/parameters/LocationQueryOptional"
+      responses:
+        "200":
+          description: Verification metrics; administrators and maintenance users can query all locations, while managers and users remain restricted to their own location
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VerificationMetrics" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      description: Resource identifier; maintenance and generated-resource IDs are string UUIDs.
+      schema: { type: string }
+    StatusQuery:
+      name: status
+      in: query
+      required: false
+      description: May be supplied more than once as status[] where supported by the list handler.
+      schema: { type: string }
+    LocationQuery:
+      name: location
+      in: query
+      required: true
+      schema: { type: string }
+    LocationQueryOptional:
+      name: location
+      in: query
+      required: false
+      description: Admin and maintenance callers may select a location or all locations; manager and user callers are restricted to their token location.
+      schema: { type: string }
+    YearQuery:
+      name: year
+      in: query
+      required: false
+      schema: { type: integer, minimum: 2000 }
+    MonthQuery:
+      name: month
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 12 }
+
+  responses:
+    Success:
+      description: Operation succeeded
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/MessageResponse" }
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  schemas:
+    FreeformObject:
+      type: object
+      additionalProperties: true
+
+    MessageResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        message: { type: string }
+
+    ErrorResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        error: { type: string }
+        message: { type: string }
+
+    UploadMetadata:
+      type: object
+      required: [filename, content_type]
+      properties:
+        filename: { type: string, example: motor-photo.jpg }
+        content_type: { type: string, example: image/jpeg }
+
+    PresignedUpload:
+      type: object
+      additionalProperties: true
+      properties:
+        filename: { type: string }
+        content_type: { type: string }
+        key: { type: string }
+        url: { type: string, format: uri }
+        upload_url: { type: string, format: uri }
+
+    RequestAsset:
+      type: object
+      required: [area, equipment]
+      properties:
+        assetID: { type: string }
+        area: { type: string }
+        equipment: { type: string }
+        assetIssueReason:
+          type: string
+          enum: [no barcode visible, barcode damaged, rental unit, other]
+        images:
+          type: array
+          items: { $ref: "#/components/schemas/UploadMetadata" }
+      description: Either assetID or assetIssueReason is required by the handler.
+
+    MaintenanceRequestCreate:
+      type: object
+      required: [location, type, priority, impact, description, breakdown_time, assets]
+      properties:
+        location: { type: string }
+        type: { type: string }
+        priority: { type: string }
+        impact: { type: string }
+        jobComments: { type: string, description: Included when supplied by the client. }
+        description: { type: string }
+        breakdown_time: { type: string, format: date-time }
+        assets:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/RequestAsset" }
+
+    MaintenanceRequest:
+      allOf:
+        - $ref: "#/components/schemas/MaintenanceRequestCreate"
+        - type: object
+          additionalProperties: true
+          properties:
+            id: { type: string }
+            status: { type: string }
+            created_at: { type: string, format: date-time }
+            created_by_sub: { type: string }
+            assign_to_sub: { type: string }
+            assign_to_name: { type: string }
+            assign_to_group: { type: string }
+            targetDate: { type: string }
+
+    JobApproval:
+      type: object
+      required: [targetDate, status, selectedRowId, assign_to_name, assign_to_sub, assign_to_group]
+      properties:
+        targetDate: { type: string }
+        status: { type: string }
+        selectedRowId: { type: string }
+        assign_to_name: { type: string }
+        assign_to_sub: { type: string }
+        assign_to_group: { type: string }
+
+    JobRejection:
+      type: object
+      required: [reject_message, status, selectedRowId]
+      properties:
+        reject_message: { type: string }
+        status: { type: string }
+        selectedRowId: { type: string }
+
+    CostLine:
+      type: object
+      additionalProperties: true
+      properties:
+        description: { type: string }
+        quantity: { type: number }
+        cost: { type: number, format: double }
+        total: { type: number, format: double }
+
+    MaintenanceActionCreate:
+      type: object
+      required: [start_time, end_time, total_km, work_completed, status, root_cause, findings, signature, selectedRowId, signedBy]
+      properties:
+        start_time: { type: string, format: date-time }
+        end_time: { type: string, format: date-time }
+        total_km: { type: number }
+        work_completed: { type: string }
+        status: { type: string }
+        root_cause: { type: string }
+        findings: { type: string }
+        selectedRowId: { type: string }
+        signature: { type: string, description: Signature value recorded by the client. }
+        signedBy: { type: string }
+        contractor:
+          type: array
+          items: { $ref: "#/components/schemas/CostLine" }
+        total_cost_contractor: { type: number, format: double }
+        parts:
+          type: array
+          items: { $ref: "#/components/schemas/CostLine" }
+        total_cost_parts: { type: number, format: double }
+        sundries:
+          type: array
+          items: { $ref: "#/components/schemas/CostLine" }
+        total_cost_sundries: { type: number, format: double }
+        invoices:
+          type: array
+          items: { $ref: "#/components/schemas/UploadMetadata" }
+        images:
+          type: array
+          items: { $ref: "#/components/schemas/UploadMetadata" }
+
+    MaintenanceAction:
+      allOf:
+        - $ref: "#/components/schemas/MaintenanceActionCreate"
+        - type: object
+          additionalProperties: true
+          properties:
+            id: { type: string }
+            created_at: { type: string, format: date-time }
+
+    AssetFields:
+      type: object
+      properties:
+        location: { type: string }
+        business_unit: { type: string }
+        area: { type: string }
+        equipment: { type: string }
+        assetType: { type: string }
+        category: { type: string }
+        replacementValue: { type: number, format: double }
+        assetID: { type: string }
+        condition: { type: string }
+        serialNumber: { type: string }
+        additional_notes: { type: string }
+        images:
+          type: array
+          items: { $ref: "#/components/schemas/UploadMetadata" }
+
+    AssetCreate:
+      allOf:
+        - $ref: "#/components/schemas/AssetFields"
+        - type: object
+          required: [location, business_unit, area, equipment, assetType, category, replacementValue, condition]
+          description: assetID is optional for low-value and rental assets.
+
+    AssetUpdate:
+      allOf:
+        - $ref: "#/components/schemas/AssetFields"
+        - type: object
+          properties:
+            deleted_image_keys:
+              type: array
+              items: { type: string }
+
+    Asset:
+      allOf:
+        - $ref: "#/components/schemas/AssetFields"
+        - type: object
+          additionalProperties: true
+          properties:
+            id: { type: string }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+            last_verified_at: { type: string, format: date-time }
+
+    TransferAsset:
+      type: object
+      additionalProperties: true
+      properties:
+        assetID: { type: string }
+        images:
+          type: array
+          items: { $ref: "#/components/schemas/UploadMetadata" }
+
+    AssetTransferCreate:
+      type: object
+      required: [transferReason, locationFrom, locationTo, expectedDate, assets]
+      properties:
+        transferReason: { type: string }
+        locationFrom: { type: string }
+        locationTo: { type: string }
+        expectedDate: { type: string, format: date }
+        description: { type: string }
+        assets:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/TransferAsset" }
+        transportInvoices:
+          type: array
+          items: { $ref: "#/components/schemas/UploadMetadata" }
+
+    AssetTransfer:
+      allOf:
+        - $ref: "#/components/schemas/AssetTransferCreate"
+        - type: object
+          additionalProperties: true
+          properties:
+            id: { type: string }
+            status:
+              type: string
+              enum: [pending, approved, rejected, in-transit, completed, cancelled]
+            created_at: { type: string, format: date-time }
+
+    TransferInTransit:
+      type: object
+      required: [transportType, transportName, transportDate, status]
+      properties:
+        transportType: { type: string }
+        transportName: { type: string }
+        transportDate: { type: string }
+        status: { type: string, enum: [in-transit] }
+        trackingNumber: { type: string }
+        transportCost: { type: number, format: double }
+        transportNotes: { type: string }
+        images:
+          type: array
+          items: { $ref: "#/components/schemas/UploadMetadata" }
+        transportInvoices:
+          type: array
+          items: { $ref: "#/components/schemas/UploadMetadata" }
+
+    TransferReceipt:
+      type: object
+      required: [condition, receiptDate, status]
+      properties:
+        condition: { type: string }
+        receiptDate: { type: string }
+        status: { type: string, enum: [receipt] }
+        notes: { type: string }
+        images:
+          type: array
+          items: { $ref: "#/components/schemas/UploadMetadata" }
+        deliveryNote: { $ref: "#/components/schemas/UploadMetadata" }
+
+    DisposalAsset:
+      type: object
+      additionalProperties: true
+      properties:
+        assetID: { type: string }
+        area: { type: string }
+        equipment: { type: string }
+        images:
+          type: array
+          items: { $ref: "#/components/schemas/UploadMetadata" }
+      description: Identified assets use assetID; unidentified assets use area and equipment.
+
+    DisposalCreate:
+      type: object
+      required: [location, expectedDisposalDate, disposalReason, assets]
+      properties:
+        location: { type: string }
+        expectedDisposalDate: { type: string, format: date }
+        disposalReason: { type: string }
+        description: { type: string }
+        assets:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/DisposalAsset" }
+
+    Disposal:
+      allOf:
+        - $ref: "#/components/schemas/DisposalCreate"
+        - type: object
+          additionalProperties: true
+          properties:
+            id: { type: string }
+            status:
+              type: string
+              enum: [pending, approved, rejected, expired, cancelled, disposed]
+            created_at: { type: string, format: date-time }
+
+    DisposalCompletion:
+      type: object
+      required: [disposalMethod, disposalCost]
+      properties:
+        disposalMethod: { type: string }
+        disposalCost: { type: number, format: double, minimum: 0 }
+        notes: { type: string }
+        images:
+          type: array
+          items: { $ref: "#/components/schemas/UploadMetadata" }
+        documents:
+          type: array
+          items: { $ref: "#/components/schemas/UploadMetadata" }
+
+    UserCreate:
+      type: object
+      required: [email, group, family_name, name, location, mobile, position]
+      properties:
+        email: { type: string, format: email }
+        group: { type: string }
+        family_name: { type: string }
+        name: { type: string }
+        location: { type: string }
+        mobile: { type: string }
+        position: { type: string }
+
+    UserUpdate:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        name: { type: string }
+        family_name: { type: string }
+        group: { type: string }
+        location: { type: string }
+        mobile: { type: string }
+
+    User:
+      type: object
+      additionalProperties: true
+      properties:
+        sub: { type: string, format: uuid }
+        email: { type: string, format: email }
+        group: { type: string }
+        family_name: { type: string }
+        name: { type: string }
+        location: { type: string }
+        mobile: { type: string }
+        position: { type: string }
+        enabled: { type: boolean }
+
+    Contractor:
+      type: object
+      additionalProperties: true
+      properties:
+        id: { type: string }
+        business_unit: { type: string }
+        area: { type: string }
+        equipment: { type: string }
+        location: { type: string }
+        assetID: { type: string }
+        serialNumber: { type: string }
+        condition: { type: string }
+        additional_notes: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    ContractorCreate:
+      type: object
+      required: [business_unit, area, equipment, location, assetID, serialNumber, condition, additional_notes]
+      properties:
+        business_unit: { type: string }
+        area: { type: string }
+        equipment: { type: string }
+        location: { type: string }
+        assetID: { type: string }
+        serialNumber: { type: string }
+        condition: { type: string }
+        additional_notes: { type: string }
+
+    ContractorUpdate:
+      type: object
+      properties:
+        description: { type: string }
+        assetID: { type: string }
+        condition: { type: string }
+        location: { type: string }
+        warranty: { type: string }
+        warranty_expire: { type: string }
+        date_of_manufacture: { type: string }
+        serialNumber: { type: string }
+        manufacturer: { type: string }
+        model: { type: string }
+        status: { type: string }
+        type: { type: string }
+        equipment: { type: string }
+
+    Comment:
+      type: object
+      additionalProperties: true
+      properties:
+        id: { type: string }
+        request_id: { type: string }
+        comment: { type: string }
+        created_at: { type: string, format: date-time }
+        created_by_sub: { type: string }
+        created_by_name: { type: string }
+
+    Notification:
+      type: object
+      additionalProperties: true
+      properties:
+        id: { type: string }
+        recipientSub: { type: string }
+        notificationCreated: { type: string, format: date-time }
+        status: { type: string }
+        message: { type: string }
+
+    NotificationSummary:
+      type: object
+      additionalProperties: true
+      properties:
+        notifications:
+          type: array
+          items: { $ref: "#/components/schemas/Notification" }
+        counts:
+          type: object
+          additionalProperties:
+            type: integer
+
+    VerificationMetrics:
+      type: object
+      additionalProperties: true
+      description: Aggregate asset-verification metrics for the authorized location scope.
+      properties:
+        location: { type: string, example: all sites }
+        compliance: { type: number, format: double }
+        total: { type: integer }
+        statuses:
+          type: array
+          items:
+            type: object
+            required: [name, value]
+            properties:
+              name:
+                type: string
+                enum: [Verified, Due, Overdue, Not Verified]
+              value: { type: integer }

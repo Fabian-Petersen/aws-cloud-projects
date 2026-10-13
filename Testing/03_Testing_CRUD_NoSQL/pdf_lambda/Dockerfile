@@ -4,11 +4,11 @@
     # Note: If you receive an error using the AWS CLI, make sure that you have the latest version of the AWS CLI and Docker installed.
     # Build your Docker image using the following command. For information on building a Docker file from scratch see the instructions here 
     # . You can skip this step if your image is already built:
-    # % docker build -t crud-nosql-pdf-generator .
+    # % docker build -t jobcard-pdf .
     # After the build completes, tag your image so you can push the image to this repository:
-    # % docker tag crud-nosql-pdf-generator:latest 157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:latest
+    # % docker tag jobcard-pdf:latest 157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v1
     # Run the following command to push this image to your newly created AWS repository:
-    # % docker push 157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:latest
+    # % docker push 157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v1
 
 # % Login to ECR 
 # aws ecr get-login-password --region af-south-1 | docker login --username AWS --password-stdin 157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator
@@ -44,13 +44,25 @@
 # % -`.
 # % Received an error trying to use the image `The image manifest, config or layer media type for the # source image 157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator@sha256:848f8d23260bd6e3089d6ca7c8a6951a1e01eedd06e77970b7d130d8534856b9 is not supported.`
 # Tried the following: 
-# step 1: docker buildx build --platform linux/amd64 --provenance=false -t pdf-lambda:latest .
-# step 2: docker tag pdf-lambda:latest 157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v3
-# step 3: docker push 157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v3
+# step 1: docker buildx build --platform linux/amd64 --provenance=false -t jobcard-pdf:latest .
+# step 2: docker tag jobcard-pdf:latest 157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v1
+# step 3: docker push 157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v1
+
+# Update (Try to avoid the multi layer image created on ECR)
+# step 1: docker buildx build --platform linux/amd64 --provenance=false --sbom=false --load -t jobcard-pdf:latest .
+# step 2: docker tag jobcard-pdf:latest 157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v2
+# step 3: docker push 157489943321.dkr.ecr.af-south-1.amazonaws.com/crud-nosql-pdf-generator:v2
+# step 4 : change image_uri in terraform.tfvars from :v1 to :v2.
+# step 5: terraform plan -out='tfplan'
+# step 6: terraform show tfplan "Confirm the plan updates module.pdf_generator.aws_lambda_function.pdf_generator in place with the new image_uri."
+# step 7: terraform apply tfplan
+# step 8: Deploy the lambda function jobcard-pdf-generator to use the new image v2
+
 
 FROM public.ecr.aws/lambda/python:3.10
 
 COPY lambda_handler.py ${LAMBDA_TASK_ROOT}/
+COPY backfill_jobcards.py ${LAMBDA_TASK_ROOT}/
 COPY pdf_service/ ${LAMBDA_TASK_ROOT}/pdf_service/
 
 # Install dependencies

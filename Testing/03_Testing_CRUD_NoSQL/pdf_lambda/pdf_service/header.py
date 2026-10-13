@@ -2,6 +2,7 @@ import os
 from reportlab.lib import colors
 from reportlab.platypus import Paragraph, Spacer, Table, TableStyle, Image
 
+
 def build_header(styles, usable_width, assets_dir):
     story = []
 

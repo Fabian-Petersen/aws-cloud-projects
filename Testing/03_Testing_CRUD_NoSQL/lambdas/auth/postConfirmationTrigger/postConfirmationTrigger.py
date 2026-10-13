@@ -5,24 +5,30 @@ from datetime import datetime, timezone, timedelta
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table("crud-nosql-app-users-table")
 
-def to_human_date(iso_string: str) -> str:
-    """Convert an ISO 8601 timestamp to a human-readable SAST date and time."""
-    SAST = timezone(timedelta(hours=2))
-    dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
-    return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
+
+HEADERS = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "http://localhost:5173",
+    "Access-Control-Allow-Methods": "DELETE, OPTIONS, POST",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Requested-With",
+    "Access-Control-Allow-Credentials": "true"
+}
+
 
 def lambda_handler(event, context):
     """Mark the authenticated Cognito user as confirmed in DynamoDB."""
-    print("event:", event)
+    print("event:", json.dumps(event))
     try:
         # Extract sub from Cognito authorizer claims
-        claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {})
+        claims = event.get("requestContext", {}).get(
+            "authorizer", {}).get("claims", {})
         user_id = claims.get("sub")
 
         if not user_id:
             return _response(400, {"message": "no user id found in token"})
 
-        now = datetime.now(timezone.utc).isoformat()
+        SAST = timezone(timedelta(hours=2))
+        now = datetime.now(SAST).isoformat()
 
         table.update_item(
             Key={"id": user_id},
@@ -30,7 +36,7 @@ def lambda_handler(event, context):
             ExpressionAttributeNames={"#status": "status"},
             ExpressionAttributeValues={
                 ":status": "CONFIRMED",
-                ":updatedAt": to_human_date(now),
+                ":updatedAt": now,
             },
         )
 
@@ -42,9 +48,18 @@ def lambda_handler(event, context):
 
 
 def _response(status_code: int, body: dict) -> dict:
-    """Build an API Gateway proxy response with a JSON-encoded body."""
+    """Build a JSON API Gateway proxy response with the endpoint CORS headers.
+
+    Args:
+        status_code: HTTP status code returned to the client.
+        body: JSON-serializable response payload.
+
+    Returns:
+        A mapping containing ``statusCode``, the shared response headers, and a
+        JSON-encoded ``body``.
+    """
     return {
         "statusCode": status_code,
-        "headers": {"Content-Type": "application/json"},
+        "headers": HEADERS,
         "body": json.dumps(body, default=str),
     }

@@ -67,6 +67,17 @@ resource "aws_iam_role_policy" "pdf_lambda_policy" {
         ]
         Resource = "${var.s3_bucket_arn}/*"
       },
+      # Allow HeadObject to distinguish a missing jobcard from access denied.
+      {
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = var.s3_bucket_arn
+        Condition = {
+          StringLike = {
+            "s3:prefix" = ["jobcards/*"]
+          }
+        }
+      },
 
       # CloudWatch logging
       {
@@ -92,6 +103,11 @@ resource "aws_lambda_function" "pdf_generator" {
   timeout     = 30
   memory_size = 512
 
+  depends_on = [
+    aws_iam_role_policy.pdf_lambda_policy,
+    aws_iam_role_policy_attachment.pdf_lambda_logging,
+  ]
+
   tags = {
     Environment = var.env
   }
@@ -99,11 +115,12 @@ resource "aws_lambda_function" "pdf_generator" {
 
 # $ [Step 4] : Connect the lambda and the dynamoDB supplying the stream.
 resource "aws_lambda_event_source_mapping" "dynamoDB_to_lambda" {
-  event_source_arn  = var.dynamodb_stream_arn
-  function_name     = aws_lambda_function.pdf_generator.arn
-  starting_position = "LATEST"
-  batch_size        = 5
-  enabled           = true
+  event_source_arn        = var.dynamodb_stream_arn
+  function_name           = aws_lambda_function.pdf_generator.arn
+  starting_position       = "LATEST"
+  batch_size              = 5
+  function_response_types = ["ReportBatchItemFailures"]
+  enabled                 = true
 }
 
 

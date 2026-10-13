@@ -18,13 +18,6 @@ def get_user_pool_id():
     return response["Parameter"]["Value"]
 
 
-def to_human_date(iso_string: str) -> str:
-    """Convert an ISO 8601 timestamp to a human-readable SAST date and time."""
-    SAST = timezone(timedelta(hours=2))
-    dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
-    return dt.astimezone(SAST).strftime("%d %b %Y, %H:%M")
-
-
 HEADERS = {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "http://localhost:5173",
@@ -51,6 +44,7 @@ def get_cognito_user_by_email(email: str, user_pool_id: str) -> dict | None:
 
 
 def lambda_handler(event, context):
+    print("event:", json.dumps(event))
     """Create a user in Cognito, assign its group, and persist it in DynamoDB."""
     try:
         # --- 1. Parse and validate input ---
@@ -108,7 +102,8 @@ def lambda_handler(event, context):
         )
 
         # --- 5. Store user in DynamoDB ---
-        now = datetime.now(timezone.utc).isoformat()
+        SAST = timezone(timedelta(hours=2))
+        now = datetime.now(SAST).isoformat()
 
         item = {
             "id":             sub,
@@ -122,8 +117,8 @@ def lambda_handler(event, context):
             "location":       location,
             "mobile":         mobile,
             "position":       position,
-            "userCreated":    to_human_date(now),
-            "updatedAt":      to_human_date(now),
+            "userCreated":    now,
+            "updatedAt":      now,
         }
 
         table.put_item(Item=item)
@@ -145,7 +140,16 @@ def lambda_handler(event, context):
 
 
 def _response(status_code: int, body: dict) -> dict:
-    """Build an API Gateway proxy response with a JSON-encoded body."""
+    """Build a JSON API Gateway proxy response with the endpoint CORS headers.
+
+    Args:
+        status_code: HTTP status code returned to the client.
+        body: JSON-serializable response payload.
+
+    Returns:
+        A mapping containing ``statusCode``, the shared response headers, and a
+        JSON-encoded ``body``.
+    """
     return {
         "statusCode": status_code,
         "headers": HEADERS,

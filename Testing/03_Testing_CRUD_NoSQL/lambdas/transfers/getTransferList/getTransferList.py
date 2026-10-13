@@ -1,5 +1,5 @@
 """
-This function returns all the asset transfers in the asset transfers table. Admins and technicians can see all transfers, while regular users only see their own transfers/transfers of the location they belong to.
+This function returns all the asset transfers in the asset transfers table. Admins and maintenances can see all transfers, while regular users only see their own transfers/transfers of the location they belong to.
 
 """
 
@@ -387,14 +387,14 @@ def lambda_handler(event, context):
         return options_response
 
     try:
-        is_admin_or_technician = any(
-            group in ["admin", "technician"] for group in groups)
+        is_admin_or_maintenance = any(
+            group in ["admin", "maintenance"] for group in groups)
 
         # ----------------------------
         # DATA FETCH LOGIC
         # ----------------------------
 
-        if is_admin_or_technician:
+        if is_admin_or_maintenance:
             # ✅ USE GSI IF STATUS EXISTS
             if statuses:
                 items = []
@@ -418,7 +418,7 @@ def lambda_handler(event, context):
                 items = scan_all()
 
             items = [item for item in items if item.get(
-                "request_sub") == user_sub]
+                "requestor_sub") == user_sub]
 
         # ----------------------------
         # Build response

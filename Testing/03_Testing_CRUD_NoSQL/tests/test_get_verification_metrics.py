@@ -26,6 +26,56 @@ class GetVerificationMetricsTests(unittest.TestCase):
         self.table_patch.start()
         self.addCleanup(self.table_patch.stop)
 
+    @staticmethod
+    def event(group, location=None):
+        query = {"location": location} if location else None
+        return {
+            "queryStringParameters": query,
+            "requestContext": {
+                "authorizer": {
+                    "claims": {
+                        "sub": "user-1",
+                        "cognito:groups": group,
+                    }
+                }
+            },
+        }
+
+    def test_maintenance_without_filter_receives_all_locations(self):
+        with patch.object(handler, "get_user_location") as user_location:
+            scope = handler.get_data_scope(self.event("maintenance"))
+
+        self.assertEqual(scope, {"is_admin": True, "location": None})
+        user_location.assert_not_called()
+
+    def test_maintenance_can_apply_admin_location_filter(self):
+        with patch.object(handler, "get_user_location") as user_location:
+            scope = handler.get_data_scope(
+                self.event("maintenance", "Golden Acre")
+            )
+
+        self.assertEqual(
+            scope,
+            {"is_admin": True, "location": "Golden Acre"},
+        )
+        user_location.assert_not_called()
+
+    def test_manager_remains_restricted_to_users_table_location(self):
+        with patch.object(
+            handler,
+            "get_user_location",
+            return_value="Maitland",
+        ) as user_location:
+            scope = handler.get_data_scope(
+                self.event("manager", "Golden Acre")
+            )
+
+        self.assertEqual(
+            scope,
+            {"is_admin": False, "location": "Maitland"},
+        )
+        user_location.assert_called_once()
+
     def test_location_matching_ignores_case_and_whitespace(self):
         self.assets_table.scan.return_value = {
             "Items": [

@@ -7,7 +7,7 @@ from botocore.exceptions import ClientError
 cognito = boto3.client("cognito-idp")
 
 USER_POOL_ID = os.environ["USER_POOL_ID"]
-GROUP_NAME = "technician"
+GROUP_NAME = "maintenance"
 
 
 def get_attr(user, name):
@@ -138,7 +138,7 @@ def handle_options_request(method, headers):
 
 
 def lambda_handler(event, context):
-    print("event:", json.dumps(event, indent=2, default=decimal_serializer))
+    print("event:", json.dumps(event, default=decimal_serializer))
     # CORS
     method, HEADERS = handle_request_metadata(event)
 

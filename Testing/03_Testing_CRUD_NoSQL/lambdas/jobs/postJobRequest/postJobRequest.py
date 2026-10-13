@@ -375,7 +375,17 @@ def lambda_handler(event, context):
         return _response(500, {"message": "Internal server error"})
 
 
-def _response(status_code, body):
+def _response(status_code: int, body: dict) -> dict:
+    """Build a JSON API Gateway proxy response with the endpoint CORS headers.
+
+    Args:
+        status_code: HTTP status code returned to the client.
+        body: JSON-serializable response payload.
+
+    Returns:
+        A mapping containing ``statusCode``, the shared response headers, and a
+        JSON-encoded ``body``.
+    """
     return {
         "statusCode": status_code,
         "headers": HEADERS,

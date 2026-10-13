@@ -24,13 +24,13 @@ locations_table = dynamodb.Table("crud-nosql-app-locations-table")
 
 FULL_ACCESS_GROUPS = {
     "admin",
-    "technician",
+    "maintenance",
 }
 
 DEFAULT_STATUSES = [
     "pending",
     "in progress",
-    "completed",
+    "complete",
     "cancelled",
 ]
 

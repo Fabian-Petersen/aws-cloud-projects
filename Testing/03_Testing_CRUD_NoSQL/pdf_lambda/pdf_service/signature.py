@@ -1,5 +1,6 @@
 import base64
 import io
+from xml.sax.saxutils import escape
 
 # from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle
@@ -8,11 +9,11 @@ from reportlab.platypus import Paragraph, Spacer, Table, TableStyle, Image
 
 def build_signature(jobcard, styles):
     story = []
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 4))
     base64_str = jobcard.get('signature', '')
 
     if not base64_str:
-        return Spacer(1, 10)
+        return Spacer(1, 4)
 
     # Remove data URL prefix if present
     if "," in base64_str:
@@ -36,7 +37,8 @@ def build_signature(jobcard, styles):
     # )
 
     signature_label = Paragraph(
-        f"<b>Signed By:</b> {jobcard.get('signedBy', '')}",
+        f"<b>Signed By:</b> "
+        f"{escape(str(jobcard.get('signedBy') or '').strip().title())}",
         label_styles
     )
 

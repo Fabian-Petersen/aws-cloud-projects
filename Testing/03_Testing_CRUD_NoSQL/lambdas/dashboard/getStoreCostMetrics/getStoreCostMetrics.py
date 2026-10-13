@@ -3,7 +3,7 @@ import json
 import traceback
 from decimal import Decimal
 from datetime import datetime, timezone, timedelta
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Attr, Key
 from collections import defaultdict
 
 
@@ -46,12 +46,6 @@ class DecimalEncoder(json.JSONEncoder):
 # Access Control
 # ======================================================================================
 
-FULL_ACCESS_GROUPS = {
-    "admin",
-    "technician",
-}
-
-
 def parse_groups(groups_claim):
 
     if not groups_claim:
@@ -85,22 +79,36 @@ def parse_groups(groups_claim):
     return []
 
 
-def get_user_access_scope(groups, claims, location=None):
+def get_user_access_scope(groups, claims):
     normalized_groups = set(groups)
-    has_full_access = bool(FULL_ACCESS_GROUPS.intersection(normalized_groups))
+    user_sub = claims.get("sub")
 
-    # Admin / Technician Full Access
-    if has_full_access:
-        return {"full_access": True, "location": None}
+    if "admin" in normalized_groups:
+        return {
+            "role": "admin",
+            "user_sub": user_sub,
+            "location": None,
+        }
 
-    return {
-        "full_access": False,
-        "location": location.lower() if location else None,
-    }
+    if "maintenance" in normalized_groups:
+        return {
+            "role": "maintenance",
+            "user_sub": user_sub,
+            "location": None,
+        }
 
     # =========================================================================
     # Manager / Standard User
     # =========================================================================
+
+    user = get_user_by_sub(user_sub)
+    location = user.get("location") if user else None
+
+    return {
+        "role": "location",
+        "user_sub": user_sub,
+        "location": location.lower() if location else None,
+    }
 
 
 def get_user_by_sub(user_sub):
@@ -115,17 +123,6 @@ def get_user_by_sub(user_sub):
     )
 
     return response.get("Item")
-
-    # if not user:
-    #     return {
-    #         "full_access": False,
-    #         "location": None,
-    #     }
-    # return {
-    #     "full_access": False,
-    #     "location": location.lower() if location else None,
-    # }
-
 
 # ======================================================================================
 # Helpers
@@ -162,6 +159,46 @@ def safe_parse_date(date_string):
 
     except Exception:
         return None
+
+
+def query_all(table, **kwargs):
+    items = []
+    response = table.query(**kwargs)
+    items.extend(response.get("Items", []))
+
+    while "LastEvaluatedKey" in response:
+        response = table.query(
+            ExclusiveStartKey=response["LastEvaluatedKey"],
+            **kwargs,
+        )
+        items.extend(response.get("Items", []))
+
+    return items
+
+
+def scan_all(table, **kwargs):
+    items = []
+    response = table.scan(**kwargs)
+    items.extend(response.get("Items", []))
+
+    while "LastEvaluatedKey" in response:
+        response = table.scan(
+            ExclusiveStartKey=response["LastEvaluatedKey"],
+            **kwargs,
+        )
+        items.extend(response.get("Items", []))
+
+    return items
+
+
+def get_actions_completed_by_user(user_sub):
+    if not user_sub:
+        return []
+
+    return scan_all(
+        action_table,
+        FilterExpression=Attr("action_sub").eq(user_sub),
+    )
 
 
 # ======================================================================================
@@ -207,67 +244,71 @@ def get_locations():
 
 def get_stores_cost_by_year(
     filter_year=None,
-    filter_location=None
+    filter_location=None,
+    actions=None,
 ):
 
     if filter_location and filter_year:
         return get_store_cost_by_month(
             filter_location,
-            filter_year
+            filter_year,
+            actions=actions,
         )
 
     locations = get_locations()
 
     grouped = defaultdict(lambda: defaultdict(float))
 
-    for item in locations:
+    def add_action(job):
+        store = str(job.get("location") or "").lower()
+        date = safe_parse_date(job.get("actionCreated"))
 
-        store = item.get("location")
+        if not store or not date:
+            return
 
-        if not store:
-            continue
+        total_cost = (
+            safe_float(job.get("total_cost_parts"))
+            + safe_float(job.get("total_cost_sundries"))
+            + safe_float(job.get("total_cost_contractor"))
+        )
+        grouped[str(date.year)][store] += total_cost
 
-        try:
-            resp = action_table.query(
-                IndexName="LocationIndex",
-                KeyConditionExpression=Key("location").eq(
-                    store.lower()
-                ),
-                ProjectionExpression=(
-                    "actionCreated, "
-                    "total_cost_parts, "
-                    "total_cost_sundries, "
-                    "total_cost_contractor"
-                )
-            )
+    if actions is not None:
+        for job in actions:
+            add_action(job)
+    else:
+        for item in locations:
 
-            items = resp.get("Items", [])
+            store = item.get("location")
 
-            for job in items:
-                date_str = job.get("actionCreated")
+            if not store:
+                continue
 
-                if not date_str:
-                    continue
-
-                try:
-                    dt = datetime.fromisoformat(date_str)
-                    year = str(dt.year)
-
-                    total_cost = (
-                        safe_float(job.get("total_cost_parts")) +
-                        safe_float(job.get("total_cost_sundries")) +
-                        safe_float(job.get("total_cost_contractor"))
+            try:
+                items = query_all(
+                    action_table,
+                    IndexName="LocationIndex",
+                    KeyConditionExpression=Key("location").eq(
+                        store.lower()
+                    ),
+                    ProjectionExpression=(
+                        "actionCreated, "
+                        "total_cost_parts, "
+                        "total_cost_sundries, "
+                        "total_cost_contractor"
                     )
+                )
 
-                    grouped[year][store] += total_cost
+                for job in items:
+                    # LocationIndex already establishes the location. Include it
+                    # explicitly so scoped and unscoped actions share aggregation.
+                    job.setdefault("location", store)
+                    add_action(job)
 
-                except Exception:
-                    continue
-
-        except Exception as e:
-            print(
-                f"Skipping store '{store}': {str(e)}"
-            )
+            except Exception as e:
+                print(
+                    f"Skipping store '{store}': {str(e)}"
+                )
 
     result = {}
 
@@ -278,7 +319,10 @@ def get_stores_cost_by_year(
                 "name": item.get("location"),
                 "code": item.get("code"),
                 "value": round(
-                    stores.get(item.get("location"), 0),
+                    stores.get(
+                        str(item.get("location") or "").lower(),
+                        0,
+                    ),
                     2
                 )
             }
@@ -292,21 +336,33 @@ def get_stores_cost_by_year(
 # ======================================================================================
 
 
-def get_store_cost_by_month(location: str, year: str) -> dict:
+def get_store_cost_by_month(
+    location: str,
+    year: str,
+    actions=None,
+) -> dict:
     monthly = defaultdict(float)
 
     try:
-        resp = action_table.query(
-            IndexName="LocationIndex",
-            KeyConditionExpression=Key("location").eq(location.lower()),
-            ProjectionExpression=(
-                "actionCreated, "
-                "total_cost_parts, "
-                "total_cost_sundries, "
-                "total_cost_contractor"
+        if actions is None:
+            items = query_all(
+                action_table,
+                IndexName="LocationIndex",
+                KeyConditionExpression=Key("location").eq(location.lower()),
+                ProjectionExpression=(
+                    "actionCreated, "
+                    "total_cost_parts, "
+                    "total_cost_sundries, "
+                    "total_cost_contractor"
+                )
             )
-        )
-        items = resp.get("Items", [])
+        else:
+            items = [
+                action
+                for action in actions
+                if str(action.get("location") or "").lower()
+                == location.lower()
+            ]
 
         for job in items:
             date_str = job.get("actionCreated")
@@ -368,57 +424,40 @@ def parse_month(month: str) -> int:
         return num
 
 
-def get_store_jobs_by_month(store: str, month: str, year: str) -> dict:
+def format_jobs_by_month(items, store: str, month: str, year: str) -> dict:
     jobs = []
     month_int = parse_month(month)
 
-    try:
-        resp = action_table.query(
-            IndexName="LocationIndex",
-            KeyConditionExpression=Key("location").eq(store.lower()),
-            ProjectionExpression=(
-                "request_id, "
-                "id, "
-                "assetID, "
-                "actionCreated, "
-                "total_cost_parts, "
-                "total_cost_sundries, "
-                "total_cost_contractor "
+    for job in items:
+        date_str = job.get("actionCreated")
+        if not date_str:
+            continue
+        try:
+            dt = datetime.fromisoformat(date_str)
+            if str(dt.year) != str(year):
+                continue
+            if str(dt.month) != str(month_int):
+                continue
+            total_cost = (
+                safe_float(job.get("total_cost_parts")) +
+                safe_float(job.get("total_cost_sundries")) +
+                safe_float(job.get("total_cost_contractor"))
             )
-        )
-        items = resp.get("Items", [])
-        for job in items:
-            date_str = job.get("actionCreated")
-            if not date_str:
-                continue
-            try:
-                dt = datetime.fromisoformat(date_str)
-                if str(dt.year) != str(year):
-                    continue
-                if str(dt.month) != str(month_int):
-                    continue
-                total_cost = (
-                    safe_float(job.get("total_cost_parts")) +
-                    safe_float(job.get("total_cost_sundries")) +
-                    safe_float(job.get("total_cost_contractor"))
-                )
-                jobs.append({
-                    "request_id": job.get("request_id"),
-                    "action_id": job.get("id"),
-                    "assetID": job.get("assetID"),
-                    "date": date_str,
-                    "costs": {
-                        "parts": safe_float(job.get("total_cost_parts")),
-                        "sundries": safe_float(job.get("total_cost_sundries")),
-                        "contractor": safe_float(job.get("total_cost_contractor")),
-                        "total": round(total_cost, 2)
-                    }
-                })
-            except Exception:
-                continue
-    except Exception as e:
-        print(f"Error fetching jobs for '{store}' {month}/{year}: {str(e)}")
-    # Sort jobs by date ascending
+            jobs.append({
+                "request_id": job.get("request_id"),
+                "action_id": job.get("id"),
+                "assetID": job.get("assetID"),
+                "date": date_str,
+                "costs": {
+                    "parts": safe_float(job.get("total_cost_parts")),
+                    "sundries": safe_float(job.get("total_cost_sundries")),
+                    "contractor": safe_float(job.get("total_cost_contractor")),
+                    "total": round(total_cost, 2)
+                }
+            })
+        except Exception:
+            continue
+
     jobs.sort(key=lambda j: j["date"])
     return {
         "location": store,
@@ -430,29 +469,40 @@ def get_store_jobs_by_month(store: str, month: str, year: str) -> dict:
     }
 
 
-# ======================================================================================
-# Scoped Job Fetching
-# ======================================================================================
+def get_store_jobs_by_month(
+    store: str,
+    month: str,
+    year: str,
+    actions=None,
+) -> dict:
+    try:
+        if actions is None:
+            items = query_all(
+                action_table,
+                IndexName="LocationIndex",
+                KeyConditionExpression=Key("location").eq(store.lower()),
+                ProjectionExpression=(
+                    "request_id, "
+                    "id, "
+                    "assetID, "
+                    "actionCreated, "
+                    "total_cost_parts, "
+                    "total_cost_sundries, "
+                    "total_cost_contractor "
+                )
+            )
+        else:
+            items = [
+                action
+                for action in actions
+                if str(action.get("location") or "").lower()
+                == store.lower()
+            ]
+    except Exception as e:
+        print(f"Error fetching jobs for '{store}' {month}/{year}: {str(e)}")
+        items = []
 
-def get_jobs_for_scope(access_scope):
-
-    # Admin / Technician
-    if access_scope["full_access"]:
-
-        stores_cost_by_year = get_stores_cost_by_year()
-        # print('stores_cost_by_year:', stores_cost_by_year)
-
-        return stores_cost_by_year
-    # Manager / User
-    location = access_scope["location"]
-    # print('location:', location)
-
-    if not location:
-        return []
-
-    store_cost_by_year = get_stores_cost_by_year(location)
-    # print('store_cost_by_year:', store_cost_by_year)
-    return store_cost_by_year
+    return format_jobs_by_month(items, store, month, year)
 
 
 # ======================================================================================
@@ -483,7 +533,7 @@ def safe_float(value):
 
 def lambda_handler(event, context):
 
-    print('event:', event)
+    print('event:', json.dumps(event))
 
     # =========================================================================
     # User Claims
@@ -494,10 +544,6 @@ def lambda_handler(event, context):
         .get("authorizer", {},)
         .get("claims", {},)
     )
-
-    user_sub = claims.get("sub")
-    user = get_user_by_sub(user_sub)
-    location = user.get("location") if user else None
 
     groups = parse_groups(claims.get("cognito:groups"))
 
@@ -513,7 +559,7 @@ def lambda_handler(event, context):
     # Access Scope
     # =========================================================================
 
-    access_scope = get_user_access_scope(groups, claims, location)
+    access_scope = get_user_access_scope(groups, claims)
 
     # print('access scope:', access_scope)
 
@@ -576,20 +622,55 @@ def lambda_handler(event, context):
         # ---------------------------------------------------------------------
         # Level 3: Store + Year + Month → individual jobs
         # ---------------------------------------------------------------------
+        role = access_scope["role"]
+        scoped_location = access_scope["location"]
+        user_sub = access_scope["user_sub"]
+
+        if role == "maintenance" and not user_sub:
+            return _response(
+                403,
+                {"message": "User sub not found in token"},
+                HEADERS,
+            )
+
+        if role == "location" and not scoped_location:
+            return _response(
+                403,
+                {"message": "No location assigned"},
+                HEADERS,
+            )
+
+        scoped_actions = None
+
+        if role == "maintenance":
+            scoped_actions = get_actions_completed_by_user(user_sub)
+
         if filter_location and filter_year and filter_month:
+            authorized_location = (
+                filter_location.lower()
+                if role in {"admin", "maintenance"}
+                else scoped_location
+            )
             data = get_store_jobs_by_month(
-                filter_location.lower(),
+                authorized_location,
                 filter_month,
                 filter_year,
+                actions=scoped_actions,
             )
 
         # ---------------------------------------------------------------------
         # Level 2: Store + Year → monthly cost breakdown
         # ---------------------------------------------------------------------
         elif filter_location and filter_year:
+            authorized_location = (
+                filter_location.lower()
+                if role in {"admin", "maintenance"}
+                else scoped_location
+            )
             data = get_store_cost_by_month(
-                filter_location.lower(),
+                authorized_location,
                 filter_year,
+                actions=scoped_actions,
             )
 
         # ---------------------------------------------------------------------
@@ -608,20 +689,12 @@ def lambda_handler(event, context):
         #   "storeCost": <this response>
         # ---------------------------------------------------------------------
         else:
-            if access_scope["full_access"]:
-                data = get_stores_cost_by_year()
+            if role in {"admin", "maintenance"}:
+                data = get_stores_cost_by_year(
+                    actions=scoped_actions,
+                )
 
             else:
-                scoped_location = access_scope["location"]
-
-                if not scoped_location:
-                    return _response(
-                        403,
-                        {"message": "No location assigned"},
-                        HEADERS,
-                    )
-
-                # Use requested year when supplied, otherwise current year.
                 year = filter_year or str(datetime.now().year)
 
                 monthly_data = get_store_cost_by_month(

@@ -18,6 +18,7 @@ USER_SUB_ATTRIBUTE = os.environ.get("USER_SUB_ATTRIBUTE", "sub")
 USER_LOCATION_ATTRIBUTE = os.environ.get("USER_LOCATION_ATTRIBUTE", "location")
 
 ADMIN_GROUP = os.environ.get("ADMIN_GROUP", "admin")
+MAINTENANCE_GROUP = os.environ.get("MAINTENANCE_GROUP", "maintenance")
 
 # ---------------------------------------------------------------------------- #
 #                           Serialise Decimal Values                           #
@@ -175,7 +176,7 @@ def get_requested_location(event):
     """
     Get the optional location selected by the frontend.
 
-    This value is only relevant for administrators.
+    This value is only relevant for administrators and maintenance users.
     """
     query_params = event.get("queryStringParameters") or {}
 
@@ -239,7 +240,7 @@ def get_data_scope(event):
     """
     Determine which location(s) the signed-in user is allowed to see.
 
-    Administrators:
+    Administrators / Maintenance:
         - No location parameter -> all sites
         - location parameter -> selected site
 
@@ -253,9 +254,18 @@ def get_data_scope(event):
     print("groups:", groups)
     requested_location = get_requested_location(event)
 
-    is_admin = ADMIN_GROUP in groups
+    normalized_groups = {
+        str(group).strip().casefold()
+        for group in groups
+    }
+    has_admin_scope = bool(
+        {
+            ADMIN_GROUP.casefold(),
+            MAINTENANCE_GROUP.casefold(),
+        }.intersection(normalized_groups)
+    )
 
-    if is_admin:
+    if has_admin_scope:
         return {
             "is_admin": True,
             "location": requested_location,
@@ -370,13 +380,7 @@ def classify_status(item, now, due_soon_cutoff):
 
 
 def lambda_handler(event, context):
-    print(
-        "event:",
-        json.dumps(
-            event,
-            default=decimal_serializer
-        )
-    )
+    print("event:", json.dumps(event, default=decimal_serializer))
 
     # ---------------------------------------------------------------------------- #
     #                                     CORS                                     #
