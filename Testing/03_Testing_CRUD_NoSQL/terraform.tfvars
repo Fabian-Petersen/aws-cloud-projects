@@ -1580,16 +1580,37 @@ lambda_functions = {
   }
 
   deleteTransferById = {
-    file_name  = "deleteTransferById.py"
-    handler    = "deleteTransferById.lambda_handler"
-    runtime    = "python3.12"
-    path       = "transfers/deleteTransferById"
-    invoked_by = ["apigateway"]
+    file_name            = "deleteTransferById.py"
+    handler              = "deleteTransferById.lambda_handler"
+    runtime              = "python3.12"
+    path                 = "transfers/deleteTransferById"
+    invoked_by           = ["apigateway"]
+    include_shared_utils = true
+
+    statements = [
+      {
+        sid       = "DeleteTransferObjects"
+        actions   = ["s3:DeleteObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/transfers/*"]
+      },
+      {
+        sid       = "ListTransferObjects"
+        actions   = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images"]
+        conditions = [
+          {
+            test     = "StringLike"
+            variable = "s3:prefix"
+            values   = ["transfers/*"]
+          }
+        ]
+      }
+    ]
 
     dynamodb_permissions = {
       asset_transfer_table = {
         table_name         = "crud-nosql-app-assets-transfer-table"
-        actions            = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan"]
+        actions            = ["dynamodb:DeleteItem", "dynamodb:Query"]
         allow_index_access = false
       }
     }
@@ -1762,8 +1783,8 @@ lambda_functions = {
     dynamodb_permissions = {
       asset_disposal_table = {
         table_name         = "crud-nosql-app-assets-disposal-table"
-        actions            = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:Scan"]
-        allow_index_access = false
+        actions            = ["dynamodb:PutItem", "dynamodb:Query"]
+        allow_index_access = true
       }
       assets_table = {
         table_name         = "crud-nosql-app-assets-table"
@@ -1877,10 +1898,30 @@ lambda_functions = {
     invoked_by           = ["apigateway"]
     include_shared_utils = true
 
+    statements = [
+      {
+        sid       = "DeleteDisposalObjects"
+        actions   = ["s3:DeleteObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/disposals/*"]
+      },
+      {
+        sid       = "ListDisposalObjects"
+        actions   = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images"]
+        conditions = [
+          {
+            test     = "StringLike"
+            variable = "s3:prefix"
+            values   = ["disposals/*"]
+          }
+        ]
+      }
+    ]
+
     dynamodb_permissions = {
       asset_disposal_table = {
         table_name         = "crud-nosql-app-assets-disposal-table"
-        actions            = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan"]
+        actions            = ["dynamodb:DeleteItem", "dynamodb:Query"]
         allow_index_access = false
       }
     }
@@ -1897,26 +1938,15 @@ lambda_functions = {
     dynamodb_permissions = {
       asset_disposal_table = {
         table_name         = "crud-nosql-app-assets-disposal-table"
-        actions            = ["dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        actions            = ["dynamodb:UpdateItem", "dynamodb:Query"]
         allow_index_access = false
       }
     }
 
     statements = [
       {
-        actions   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
+        actions   = ["s3:DeleteObject", "s3:PutObject"]
         resources = ["arn:aws:s3:::crud-nosql-app-images/disposals/*"]
-      },
-      {
-        actions   = ["s3:ListBucket"]
-        resources = ["arn:aws:s3:::crud-nosql-app-images"]
-        conditions = [
-          {
-            test     = "StringLike"
-            variable = "s3:prefix"
-            values   = ["disposals/*"]
-          }
-        ]
       }
     ]
   }

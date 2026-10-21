@@ -8,7 +8,7 @@ from botocore.config import Config
 from shared_utils._response import _response
 from shared_utils.claims import get_requestor_identity
 from shared_utils.cors import handle_options_request, handle_request_metadata
-from shared_utils.dynamodb import normalize_string, query_first
+from shared_utils.dynamodb import normalize_string, query_all, query_first
 from shared_utils.request import (
     parse_json_body,
     require_fields,
@@ -22,6 +22,7 @@ REGION = "af-south-1"
 DISPOSAL_TABLE_NAME = "crud-nosql-app-assets-disposal-table"
 ASSETS_TABLE_NAME = "crud-nosql-app-assets-table"
 BUCKET_NAME = "crud-nosql-app-images"
+BLOCKING_DISPOSAL_STATUSES = ("pending", "approved", "disposed")
 
 dynamodb = boto3.resource("dynamodb", region_name=REGION)
 disposal_table = dynamodb.Table(DISPOSAL_TABLE_NAME)
@@ -35,6 +36,20 @@ s3 = boto3.client(
         region_name=REGION,
     ),
 )
+
+
+class DuplicateDisposalError(Exception):
+    """Raised when an asset belongs to an existing applicable disposal."""
+
+    def __init__(self, asset, existing_disposal_id):
+        super().__init__("A disposal request already exists for this asset")
+        self.asset = asset
+        self.existing_disposal_id = existing_disposal_id
+
+
+def _identifier_key(value):
+    """Return a comparison-safe identifier without matching empty values."""
+    return str(value or "").strip().casefold()
 
 
 def _get_registered_asset(asset_id):
@@ -60,10 +75,10 @@ def _validate_asset_eligibility(registered_asset):
 
 
 def _validate_request(data):
-    """Validate disposal-level fields, asset objects, and duplicate IDs.
+    """Validate disposal-level fields, assets, and submitted identifiers.
 
-    Unidentified assets are allowed, so only non-empty ``assetID`` values
-    participate in duplicate detection.
+    Unidentified assets are allowed, so only non-empty identifiers participate
+    in duplicate detection.
 
     Raises:
         ValueError: If required data is missing or an identified asset repeats.
@@ -79,16 +94,93 @@ def _validate_request(data):
     )
 
     seen_asset_ids = set()
+    seen_serial_numbers = set()
     for asset in assets:
         if not isinstance(asset, dict):
             raise ValueError("Every asset must be a JSON object")
         asset_id = str(asset.get("assetID") or "").strip()
-        if not asset_id:
-            continue
-        duplicate_key = asset_id.casefold()
-        if duplicate_key in seen_asset_ids:
-            raise ValueError(f"Duplicate assetID: {asset_id}")
-        seen_asset_ids.add(duplicate_key)
+        asset_id_key = _identifier_key(asset_id)
+        if asset_id_key:
+            if asset_id_key in seen_asset_ids:
+                raise ValueError(f"Duplicate assetID: {asset_id}")
+            seen_asset_ids.add(asset_id_key)
+
+        serial_number = str(asset.get("serialNumber") or "").strip()
+        serial_key = _identifier_key(serial_number)
+        if serial_key:
+            if serial_key in seen_serial_numbers:
+                raise ValueError(f"Duplicate serialNumber: {serial_number}")
+            seen_serial_numbers.add(serial_key)
+
+
+def _validate_processed_asset_identifiers(assets):
+    """Reject duplicates after registered assets receive authoritative data."""
+    seen_asset_ids = set()
+    seen_serial_numbers = set()
+    for asset in assets:
+        asset_id = str(asset.get("assetID") or "").strip()
+        asset_id_key = _identifier_key(asset_id)
+        if asset_id_key:
+            if asset_id_key in seen_asset_ids:
+                raise ValueError(f"Duplicate assetID: {asset_id}")
+            seen_asset_ids.add(asset_id_key)
+
+        serial_number = str(asset.get("serialNumber") or "").strip()
+        serial_key = _identifier_key(serial_number)
+        if serial_key:
+            if serial_key in seen_serial_numbers:
+                raise ValueError(f"Duplicate serialNumber: {serial_number}")
+            seen_serial_numbers.add(serial_key)
+
+
+def _find_duplicate_disposal(submitted_assets):
+    """Return the submitted asset and disposal ID for the first duplicate.
+
+    Disposal identifiers are nested in ``assets`` and cannot be indexed by the
+    current table model. Querying the status GSI limits the lookup to statuses
+    that still or permanently prevent another request. Rejected, cancelled,
+    and expired requests are closed and intentionally excluded.
+    """
+    submitted_by_asset_id = {}
+    submitted_by_serial = {}
+    for asset in submitted_assets:
+        asset_id_key = _identifier_key(asset.get("assetID"))
+        serial_key = _identifier_key(asset.get("serialNumber"))
+        if asset_id_key:
+            submitted_by_asset_id[asset_id_key] = asset
+        if serial_key:
+            submitted_by_serial[serial_key] = asset
+
+    if not submitted_by_asset_id and not submitted_by_serial:
+        return None
+
+    for status in BLOCKING_DISPOSAL_STATUSES:
+        existing_disposals = query_all(
+            disposal_table,
+            IndexName="DisposalStatusIndex",
+            KeyConditionExpression=Key("status").eq(status),
+            ProjectionExpression="disposalId, assets",
+        )
+        for disposal in existing_disposals:
+            for existing_asset in disposal.get("assets") or []:
+                if not isinstance(existing_asset, dict):
+                    continue
+                existing_asset_id = _identifier_key(
+                    existing_asset.get("assetID")
+                )
+                existing_serial = _identifier_key(
+                    existing_asset.get("serialNumber")
+                )
+                submitted_asset = None
+                if existing_asset_id:
+                    submitted_asset = submitted_by_asset_id.get(
+                        existing_asset_id
+                    )
+                if submitted_asset is None and existing_serial:
+                    submitted_asset = submitted_by_serial.get(existing_serial)
+                if submitted_asset is not None:
+                    return submitted_asset, disposal.get("disposalId")
+    return None
 
 
 def _build_asset(asset, asset_index, disposal_id):
@@ -112,9 +204,14 @@ def _build_asset(asset, asset_index, disposal_id):
         _validate_asset_eligibility(registered_asset)
         equipment = registered_asset.get("equipment")
         area = registered_asset.get("area")
+        serial_number = (
+            registered_asset.get("serialNumber")
+            or asset.get("serialNumber")
+        )
     else:
         equipment = asset.get("equipment")
         area = asset.get("area")
+        serial_number = asset.get("serialNumber")
         if not equipment or not area:
             raise ValueError(
                 f"Unidentified asset {asset_index} requires area and equipment"
@@ -130,6 +227,8 @@ def _build_asset(asset, asset_index, disposal_id):
     }
     if asset_id:
         processed_asset["assetID"] = asset_id
+    if str(serial_number or "").strip():
+        processed_asset["serialNumber"] = str(serial_number).strip()
 
     presigned_urls = []
     for file_info in validate_upload_metadata(
@@ -203,6 +302,15 @@ def lambda_handler(event, context):
             processed_assets.append(processed_asset)
             presigned_urls.extend(asset_uploads)
 
+        _validate_processed_asset_identifiers(processed_assets)
+        duplicate = _find_duplicate_disposal(processed_assets)
+        if duplicate:
+            duplicate_asset, existing_disposal_id = duplicate
+            raise DuplicateDisposalError(
+                duplicate_asset,
+                existing_disposal_id,
+            )
+
         location = normalize_string(data["location"])
         description = data.get("description", "")
         disposal_reason = data["disposalReason"]
@@ -251,6 +359,18 @@ def lambda_handler(event, context):
             {"data": item, "presigned_urls": presigned_urls},
             headers,
         )
+    except DuplicateDisposalError as exc:
+        body = {
+            "message": str(exc),
+            "existingDisposalId": exc.existing_disposal_id,
+        }
+        asset_id = str(exc.asset.get("assetID") or "").strip()
+        serial_number = str(exc.asset.get("serialNumber") or "").strip()
+        if asset_id:
+            body["assetID"] = asset_id
+        if serial_number:
+            body["serialNumber"] = serial_number
+        return _response(409, body, headers)
     except ValueError as exc:
         return _response(400, {"message": str(exc)}, headers)
     except LookupError as exc:

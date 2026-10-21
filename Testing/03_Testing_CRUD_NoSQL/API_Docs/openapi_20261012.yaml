@@ -759,21 +759,36 @@ paths:
     put:
       tags: [Disposals]
       summary: Update a disposal request
-      description: The current Lambda is a placeholder and returns a success string.
+      description: Updates supplied disposal fields, removes explicitly selected existing images, and returns presigned PUT URLs for new asset-image metadata.
       operationId: updateDisposalById
       x-lambda-runtime: python3.12
       x-lambda-function: updateDisposalById
+      x-database: crud-nosql-app-assets-disposal-table
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/FreeformObject" }
+            schema: { $ref: "#/components/schemas/DisposalUpdate" }
       responses:
         "200":
-          description: Placeholder success response
+          description: Disposal request updated
           content:
             application/json:
-              schema: { type: string, example: "Success: updateDisposalById" }
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  data: { $ref: "#/components/schemas/Disposal" }
+                  presigned_urls:
+                    type: array
+                    description: Upload instructions for new images. The client PUTs each file directly to its URL using the matching content_type.
+                    items: { $ref: "#/components/schemas/PresignedUpload" }
+                  deleted_image_keys:
+                    type: array
+                    items: { type: string }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/ServerError" }
     delete:
       tags: [Disposals]
       summary: Delete a disposal request
@@ -1703,6 +1718,7 @@ components:
         equipment: { type: string }
         images:
           type: array
+          description: On create/update requests, metadata for new images that the client uploads using returned presigned_urls.
           items: { $ref: "#/components/schemas/UploadMetadata" }
       description: Identified assets use assetID; unidentified assets use area and equipment.
 
@@ -1718,6 +1734,22 @@ components:
           type: array
           minItems: 1
           items: { $ref: "#/components/schemas/DisposalAsset" }
+
+    DisposalUpdate:
+      type: object
+      properties:
+        location: { type: string }
+        expectedDisposalDate: { type: string, format: date }
+        disposalReason: { type: string }
+        description: { type: string }
+        assets:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/DisposalAsset" }
+        deleted_image_keys:
+          type: array
+          items: { type: string }
+          description: Existing asset-image S3 keys belonging to this disposal.
 
     Disposal:
       allOf:

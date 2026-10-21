@@ -62,7 +62,8 @@ module "acm" {
 # $ // =================================== cloudfront =================================== //
 
 module "cloudfront" {
-  source                  = "../../modules/cloudfront"
+  # source                  = "../../modules/cloudfront"
+  source                  = "git::https://github.com/Fabian-Petersen/terraform-modules.git//cloudfront?ref=v1.0.1"
   subdomain_name          = var.subdomain_name
   redirect_subdomain_name = var.redirect_subdomain_name
   project_name            = var.project_name

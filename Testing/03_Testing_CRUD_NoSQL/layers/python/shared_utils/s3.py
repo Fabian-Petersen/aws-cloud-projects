@@ -1,4 +1,34 @@
-"""S3 presigned-upload helper used by API Lambda handlers."""
+"""S3 helpers used by API Lambda handlers."""
+
+
+def delete_prefix(s3, bucket_name: str, prefix: str) -> int:
+    """Delete every object below an S3 prefix and return the object count.
+
+    ``list_objects_v2`` pages contain at most 1,000 objects. Using the
+    paginator ensures large request folders are completely removed while each
+    ``delete_objects`` call remains within S3's 1,000-key batch limit.
+
+    Raises:
+        RuntimeError: If S3 reports that any object in a batch was not deleted.
+    """
+    deleted_count = 0
+    paginator = s3.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
+        objects = [{"Key": item["Key"]} for item in page.get("Contents", [])]
+        if not objects:
+            continue
+
+        response = s3.delete_objects(
+            Bucket=bucket_name,
+            Delete={"Objects": objects, "Quiet": True},
+        )
+        errors = response.get("Errors", [])
+        if errors:
+            failed_keys = ", ".join(error.get("Key", "unknown") for error in errors)
+            raise RuntimeError(f"Failed to delete S3 objects: {failed_keys}")
+        deleted_count += len(objects)
+
+    return deleted_count
 
 
 def validate_upload_metadata(files, owner_label="item"):
