@@ -20,6 +20,11 @@ variable "global_region" {
   type        = string
 }
 
+variable "tags" {
+  description = "tags for the project"
+  type        = map(string)
+}
+
 variable "profile_1" {
   # default     = "fabian-user"
   description = "aws profile for the main account"

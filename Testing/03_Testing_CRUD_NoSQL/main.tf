@@ -48,12 +48,14 @@ data "aws_route53_zone" "hosted_zone" {
 }
 
 module "acm" {
-  source = "../../modules/acm"
+  # source = "../../modules/acm"
+  source = "git::https://github.com/Fabian-Petersen/terraform-modules.git//acm?ref=v1.0.2"
 
   hosted_zone             = var.secondary_hosted_zone
   subdomain_name          = var.subdomain_name
   redirect_subdomain_name = var.redirect_subdomain_name
   zone_id                 = data.aws_route53_zone.hosted_zone.zone_id
+  tags                    = var.tags
 
   providers = {
     aws = aws.free_tier_account_global
@@ -63,7 +65,7 @@ module "acm" {
 
 module "cloudfront" {
   # source                  = "../../modules/cloudfront"
-  source                  = "git::https://github.com/Fabian-Petersen/terraform-modules.git//cloudfront?ref=v1.0.1"
+  source                  = "git::https://github.com/Fabian-Petersen/terraform-modules.git//cloudfront?ref=v1.0.2"
   subdomain_name          = var.subdomain_name
   redirect_subdomain_name = var.redirect_subdomain_name
   project_name            = var.project_name
@@ -76,8 +78,9 @@ module "cloudfront" {
   ordered_cache_items     = var.ordered_cache_items
   price_class             = var.price_class
   s3_origin_id            = var.s3_origin_id
+  tags                    = var.tags
 
-  depends_on = [module.acm]
+  # depends_on = [module.acm]
 }
 
 #$  // =================================== awsConfig =================================== //
@@ -103,7 +106,8 @@ module "cloudfront" {
 #$  // =================================== api gateway =================================== //
 
 module "apigateway" {
-  source                  = "../../modules/apigateway"
+  # source                  = "../../modules/apigateway"
+  source                  = "git::https://github.com/Fabian-Petersen/terraform-modules.git//apigateway?ref=v1.0.2"
   api_parent_routes       = var.api_parent_routes
   api_child_routes        = var.api_child_routes
   lambda_arns             = merge(module.lambda.lambda_invoke_arns, module.cognito_lambda.custom_lambda_invoke_arns)
@@ -120,27 +124,32 @@ module "apigateway" {
 # $ Create additional IAM policies per lambda (Optional)
 
 module "iam_lambda" {
-  source            = "../../modules/iam"
+  # source          = "../../modules/iam"
+  source            = "git::https://github.com/Fabian-Petersen/terraform-modules.git//iam?ref=v1.0.2"
   lambda_functions  = var.lambda_functions
   lambda_role_names = module.lambda.lambda_role_names
+  tags              = var.tags
 }
 
 #$ // =========================== API Method lambda functions ========================== //
 
 module "lambda" {
-  source               = "../../modules/lambda/modules/dynamoDB"
+  # source = "../../modules/lambda/modules/dynamoDB"
+  source               = "git::https://github.com/Fabian-Petersen/terraform-modules.git//lambda/modules/dynamoDB?ref=v1.0.2"
   lambda_functions     = var.lambda_functions
   region               = var.region
   profile_2_account_id = var.profile_2_account_id
   extra_policies       = var.extra_policies
   env                  = var.env
   project_name         = var.project_name
+  tags                 = var.tags
 }
 
 #$ // =========================== lambda triggered by s3 ============================== //
 
 module "s3_event_lambda" {
-  source       = "../../modules/lambda/modules/s3"
+  # source       = "../../modules/lambda/modules/s3"
+  source       = "git::https://github.com/Fabian-Petersen/terraform-modules.git//lambda/modules/s3?ref=v1.0.2"
   file_name    = var.file_name
   bucket_name  = var.bucket_name
   table_names  = var.table_names
@@ -148,32 +157,39 @@ module "s3_event_lambda" {
   handler      = var.handler
   env          = var.env
   project_name = var.project_name
+  tags         = var.tags
 
-  depends_on = [module.dynamodb_tables]
+  # Removed the dependency on the dynamodb_tables during migration to remote module source. Ensure that the dynamodb_tables module is applied before this module if necessary.
+  # depends_on = [module.dynamodb_tables]
 }
 
 #$ // ============ Technicians Lambda with Cognito (custom lambdas) =================== //
 module "cognito_lambda" {
-  source                  = "../../modules/lambda/modules/lambda"
+  # source                  = "../../modules/lambda/modules/lambda"
+  source                  = "git::https://github.com/Fabian-Petersen/terraform-modules.git//lambda/modules/lambda?ref=v1.0.2"
   lambda_functions_custom = var.lambda_functions_custom
   env                     = var.env
   project_name            = var.project_name
+  tags                    = var.tags
 }
 
 #$  // =================================== dynamoDB =================================== //
 module "dynamodb_tables" {
-  source = "../../modules/dynamoDB"
+  # source = "../../modules/dynamoDB"
+  source = "git::https://github.com/Fabian-Petersen/terraform-modules.git//dynamoDB?ref=v1.0.2"
   # dynamoDB_table_names = var.dynamoDB_table_names # % List variable - "constrained to only name"
   env             = var.env
   project_name    = var.project_name
   dynamodb_tables = var.dynamodb_tables # % Map variable - added features can be passed in map
   enable_ttl      = var.enable_ttl
   ttl_attribute   = var.ttl_attribute
+  tags            = var.tags
 }
 
 #$ // =================================== cognito =================================== //
 module "cognito" {
-  source                 = "../../modules/cognito"
+  # source                 = "../../modules/cognito"
+  source                 = "git::https://github.com/Fabian-Petersen/terraform-modules.git//cognito?ref=v1.0.2"
   env                    = var.env
   project_name           = var.project_name
   subdomain_name         = var.subdomain_name
@@ -185,6 +201,8 @@ module "cognito" {
   prevent_user_existence = var.prevent_user_existence
   user_groups            = var.user_groups
   users                  = var.users
+  tags                   = var.tags
+
   # lambda_triggers        = module.cognito_lambda.custom_lambda_arns
 }
 
@@ -194,7 +212,8 @@ data "aws_s3_bucket" "pdf_bucket" {
   bucket = "crud-nosql-app-images"
 }
 module "pdf_generator" {
-  source               = "../../modules/pdf_generator"
+  # source               = "../../modules/pdf_generator"
+  source               = "git::https://github.com/Fabian-Petersen/terraform-modules.git//pdf_generator?ref=v1.0.2"
   function_name        = var.function_name
   project_name         = var.project_name
   env                  = var.env
@@ -204,25 +223,30 @@ module "pdf_generator" {
   s3_bucket_arn        = data.aws_s3_bucket.pdf_bucket.arn
   # runtime              = var.runtime
   dynamodb_stream_arn = module.dynamodb_tables.dynamodb_stream_arns["crud-nosql-app-maintenance-request"]
+  tags                = var.tags
 }
 
 #$ // ========================= ecr Lambda ======================== //
 module "ecr_pdf" {
-  source          = "../../modules/ecr"
+  # source          = "../../modules/ecr"
+  source          = "git::https://github.com/Fabian-Petersen/terraform-modules.git//ecr?ref=v1.0.2"
   env             = var.env
   repository_name = var.repository_name
   max_image_count = var.max_image_count
   scan_on_push    = var.scan_on_push
   project_name    = var.project_name
+  tags            = var.tags
 }
 
 #$ // ========================= SSM Params ======================== //
 # % This module create paramters for the SES module
 module "ssm" {
-  source       = "../../modules/ssm"
+  # source       = "../../modules/ssm"
+  source       = "git::https://github.com/Fabian-Petersen/terraform-modules.git//ssm?ref=v1.0.2"
   env          = var.env
   project_name = var.project_name
   parameters   = var.parameters
+  tags         = var.tags
 }
 
 #$ // ========================= SES Lambda ======================== //
@@ -235,7 +259,8 @@ module "ssm" {
 # }
 
 module "ses" {
-  source              = "../../modules/ses"
+  # source              = "../../modules/ses"
+  source              = "git::https://github.com/Fabian-Petersen/terraform-modules.git//ses?ref=v1.0.2"
   env                 = var.env
   region              = var.region
   project_name        = var.project_name
@@ -254,6 +279,7 @@ module "ses" {
   #% ================= hosted zone ===================== 
   zone_id        = data.aws_route53_zone.hosted_zone.zone_id
   subdomain_name = var.subdomain_name
+  tags           = var.tags
 }
 
 #$ // ========================= Event Bridge ======================== //
@@ -263,7 +289,8 @@ module "ses" {
 # }
 
 module "eventbridge" {
-  source = "../../modules/eventBridge"
+  # source = "../../modules/eventBridge"
+  source = "git::https://github.com/Fabian-Petersen/terraform-modules.git//eventBridge?ref=v1.0.2"
   env    = var.env
 
   project_name          = var.project_name
@@ -274,6 +301,7 @@ module "eventbridge" {
   profile_2_account_id  = var.profile_2_account_id
   scheduler_group_name  = var.scheduler_group_name
   scheduler_target_arns = merge(module.lambda.scheduler_targets_arns, module.cognito_lambda.scheduler_targets_arns)
+  tags                  = var.tags
 
   resource_permissions = flatten([
     for rule_name, rule in var.event_subscriptions : [
@@ -296,11 +324,13 @@ module "eventbridge" {
 #$ // ========================== SQS ============================== //
 
 module "sqs" {
-  source              = "../../modules/sqs"
+  # source              = "../../modules/sqs"
+  source              = "git::https://github.com/Fabian-Petersen/terraform-modules.git//sqs?ref=v1.0.2"
   queues              = var.queues
   sqs_lambda_triggers = var.sqs_lambda_triggers
   project_name        = var.project_name
   env                 = var.env
+  tags                = var.tags
 }
 
 

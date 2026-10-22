@@ -10,6 +10,11 @@ profile_2            = "fabian-user2"
 profile_1_account_id = "875431507944"
 profile_2_account_id = "157489943321"
 
+tags = {
+  Environment = "dev"
+  Project     = "atlantic-meat-infra"
+}
+
 #$ route53 variables
 primary_hosted_zone     = "fabian-portfolio.net"                # HZ in the main account (paid domain)
 secondary_hosted_zone   = "app.fabian-portfolio.net"            # HZ in secondary account

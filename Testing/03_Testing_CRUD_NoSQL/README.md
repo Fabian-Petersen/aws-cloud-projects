@@ -37,6 +37,7 @@ Key objectives include:
 - [Usage](#usage)
 - [API Reference](#api-reference)
 - [Security](#security)
+
 - [Application Modules](#application-modules)
   - [Jobs Module](#jobs-module)
     - [Overview](#overview)
@@ -61,6 +62,7 @@ Key objectives include:
     - [Infrastructure](#infrastructure)
     - [Prerequisites](#prerequisites)
     - [Open Questions](#open-questions)
+
   - [Assets Transfer Module](#assets-transfer-module)
     - [Overview](#overview)
     - [Problem](#problem)
@@ -74,7 +76,8 @@ Key objectives include:
     - [Prerequisites](#prerequisites)
     - [Open Questions](#open-questions)
     - [Architecture Review Notes & Recommendations](#architecture-review-notes--recommendations)
-  - [Stock Management Module](#stock-management-module)
+
+  - [Asset Disposal Module](#asset-disposal-module)
     - [Overview](#overview)
     - [Problem](#problem)
     - [Solution](#solution)
@@ -84,6 +87,7 @@ Key objectives include:
     - [Infrastructure](#infrastructure)
     - [Prerequisites](#prerequisites)
     - [Open Questions](#open-questions)
+
   - [Comments Module](#comments-module)
     - [Overview](#overview)
     - [Problem](#problem)
@@ -94,6 +98,7 @@ Key objectives include:
     - [Infrastructure](#infrastructure)
     - [Prerequisites](#prerequisites)
     - [Open Questions](#open-questions)
+
   - [Users Module](#users-module)
     - [Overview](#overview)
     - [Problem](#problem)
@@ -104,7 +109,8 @@ Key objectives include:
     - [Infrastructure](#infrastructure)
     - [Prerequisites](#prerequisites)
     - [Open Questions](#open-questions)
-  - [WhatsApp Comment Notifications MOdule](#whatsapp-comment-notifications-module)
+
+  - [Notifications Module](#notifications-module)
     - [Overview](#overview)
     - [Problem](#problem)
     - [Solution](#solution)
@@ -361,21 +367,294 @@ Given this is a portfolio project rather than a production system handling real 
 
 ### Overview
 
+The Jobs module manages the maintenance-job lifecycle from request capture through approval, assignment, work recording, completion, and downloadable job-card generation. It stores the maintenance request and the technician or contractor's maintenance action separately, links them when work is submitted, and supports request/action images, invoices, comments, and a new-request email notification.
+
 ### Problem
+
+Maintenance requests previously depended on informal, manual tracking such as WhatsApp conversations. That made it difficult to establish who requested or owned a job, whether work had been approved or completed, what it cost, and which maintenance history belonged to an asset or store.
+
+The module provides a central record for:
+
+- Requests, priorities, operational impact, and affected assets
+- Approval, assignment, target dates, and accountability
+- Work performed, findings, root cause, signatures, travel, parts, sundries, contractor costs, and invoices
+- Current job status and completion time
+- Comments and supporting photographs
+- Consistently numbered PDF job cards
 
 ### Solution
 
+The implemented workflow is:
+
+```text
+Authenticated user submits a request
+        |
+        v
+pending
+        |
+        +---- approval + assignment ----> in progress
+        |                                     |
+        |                                     v
+        |                            maintenance action recorded
+        |                                     |
+        |                                     v
+        |                                  complete
+        |                                     |
+        |                                     v
+        |                          PDF job card generated in S3
+        |
+        +---- exact status "Rejected" ----> request and legacy images deleted
+```
+
+#### Job Creation
+
+`postJobRequest` validates the request and its non-empty `assets` array, verifies the normalized location against the locations table when that lookup is available, derives the requestor identity from Cognito claims, and creates a UUID-keyed request with status `pending`. Each asset must have an area and equipment value, and must provide either an `assetID` or a supported missing-barcode reason. An unidentified asset must include at least one image.
+
+For each requested image the Lambda returns a one-hour presigned upload URL under `maintenance/{requestId}/assets/{assetIndex}/images/{filename}`. An S3-triggered Lambda later appends the uploaded object's bucket/key metadata to the matching nested asset.
+
+#### Approval and Assignment
+
+`postApproveRequest` requires a target date and assignee name, Cognito `sub`, and group. When its input status normalizes to `approved`, it stores the database status as `in progress`, records the approving user's name and `sub`, assigns the work, and creates a job-card number. A conditional write prevents a second approval from assigning another number.
+
+#### Rejection
+
+`postRejectRequest` has two current behaviours. With the exact case-sensitive status `Rejected`, it deletes the maintenance-request item and the legacy top-level images referenced by that item, returning rejection metadata only in the response. Any other supplied status is written to the request with `reject_message`. Rejected requests therefore are not retained when the frontend sends the expected `Rejected` value.
+
+#### Maintenance Action and Completion
+
+`postJobAction` records the authenticated actioning user's `sub` and name plus start/end time, distance travelled, work completed, root cause, findings, signature, signatory, parts, sundries, contractor details, and their costs. It can issue presigned uploads for action images and invoices.
+
+The Lambda uses a DynamoDB transaction to create the maintenance-action record and update the request with the action's status, `action_id`, and `statusUpdatedAt`. The normal completion value is lowercase `complete`; that value also adds `completed_at` and triggers job-card generation through the maintenance-request stream.
+
+#### Job Card Generation
+
+On a request transition to `complete`, the container-image `jobcard-pdf-generator` Lambda reads the linked maintenance action, merges it with the request, renders a PDF, and writes `jobcards/{requestId}.pdf` to `crud-nosql-app-images`. Existing PDFs are not regenerated. `getJobcardById` accepts the action ID, resolves the request through `ActionIdIndex`, confirms that the PDF exists, and returns a ten-minute presigned download URL.
+
 ### User Experience
+
+#### Requestors
+
+Any authenticated user can submit a maintenance request, select a location/area/equipment/asset through the asset-options endpoint, describe the problem and impact, and upload supporting images. In list views, users outside the `admin` and `maintenance` Cognito groups see only requests whose `request_sub` matches their token `sub`.
+
+#### Admin and Maintenance Users
+
+Members of the `admin` or `maintenance` groups can list all maintenance requests and filter them by the exact stored status. Approval captures the target date and an assignee, moves the request to `in progress`, and assigns the job-card number. The current approval and rejection Lambdas do not themselves test the caller's group; their API routes require a valid Cognito token, while any finer restriction must currently be supplied by the frontend.
+
+#### Technicians and Contractors
+
+An assignee can be recorded using `assign_to_name`, `assign_to_sub`, and `assign_to_group`. The maintenance-action form captures the completed work, findings, costs, signature, images, and invoices. For the completed-jobs list, an `admin` sees every action; every other authenticated caller sees only actions whose `action_sub` matches their own `sub`. The handler does not validate the assignee fields before accepting an action, so assignment and actioning user can differ.
+
+#### Viewing Jobs, Job Cards, and Comments
+
+Requests can be filtered by status, while completed actions have a separate list. The detail endpoint reads either a request ID (`pending`, `in progress`, or `rejected`) or an action ID (`complete`) and adds short-lived download URLs to stored files. It currently performs no ownership or group filtering beyond the API Gateway Cognito authorizer.
+
+Authenticated users can post a comment against `request_id` and retrieve that request's comments newest first. The general comments-list endpoint currently scans and returns all comments. The job-card endpoint similarly requires authentication but does not add a role or ownership check.
 
 ### Scope
 
+#### Included
+
+- Multi-asset maintenance requests and missing/damaged-barcode capture
+- Status filtering, request detail, update, and deletion endpoints
+- Approval, technician/contractor assignment, target dates, and rejection
+- Maintenance actions, completion data, signatures, and maintenance costs
+- Per-location/per-month sequential job-card numbering
+- Request images, action images, invoices, and presigned S3 access
+- PDF job-card generation and download
+- Request-linked comments
+- DynamoDB-stream email processing for maintenance requests
+
+#### Excluded
+
+- General asset CRUD, verification, and asset-master ownership
+- Asset transfers and disposals, except that those modules may read shared asset data
+- Procurement, stock control, payment processing, and physical maintenance work
+- Transfer/disposal event buses, queues, reminders, and notification records; they are not part of the Jobs workflow
+
 ### Architecture
+
+#### Request Flow
+
+The web client is delivered through CloudFront. Requests under `/api/*` are routed to API Gateway, where every non-`OPTIONS` Jobs, job-card, asset-options, and comments route uses the Cognito user-pool authorizer. API Gateway invokes the mapped Python Lambda, which reads or writes DynamoDB and, where applicable, creates S3 presigned URLs.
+
+```mermaid
+flowchart LR
+    FE[Web frontend] --> CF[Amazon CloudFront]
+    CF --> API[Amazon API Gateway /api]
+    API --> AUTH[Amazon Cognito authorizer]
+    API --> JL[Jobs and Comments Lambdas]
+    JL --> REQ[(Maintenance Requests)]
+    JL --> ACT[(Maintenance Actions)]
+    JL --> SEQ[(Job-card Sequences)]
+    JL --> COM[(Comments)]
+    JL --> ASSET[(Assets / Locations)]
+    JL --> S3[(S3 maintenance files)]
+    S3 --> META[s3FileUploadLambda]
+    META --> REQ
+    META --> ACT
+    REQ -->|DynamoDB stream: complete| PDF[jobcard-pdf-generator]
+    ACT --> PDF
+    PDF --> S3
+    REQ -->|DynamoDB stream| MAIL[jobs-notify-admin]
+    MAIL --> SES[Amazon SES]
+```
+
+The Cognito authorizer is evaluated by API Gateway before the integration Lambda. Cognito is therefore shown as an authorization dependency rather than a service that receives the business request in sequence.
+
+#### Job Lifecycle
+
+| Current status | Written by                                              | Meaning / next action                                                             |
+| -------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `pending`      | `postJobRequest`                                        | Awaiting review and assignment                                                    |
+| `in progress`  | `postApproveRequest` for input `approved`               | Approved, assigned, target-dated, and given a job-card number                     |
+| `complete`     | Normally `postJobAction`                                | Action linked to the request; `completed_at` set and PDF stream processing starts |
+| `rejected`     | Supported by read handlers and arbitrary status updates | Readable as a status only when retained in the table                              |
+| deleted        | `postRejectRequest` for exact input `Rejected`          | Expected rejection path removes the request rather than storing `rejected`        |
+
+`postApproveRequest` and `postJobAction` do not enforce a finite transition table for every input status. The sequence above describes the values generated by the normal workflow, not a general state-machine guarantee.
+
+#### Authentication and Authorization
+
+- API Gateway applies `COGNITO_USER_POOLS` authorization to every documented non-preflight route.
+- Request creation uses `sub`, `name`, `family_name`, and `email`; approval uses `sub`, `name`, and `family_name`; maintenance actions use `sub`, `name`, and `family_name`; comments use `sub`, `name`, and `family_name`.
+- Request-list access parses `cognito:groups`: `admin` and `maintenance` receive all rows, while other groups are filtered to their own `request_sub`.
+- Completed-action access gives `admin` all rows and filters every other caller to their own `action_sub`.
+- The detail, create, approve, reject, action, update, delete, comments, asset-options, and job-card handlers rely on authentication but do not currently enforce group, location, ownership, or assignee restrictions inside the Lambda.
+
+#### Job Data Model
+
+The maintenance request is the lifecycle record. Important fields are:
+
+```text
+id + jobCreated          composite primary key
+status                   pending | in progress | complete (normal flow)
+request_sub              Cognito sub of requestor
+requested_by             normalized requestor name
+user_email, user_name    requestor details from claims
+location, type, priority, breakdown_time, impact, description
+assets[]                 assetIndex, area, equipment, optional assetID,
+                         assetIssueReason/details, images[]
+targetDate               assigned completion target
+assign_to_name/sub/group assignment metadata
+approved_at/by/by_sub     approval audit fields
+jobcardNumber            generated during approval
+action_id                maintenance action linked at action submission
+statusUpdatedAt          last workflow update timestamp
+```
+
+The action is a separate record keyed by `id + actionCreated`. It references the request through `request_id` and stores `action_sub`, `actioned_by`, work times, `completed_at`, `status`, root cause, findings, work completed, distance, costs, parts, sundries, contractor data, signature/signatory, images, and invoices. The request's `action_id` provides the reverse link used by job-card retrieval.
+
+```text
+Maintenance Request.id <----- Maintenance Action.request_id
+Maintenance Request.action_id -----> Maintenance Action.id
+```
+
+#### Job-card Numbering
+
+Approval resolves the normalized request location to an uppercase code from the locations table. It atomically increments `lastSequence` in the sequence item `JOBCARD#{LOCATION_CODE}#{YYYYMM}` and formats the result as:
+
+```text
+Job-<LOCATION_CODE>-<YYYYMM>-<four-digit sequence>
+```
+
+For example, the first October 2026 request for location code `VTR` is `Job-VTR-202610-0001`. Keeping a separate monthly/location sequence item provides an atomic counter even when approvals occur concurrently.
 
 ### Infrastructure
 
+#### API Gateway
+
+All routes below are rooted at the CloudFront/API Gateway `/api` path. `OPTIONS` methods are unauthenticated CORS preflight routes and are omitted from the table.
+
+| Method | Route                            | Lambda                       | Authentication | Purpose                                                          |
+| ------ | -------------------------------- | ---------------------------- | -------------- | ---------------------------------------------------------------- |
+| GET    | `/api/jobs/requests`             | `getJobsList`                | Cognito        | List requests; optional exact `status` query filter              |
+| POST   | `/api/jobs/requests`             | `postJobRequest`             | Cognito        | Create a pending multi-asset maintenance request and upload URLs |
+| GET    | `/api/jobs/completed`            | `getJobsCompletedList`       | Cognito        | List maintenance-action records with admin/user filtering        |
+| GET    | `/api/jobs/{id}?status={status}` | `getJobById`                 | Cognito        | Read request detail or merged completed request/action detail    |
+| PUT    | `/api/jobs/{id}`                 | `updateJobById`              | Cognito        | Update a whitelist of request fields; see Open Questions         |
+| DELETE | `/api/jobs/{id}`                 | `deleteJobById`              | Cognito        | Delete a request and referenced legacy top-level images          |
+| POST   | `/api/jobs/{id}/approve`         | `postApproveRequest`         | Cognito        | Approve, assign, target-date, and number a request               |
+| POST   | `/api/jobs/{id}/reject`          | `postRejectRequest`          | Cognito        | Reject/delete a request or write a supplied alternative status   |
+| POST   | `/api/jobs/{id}/action`          | `postJobAction`              | Cognito        | Create an action and atomically link/update the request          |
+| GET    | `/api/jobs/{id}/jobcard`         | `getJobcardById`             | Cognito        | Treat `{id}` as an action ID and return a PDF download URL       |
+| GET    | `/api/assets/options`            | `getJobsRequestAssetOptions` | Cognito        | Supply location/area/equipment/asset choices for job creation    |
+| GET    | `/api/comments`                  | `getCommentsList`            | Cognito        | Return the current global comments scan                          |
+| POST   | `/api/comments`                  | `postComment`                | Cognito        | Add a comment linked to `request_id`                             |
+| GET    | `/api/comments/{id}`             | `getCommentById`             | Cognito        | Return one request's comments, newest first                      |
+
+#### Lambda Functions
+
+| Lambda                                             | Purpose                                                                   | Main resources                 |
+| -------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------ |
+| `postJobRequest`                                   | Validate and create a pending request; presign request images             | Requests, locations, S3        |
+| `getJobsList`                                      | List/filter request records with Cognito group/owner filtering            | Requests / `StatusIndex`       |
+| `getJobById`                                       | Read request detail or merge completed request/action data                | Requests, actions, S3          |
+| `getJobsCompletedList`                             | List action records with admin/action-owner filtering                     | Actions                        |
+| `postApproveRequest`                               | Assign and approve work; generate the sequential job-card number          | Requests, locations, sequences |
+| `postRejectRequest`                                | Delete an exactly rejected request or update another supplied status      | Requests, S3                   |
+| `postJobAction`                                    | Create an action and update its request in one transaction; presign files | Requests, actions, S3          |
+| `updateJobById`                                    | Update whitelisted request fields                                         | Requests                       |
+| `deleteJobById`                                    | Delete a request and legacy top-level images                              | Requests, S3                   |
+| `getJobcardById`                                   | Resolve action-to-request and presign the generated PDF                   | Requests / `ActionIdIndex`, S3 |
+| `getJobsRequestAssetOptions`                       | Build the job form's location/area/equipment/asset hierarchy              | Assets / `LocationIndex`       |
+| `postComment`, `getCommentById`, `getCommentsList` | Create and retrieve request-linked comments                               | Comments                       |
+| `s3FileUploadLambda`                               | Attach uploaded request/action image and invoice metadata                 | S3 events, requests, actions   |
+| `jobcard-pdf-generator`                            | Render an idempotent PDF on transition to `complete`                      | Request stream, actions, S3    |
+| `jobs-notify-admin`                                | Format and send a maintenance-request stream email through SES            | Request stream, SSM, SES       |
+
+Older per-status/per-table job handlers remain in the source tree, but the route map uses the consolidated functions listed above.
+
+#### DynamoDB
+
+| Table                                      | Keys                            | Indexes                                                                                                                                                                                            | Jobs purpose                                                                              |
+| ------------------------------------------ | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `crud-nosql-app-maintenance-request-table` | PK `id`; SK `jobCreated`        | `StatusIndex` (`status`), `StatusJobCreatedIndex` (`status` + `jobCreated`), `LocationIndex` (`location` + `jobCreated`), `ActionIdIndex` (`action_id`), `AssetIdIndex` (`assetID` + `jobCreated`) | Request lifecycle, assignment, approval, request assets, and action link; streams enabled |
+| `crud-nosql-app-maintenance-action-table`  | PK `id`; SK `actionCreated`     | `LocationIndex` (`location` + `actionCreated`, INCLUDE), `AssetIdIndex` (`assetID` + `actionCreated`)                                                                                              | Work performed, completion, costs, files, and signature                                   |
+| `crud-nosql-app-jobcard-sequences-table`   | PK `id`                         | None                                                                                                                                                                                               | Atomic monthly sequence per location code                                                 |
+| `crud-nosql-app-comments-table`            | PK `request_id`; SK `createdAt` | None                                                                                                                                                                                               | Chronological request conversation                                                        |
+| `crud-nosql-app-locations-table`           | PK `location`                   | None                                                                                                                                                                                               | Valid request locations and job-card location codes                                       |
+| `crud-nosql-app-assets-table`              | PK `id`                         | Jobs uses `LocationIndex` (`location`)                                                                                                                                                             | Location/area/equipment/asset choices shown when creating a request                       |
+
+The notifications table is not written by the Jobs implementation. Current Jobs notification delivery uses a request-table stream and SES rather than the transfer/disposal notification pipeline.
+
+#### Amazon S3 and PDF Flow
+
+The shared bucket is `crud-nosql-app-images` and the Jobs prefixes are:
+
+| Prefix                                                | Content                        | Metadata destination              |
+| ----------------------------------------------------- | ------------------------------ | --------------------------------- |
+| `maintenance/{requestId}/assets/{assetIndex}/images/` | New multi-asset request images | Nested request `assets[n].images` |
+| `maintenance/{requestId}/`                            | Legacy request images          | Request top-level `images`        |
+| `maintenance_action/{actionId}/`                      | Work/action images             | Action `images`                   |
+| `invoices/{actionId}/`                                | Action invoices                | Action `invoices`                 |
+| `jobcards/{requestId}.pdf`                            | Generated job-card PDF         | Retrieved through a presigned URL |
+
+Request/action Lambdas return one-hour presigned upload URLs. `s3FileUploadLambda` consumes `ObjectCreated:Put` events and appends `{bucket, key, filename}` metadata to the appropriate DynamoDB record. Job detail creates presigned read URLs with a default 15-minute expiry; job-card downloads expire after 10 minutes.
+
+#### Notifications
+
+The maintenance-request table stream also invokes `jobs-notify-admin`, which retrieves the configured sender address from SSM and sends through Amazon SES. In the checked-in handler, the recipient is the request item's `user_email`, the email text always describes a new pending request, and the action link points to localhost. The handler does not filter by stream event type or status, so this is not currently a complete created/approved/rejected/completed notification system.
+
 ### Prerequisites
 
+- An AWS account and Terraform configuration for the project's `af-south-1` resources
+- The CloudFront distribution, `/api` API Gateway routes, and Cognito user pool/authorizer
+- Cognito groups as configured by the project (`admin`, `user`, `manager`, `technician`, `contractor`, and `maintenance`), with the required profile claims available in tokens
+- The requests, actions, sequence, comments, locations, and assets DynamoDB tables and the indexes shown above
+- Location records containing the normalized location name and an uppercase `code` for job-card numbering
+- The `crud-nosql-app-images` S3 bucket, its object-created trigger, and permissions for the Jobs file prefixes
+- The deployed PDF container image/ECR repository and request-stream event-source mapping
+- SES identity/configuration plus the SSM sender parameter for request emails
+
 ### Open Questions
+
+- Should rejection remain destructive, or should requests be retained with lowercase `rejected` for audit/history and for the existing rejected-detail path?
+- Should approval, rejection, action, detail, update, delete, comments, and job-card handlers enforce Cognito group, ownership, assignee, and/or location rules instead of relying on a valid token and frontend controls?
+- Should statuses and casing be constrained centrally? `postApproveRequest` accepts statuses other than `approved`, `postJobAction` accepts any status, and the reject handler treats only exact `Rejected` as destructive.
+- `updateJobById` calls `UpdateItem` with only `id`, although the request table requires both `id` and `jobCreated`. Is the PUT route intended to remain supported, and if so which fields and authorization rules should it use?
+- Should the general comments endpoint continue returning every comment, or should clients use only request-scoped retrieval with ownership checks?
+- Should Jobs email be limited to request INSERT events and sent to an administrator address? The current handler reads `user_email`, labels every stream record as a new pending request, and builds a localhost action URL.
+- Should deletion/rejection clean up nested multi-asset images and generated job cards as well as the legacy top-level `images` list?
 
 ---
 
@@ -383,25 +662,344 @@ Given this is a portfolio project rather than a production system handling real 
 
 ### Overview
 
+The Assets module is the application's central asset register and lifecycle record. It stores each asset's internal identity, optional barcode and serial number, branch and business-unit placement, area/equipment classification, type/category, replacement value, condition, notes, and image metadata. The same record is enriched by physical verification and is referenced by maintenance, transfer, and disposal workflows.
+
+The module owns the asset master record. Jobs record work against an asset, Transfers move an existing asset between locations, and Disposals retire an existing asset; those modules do not replace the central record.
+
 ### Problem
+
+Without a central register, asset identity, current location, condition, photographs, and maintenance history can become fragmented across branches and informal records. That makes it difficult to distinguish individual assets, prevent duplicate barcodes or serial numbers, find equipment at a location, confirm that an asset was physically seen, associate maintenance cost with it, or record the result of a transfer or disposal.
+
+The implemented module addresses those problems with a UUID-keyed master record, sparse business-identifier indexes, location-based queries, image storage, a verification audit trail, and direct links to the maintenance, transfer, and disposal workflows.
 
 ### Solution
 
+The normal implemented flow is:
+
+```text
+Asset registered
+      |
+      v
+Stored in the central Assets table
+      |
+      +--> classified by location / business unit / area / equipment
+      +--> viewed, edited, photographed, and selected for maintenance
+      +--> physically verified by barcode and coordinates
+      +--> moved when a completed transfer updates its location
+      `--> retired when a completed disposal marks it disposed
+```
+
+#### Asset Registration
+
+`postCreateAsset` requires `location`, `business_unit`, `area`, `equipment`, `assetType`, `category`, `replacementValue`, and `condition`. A non-empty `assetID` is also required unless `assetType` is exactly `low value asset` or `rental`. The Lambda checks non-empty asset IDs and serial numbers through their GSIs, assigns a UUID `id` and UTC `createdAt`, writes an empty `images` array, and returns one-hour presigned upload URLs for requested images.
+
+#### Asset Updates and Deletion
+
+`updateAssetById` addresses the record by UUID. It allows changes to the registration fields and notes, can remove optional `assetID` or `serialNumber` values to preserve the sparse-index design, limits the combined retained and new image count to ten, validates image ownership by the `assets/{id}/` prefix, returns presigned uploads, and deletes explicitly removed S3 objects. It does not update an `updatedAt` field.
+
+`deleteAssetById` deletes every object found below `assets/{id}/` and then deletes the asset record. It does not check for related maintenance, transfer, disposal, or verification records before deletion.
+
+#### Asset Verification
+
+`POST /api/assets/{id}/verify` treats `{id}` as the business `assetID`/barcode, not the UUID primary key. It validates that barcode through `AssetIDIndex`, derives the verifier's `sub` and display name from Cognito/the Users table, and stores the supplied latitude and longitude in the Assets Verification table. Its insert stream is routed through EventBridge to `updateAssetVerifyStatus`, which updates the master asset with `verify_status = "verified"`, `last_verified_at`, `verified_by`, `verified_location`, and `next_verification_due` 180 days after verification.
+
+#### Asset Images
+
+Create and update operations issue presigned S3 PUT URLs for `assets/{assetUuid}/{filename}`. After a successful upload, the bucket's ObjectCreated Lambda appends `{bucket, key, filename}` metadata to the asset's `images` list. Detail reads add a short-lived presigned GET URL (15 minutes by default) to each valid image entry, so the bucket itself does not need to be exposed as a public image origin.
+
+#### Maintenance, Transfers, and Disposals
+
+Maintenance requests/actions associate work with the business `assetID`; the asset detail and history endpoints query those records to present job history, cost, and reliability data. A completed transfer receipt resolves each `assetID` through `AssetIDIndex` and updates the central asset's `location`. A completed disposal similarly resolves the asset and sets `condition = "disposed"`, `disposalId`, and `disposalCreated`.
+
 ### User Experience
+
+An authenticated user can retrieve the asset register, open an asset by its UUID, see classification and condition data, view its stored images through temporary links, and inspect related maintenance information. The general list is a table scan; the location endpoint instead derives the caller's branch from the Users table and returns assets from that location through `LocationIndex`.
+
+The asset-options endpoint supports a dependent selection experience used by job creation:
+
+```text
+Location -> Area -> Equipment -> Asset ID
+```
+
+With no query parameters it returns unique locations. Successive `location`, `area`, and `equipment` parameters narrow the result, exclude empty/`nan`/`none`/`null` business identifiers, and retain equipment with no selectable barcode so the calling workflow can offer an unidentified-asset path.
+
+Users can register assets, edit master data, add or remove images, delete assets, and verify a barcode with device coordinates. Condition and verification are separate: `condition` is supplied as asset lifecycle/physical state, whereas `verify_status` records the result of the current verification process.
+
+All non-`OPTIONS` Assets routes use the API Gateway Cognito user-pool authorizer. Most CRUD Lambdas do not add group, ownership, or location checks, so their backend authorization boundary is currently "any authenticated user." The exceptions are:
+
+- `GET /api/assets/location`, which uses the caller's Cognito `sub` to return only the location stored on that user's record.
+- `GET /api/assets/{id}/history`, which gives the `admin` and `technician` groups unfiltered maintenance history and filters other callers' request/action history to their stored user location. It does not deny access to the asset's basic location/equipment summary.
+- Verification, which records the authenticated caller's `sub` and name but does not restrict the action to a particular Cognito group or asset location.
+
+The configured Cognito pool defines `admin`, `user`, `manager`, `technician`, `contractor`, and `maintenance` groups, but the other Assets handlers do not distinguish among them.
 
 ### Scope
 
+#### Included
+
+- Asset master-data creation, listing, detail retrieval, update, and deletion
+- UUID record identity plus optional barcode/business and serial-number identity
+- Location, business unit, area, equipment, type, category, replacement value, condition, and notes
+- Location and dependent asset-option queries
+- Asset image upload, metadata attachment, download, replacement, and deletion
+- Barcode verification with verifier identity, coordinates, timestamps, and a 180-day next-due date
+- Maintenance history and cost/reliability views tied to `assetID`
+- Central-record updates made by completed transfer and disposal workflows
+
+#### Excluded
+
+- Maintenance request approval, assignment, action, comments, and job-card generation (Jobs module)
+- Transfer request, approval, transit, receipt, reminders, and notifications (Assets Transfer module)
+- Disposal request, approval, completion evidence, and notifications (Disposals module)
+- Procurement, depreciation, inventory valuation, and stock control
+
 ### Architecture
+
+#### Request Flow
+
+The web client is delivered through CloudFront. Requests under `/api/*` are forwarded to API Gateway, and every non-preflight Assets method is checked by the Cognito authorizer before API Gateway invokes its mapped Lambda. The Lambda then accesses DynamoDB and, for asset images, S3.
+
+```mermaid
+flowchart LR
+    FE[Web frontend] --> CF[Amazon CloudFront]
+    CF --> API[Amazon API Gateway /api]
+    API --> AUTH[Amazon Cognito authorizer]
+    API --> AL[Asset API Lambdas]
+    AL --> AT[(Assets table)]
+    AL --> VT[(Asset Verifications table)]
+    AL --> S3[(S3 asset images)]
+    S3 --> META[s3FileUploadLambda]
+    META --> AT
+    VT -->|DynamoDB stream| EB[EventBridge]
+    EB --> VS[updateAssetVerifyStatus]
+    VS --> AT
+    AL --> JOBS[(Maintenance tables)]
+    TR[Transfer completion] --> AT
+    DP[Disposal completion] --> AT
+```
+
+Cognito authorizes the API method; it is not in the business-data request path after authorization. Image bytes travel directly between the client and S3 through presigned URLs, while the API exchanges metadata and upload/download instructions.
+
+#### Asset Lifecycle
+
+```text
+Registered -> Active use -> Periodic physical verification
+                         -> Maintenance records accumulate
+                         -> Transfer completion changes location
+                         -> Disposal completion sets condition to disposed
+```
+
+The asset table does not implement a fixed application-status state machine. Creation accepts the caller's `condition`, normal updates can replace it, and the only lifecycle value imposed by an integration is lowercase `disposed`. Verification currently writes only lowercase `verified`; the code contains no active process that changes it to due, overdue, pending, or due soon.
+
+#### Authentication and Authorization
+
+- API Gateway configures `COGNITO_USER_POOLS` for every documented non-`OPTIONS` route; preflight methods use `NONE`.
+- Verification reads the `sub` claim and resolves the display name from `name` and `family_name` in the Users table.
+- Location-scoped listing reads the `sub` claim and then the user's `location` from the Users table.
+- Asset history parses `cognito:groups`; `admin` and `technician` have full maintenance-history access, while other groups are location-filtered using the Users table.
+- General list, detail, create, update, delete, and asset-options handlers rely on the gateway authorizer and contain no further role/location enforcement.
+
+#### Image Flow
+
+```text
+Create/update request
+      -> Asset Lambda returns presigned PUT URL
+      -> Browser uploads assets/{uuid}/{filename} to S3
+      -> S3 ObjectCreated invokes s3FileUploadLambda
+      -> Lambda appends bucket/key/filename to Assets.images
+      -> Detail request returns a presigned GET URL
+```
+
+#### Module Integrations
+
+- **Jobs:** maintenance requests and actions use `assetID`; `getAssetById` returns a concise maintenance history, while `/history` provides request counts, completed work, total cost, monthly cost, last completion, and MTTR. The current endpoint also returns hard-coded MTBF (`25`) and Availability (`95`) values.
+- **Transfers:** transfer records carry asset references. When a transfer reaches its completed receipt event, `assetTransferReceipt` updates each referenced master asset's `location` to the destination.
+- **Disposals:** disposal creation uses `AssetIDIndex` to resolve asset information. When a disposal transitions from `approved` to `disposed`, `assetDisposalCompleted` marks each referenced master asset as disposed and stores its disposal keys.
 
 ### Key Design Principles
 
+#### Central Asset Register
+
+`crud-nosql-app-assets-table` is the authoritative master-data store. Related modules reference a business asset identifier and update this record only for their explicit lifecycle side effects.
+
+#### Stable and Sparse Identification
+
+`id` is an always-present UUID and the DynamoDB partition key used by CRUD/detail routes and the S3 prefix. `assetID` is the optional barcode/business identifier used by verification and cross-module relationships. `serialNumber` is also optional. Omitting empty optional identifiers keeps `AssetIDIndex` and `SerialNumberIndex` sparse and queryable.
+
+#### Location-Based Organisation
+
+`location`, `area`, and `equipment` organise the register and support dependent selection. `LocationIndex` provides exact location queries; area/equipment narrowing is constructed in the Lambda from that location result rather than from additional indexes.
+
+#### Serverless, Event-Driven Processing
+
+CloudFront, API Gateway, Cognito, Lambda, DynamoDB, S3, and EventBridge provide the module without a dedicated application server. S3 events attach uploaded image metadata, while the verification-table stream asynchronously enriches the master record.
+
+#### Presigned Object Access
+
+Clients receive time-limited PUT and GET URLs instead of general S3 credentials or public-bucket access. S3 keys are namespaced by the immutable UUID so an image can be validated against its owning asset.
+
+#### Least-Privilege Data Access
+
+Terraform defines DynamoDB permissions per Lambda and opts into GSI ARNs only where an index query is required. Event consumers and the S3 metadata function receive access to the specific tables they update. The S3 IAM configuration has a deployment inconsistency recorded under Open Questions.
+
 ### Data Model
+
+#### Asset Record
+
+| Group          | Field                           | Current use                                                                                                  |
+| -------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Identity       | `id`                            | Required generated UUID; Assets-table partition key and API/S3 record identifier                             |
+| Identity       | `assetID`                       | Optional barcode/business identifier; required except for exact types `low value asset` and `rental`         |
+| Identity       | `serialNumber`                  | Optional manufacturer/serial identifier                                                                      |
+| Audit          | `createdAt`                     | UTC ISO-8601 creation timestamp                                                                              |
+| Organisation   | `location`                      | Branch/site; `LocationIndex` key                                                                             |
+| Organisation   | `business_unit`                 | Owning business unit                                                                                         |
+| Classification | `area`                          | Area within the location                                                                                     |
+| Classification | `equipment`                     | Equipment description/name                                                                                   |
+| Classification | `assetType`                     | Asset type; also controls whether a barcode is mandatory                                                     |
+| Classification | `category`                      | Asset category                                                                                               |
+| Value/state    | `replacementValue`              | Replacement value supplied at registration                                                                   |
+| Value/state    | `condition`                     | Caller-managed physical/lifecycle condition; forced to `disposed` on disposal completion                     |
+| Notes          | `additional_notes`              | Optional free-text notes; stored as an empty string when absent at creation                                  |
+| Images         | `images`                        | List of S3 metadata objects containing `bucket`, `key`, and `filename`; detail responses add transient `url` |
+| Verification   | `verify_status`                 | Set to `verified` by the verification event consumer                                                         |
+| Verification   | `last_verified_at`              | Verification record timestamp                                                                                |
+| Verification   | `verified_by`                   | Display name resolved for the verifier                                                                       |
+| Verification   | `verified_location`             | Map containing numeric `latitude` and `longitude`                                                            |
+| Verification   | `next_verification_due`         | ISO timestamp 180 days after the latest verification                                                         |
+| Disposal       | `disposalId`, `disposalCreated` | Disposal-table key copied to the master record on completed disposal                                         |
+
+There is no sort key and no `updatedAt` field in the current asset write paths.
+
+#### Primary Key and Indexes
+
+| Table/index               | Partition key  | Sort key              | Projection / purpose                                                                          |
+| ------------------------- | -------------- | --------------------- | --------------------------------------------------------------------------------------------- |
+| Assets table              | `id`           | None                  | Exact UUID CRUD and detail access                                                             |
+| `AssetIDIndex`            | `assetID`      | None                  | Full projection; duplicate checks, barcode verification, maintenance/transfer/disposal lookup |
+| `SerialNumberIndex`       | `serialNumber` | None                  | Includes `assetID`, `id`, and `location`; serial-number duplicate check                       |
+| `LocationIndex`           | `location`     | None                  | Full projection; location lists and dependent job-request options                             |
+| Asset Verifications table | `assetID`      | `verificationCreated` | Append-only physical-verification audit history; no GSI                                       |
+
+The configured table names are `crud-nosql-app-assets-table` and `crud-nosql-app-assets-verification-table` (the infrastructure module adds the `-table` suffix to the map keys).
+
+#### Asset Example
+
+```json
+{
+  "id": "777aeb1d-4e98-4f39-8ed3-586b24532f1f",
+  "assetID": "100056",
+  "serialNumber": "SN-EXAMPLE-01",
+  "createdAt": "2026-10-22T08:30:00+00:00",
+  "location": "Maitland",
+  "business_unit": "Operations",
+  "area": "Workshop",
+  "equipment": "Laptop",
+  "assetType": "capital asset",
+  "category": "IT equipment",
+  "replacementValue": 15000,
+  "condition": "active",
+  "additional_notes": "",
+  "images": [
+    {
+      "bucket": "crud-nosql-app-images",
+      "key": "assets/777aeb1d-4e98-4f39-8ed3-586b24532f1f/front.webp",
+      "filename": "front.webp"
+    }
+  ],
+  "verify_status": "verified",
+  "last_verified_at": "2026-10-22T10:35:00+02:00",
+  "verified_by": "Example User",
+  "verified_location": {
+    "latitude": -33.92,
+    "longitude": 18.42
+  },
+  "next_verification_due": "2027-04-20T10:35:00+02:00"
+}
+```
+
+#### Verification Audit Record
+
+Each verification write contains `assetID` (partition key), `verificationCreated` (SAST ISO timestamp and sort key), generated `id`, `verified_by`, `verifier_id` (Cognito `sub`), and a `position` map with DynamoDB numeric latitude/longitude. The master asset stores the latest verification summary; the verification table retains the event history.
 
 ### Infrastructure
 
+#### API Gateway
+
+All paths include the Terraform-managed `/api` prefix.
+
+| Method   | Route                      | Lambda                       | Authentication | Purpose                                                                            |
+| -------- | -------------------------- | ---------------------------- | -------------- | ---------------------------------------------------------------------------------- |
+| `GET`    | `/api/assets`              | `getAssetsList`              | Cognito        | Return the current scan page of asset records                                      |
+| `POST`   | `/api/assets`              | `postCreateAsset`            | Cognito        | Create an asset and return image upload URLs                                       |
+| `GET`    | `/api/assets/location`     | `getAssetsByLocation`        | Cognito        | Return assets at the authenticated user's stored location                          |
+| `GET`    | `/api/assets/options`      | `getJobsRequestAssetOptions` | Cognito        | Return dependent location/area/equipment/asset options                             |
+| `GET`    | `/api/assets/{id}`         | `getAssetById`               | Cognito        | Read one UUID-keyed asset with image URLs and concise related history              |
+| `PUT`    | `/api/assets/{id}`         | `updateAssetById`            | Cognito        | Update asset fields and reconcile images                                           |
+| `DELETE` | `/api/assets/{id}`         | `deleteAssetById`            | Cognito        | Delete the asset and objects under its asset prefix                                |
+| `GET`    | `/api/assets/{id}/history` | `getAssetHistory`            | Cognito        | Return maintenance history, cost, and reliability metrics for the UUID-keyed asset |
+| `POST`   | `/api/assets/{id}/verify`  | `postAssetVerify`            | Cognito        | Verify an asset where `{id}` is its barcode/business `assetID`                     |
+
+Each resource also has an unauthenticated mock `OPTIONS` method for CORS preflight.
+
+#### Lambda Functions
+
+| Lambda                       | Purpose                                                                     | Main resources                                          |
+| ---------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `getAssetsList`              | Scan and return asset records with display-formatted dates                  | Assets table                                            |
+| `postCreateAsset`            | Validate identifiers, create the record, and presign image uploads          | Assets table, S3                                        |
+| `getAssetsByLocation`        | Resolve caller location and query its assets                                | Users table, Assets `LocationIndex`                     |
+| `getJobsRequestAssetOptions` | Build dependent asset-selection data                                        | Assets table and `LocationIndex`                        |
+| `getAssetById`               | Read an asset, presign images, and add concise maintenance/transfer history | Assets, maintenance request/action, transfer tables, S3 |
+| `updateAssetById`            | Update permitted fields and add/delete images                               | Assets table, S3                                        |
+| `deleteAssetById`            | Delete the asset prefix and record                                          | Assets table, S3                                        |
+| `postAssetVerify`            | Write a geolocated verification audit record                                | Users, Assets `AssetIDIndex`, Asset Verifications       |
+| `updateAssetVerifyStatus`    | Consume a verification event and update the latest master summary           | Assets `AssetIDIndex`                                   |
+| `getAssetHistory`            | Build maintenance history, cost, and reliability responses                  | Assets, Users, maintenance request/action tables        |
+| `s3FileUploadLambda`         | Append uploaded object metadata to the correct asset                        | S3 ObjectCreated event, Assets table                    |
+
+The transfer receipt and disposal completion consumers are owned by their respective modules but update the Assets table as described above.
+
+#### DynamoDB
+
+The Assets table has partition key `id`, no sort key, and the three GSIs documented in Data Model. The Verifications table has composite key `assetID` + `verificationCreated`; inserts are streamed through the shared EventBridge pipe/rule infrastructure with source `asset-verify-service` and detail type `AssetVerified`. That rule invokes `updateAssetVerifyStatus`.
+
+Important access patterns are exact UUID `GetItem`/update/delete, exact barcode and serial-number GSI queries, exact-location GSI queries, and a general asset scan. Some handlers paginate their reads, while the gaps are listed under Open Questions.
+
+#### Amazon S3
+
+Asset images are stored in `crud-nosql-app-images` below `assets/{assetUuid}/{filename}`. Create/update uses one-hour presigned PUT URLs; detail reads use presigned GET URLs whose default lifetime is 900 seconds. An ObjectCreated event invokes `s3FileUploadLambda`, which appends file metadata to the Assets record. Update can delete selected keys after validating that they are already attached to the record and lie under its prefix; full deletion removes the prefix before deleting the DynamoDB item.
+
+CloudFront forwards `/api/*` to API Gateway, but the asset-detail code accesses image objects through S3 presigned URLs rather than a public CloudFront image URL.
+
+#### Cognito
+
+The API Gateway Cognito authorizer protects all Assets business methods. Asset verification and scoped reads consume `sub`; asset history additionally consumes `cognito:groups`. The configured pool groups are `admin`, `user`, `manager`, `technician`, `contractor`, and `maintenance`, although only `admin` and `technician` receive special treatment in Assets history.
+
+#### IAM
+
+Asset API Lambdas receive per-function DynamoDB read/write/delete permissions, with index access enabled only for handlers that query a GSI. The verification event consumer requires Assets-table and index query/update access. S3-based behavior requires object read/write/delete, bucket-prefix listing, and CloudWatch Logs permissions; the S3 ObjectCreated function also requires update access to the Assets table. The unresolved mapping of configured Asset Lambda S3 statements to deployed policies is noted below.
+
 ### Prerequisites
 
+- An AWS account and configured Terraform/AWS provider for `af-south-1`
+- Deployed CloudFront/API Gateway routing and the Cognito user pool/authorizer
+- Cognito users represented in `crud-nosql-app-users-table` when location scoping or verifier display names are required
+- Deployed Assets and Asset Verifications tables with the documented indexes and stream/EventBridge subscription
+- The private `crud-nosql-app-images` bucket, its ObjectCreated trigger, and `s3FileUploadLambda`
+- Lambda IAM permissions for the required DynamoDB tables/indexes, S3 operations, EventBridge invocation, and CloudWatch Logs
+- A client configured for the `/api` base path, Cognito bearer tokens, CORS origin, and direct presigned S3 uploads
+
 ### Open Questions
+
+- The Lambda packaging guidance for this repository states that `statements` blocks on standard DynamoDB Lambdas are not consumed by the packaging module. The create/get/update/delete asset entries place their S3 permissions in those blocks, and `extra_policies` is empty. Do the deployed functions receive equivalent S3 permissions elsewhere, or should the Terraform IAM model be aligned before image operations are considered deployable?
+- `getAssetById` tries to read `replacementValue` from `item` before checking whether `GetItem` returned an item. A missing UUID can therefore return `500` instead of the intended `404`.
+- `getAssetById` queries the Transfers table as though `assetID` were its table partition key and builds responses using `id`; current Terraform defines `transferId` + `transferCreated` and no `assetID` GSI. The helper catches the resulting error and returns an empty transfer history. Should it query a new/appropriate index or should transfer history remain exclusively in the Transfers module?
+- `getAssetsList` returns only the first DynamoDB scan page, and `getAssetsByLocation` returns only the first `LocationIndex` query page. Should both endpoints paginate or return continuation tokens as the register grows?
+- Create performs GSI duplicate checks for `assetID` and `serialNumber`, but update performs neither duplicate check, and the create pre-check is not an atomic uniqueness constraint. Is uniqueness guaranteed elsewhere, or should it be enforced by a dedicated write pattern?
+- The active verification flow only assigns `verified`; no scheduled code changes assets to due, overdue, pending, or due soon after `next_verification_due`. Should those statuses be calculated at read time or maintained by a scheduled process?
+- General list/detail/create/update/delete/options routes have no Lambda-level role or location enforcement beyond a valid Cognito token. Is that intentionally the Assets permission model, or should backend checks match frontend role visibility?
+- The asset table itself has streams enabled, but the documented verification update is driven by the Asset Verifications table stream. Is the Assets-table stream required by another consumer or can it be disabled?
 
 ---
 
@@ -918,3 +1516,83 @@ A `for_each`-driven module per Lambda with explicit `dynamodb:Query`/`PutItem`/`
 One-time schedules created per transfer request for `checkApprovalTimeout` should be deleted once a transfer leaves `PENDING` (either by being approved, rejected, or expiring) — otherwise stale schedules accumulate. Worth confirming the approval/rejection Lambda also deletes the corresponding Scheduler schedule, not just the expiry Lambda consuming it.
 
 ---
+
+## Asset Disposal Module
+
+### Overview
+
+### Problem
+
+### Solution
+
+### User Experience
+
+### Scope
+
+### Architecture
+
+### Infrastructure
+
+### Prerequisites
+
+### Open Questions
+
+## Comments Module
+
+### Overview
+
+### Problem
+
+### Solution
+
+### User Experience
+
+### Scope
+
+### Architecture
+
+### Infrastructure
+
+### Prerequisites
+
+### Open Questions
+
+### Users Module
+
+### Overview
+
+### Problem
+
+### Solution
+
+### User Experience
+
+### Scope
+
+### Architecture
+
+### Infrastructure
+
+### Prerequisites
+
+### Open Questions
+
+### Notifications Module
+
+### Overview
+
+### Problem
+
+### Solution
+
+### User Experience
+
+### Scope
+
+### Architecture
+
+### Infrastructure
+
+### Prerequisites
+
+### Open Questions
