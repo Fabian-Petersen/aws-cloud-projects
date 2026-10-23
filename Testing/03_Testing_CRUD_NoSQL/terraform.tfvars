@@ -363,6 +363,22 @@ api_child_routes = {
     }
   }
 
+  manual-asset-verify = {
+    parent_key = "asset-id" # /api/assets/:id/verify-manual
+    path_part  = "verify-manual"
+    level      = 2
+    methods = {
+      POST = {
+        lambda        = "postAssetVerifyManual" // verify asset without barcode ID
+        authorization = "COGNITO_USER_POOLS"
+      }
+
+      OPTIONS = {
+        authorization = "NONE"
+      }
+    }
+  }
+
   /*#$ -------------------------------------------------------------------------- */
   /*#$                                 transfers                                  */
   /*#$ -------------------------------------------------------------------------- */
@@ -1459,6 +1475,41 @@ lambda_functions = {
       verification_table = {
         table_name         = "crud-nosql-app-assets-verification-table"
         actions            = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query", "dynamodb:Scan"]
+        allow_index_access = false
+      }
+    }
+  }
+
+  postAssetVerifyManual = {
+    file_name            = "postAssetVerifyManual.py"
+    handler              = "postAssetVerifyManual.lambda_handler"
+    runtime              = "python3.12"
+    path                 = "assets/postAssetVerifyManual"
+    invoked_by           = ["apigateway"]
+    include_shared_utils = true
+
+    statements = [
+      {
+        sid       = "UploadManualVerificationImages"
+        actions   = ["s3:PutObject"]
+        resources = ["arn:aws:s3:::crud-nosql-app-images/verification/*"]
+      }
+    ]
+
+    dynamodb_permissions = {
+      users_table = {
+        table_name         = "crud-nosql-app-users-table"
+        actions            = ["dynamodb:GetItem"]
+        allow_index_access = false
+      }
+      assets_table = {
+        table_name         = "crud-nosql-app-assets-table"
+        actions            = ["dynamodb:GetItem"]
+        allow_index_access = false
+      }
+      verification_table = {
+        table_name         = "crud-nosql-app-assets-verification-table"
+        actions            = ["dynamodb:PutItem"]
         allow_index_access = false
       }
     }
@@ -4120,7 +4171,7 @@ user_groups = {
 # $ s3FileUploadLambda - lambda triggers on s3 file upload
 # % Module lambda/s3
 file_name   = "s3FileUploadLambda.py"
-table_names = ["crud-nosql-app-maintenance-request-table", "crud-nosql-app-maintenance-action-table", "crud-nosql-app-assets-table", "crud-nosql-app-assets-transfer-table", "crud-nosql-app-assets-disposal-table"]
+table_names = ["crud-nosql-app-maintenance-request-table", "crud-nosql-app-maintenance-action-table", "crud-nosql-app-assets-table", "crud-nosql-app-assets-transfer-table", "crud-nosql-app-assets-disposal-table", "crud-nosql-app-assets-verification-table"]
 bucket_name = "crud-nosql-app-images"
 handler     = "s3FileUploadLambda.lambda_handler"
 lambda_name = "s3FileUploadLambda"

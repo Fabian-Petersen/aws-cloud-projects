@@ -26,6 +26,10 @@ DISPOSAL_TABLE = dynamodb.Table(
     "crud-nosql-app-assets-disposal-table"
 )
 
+VERIFICATION_TABLE = dynamodb.Table(
+    "crud-nosql-app-assets-verification-table"
+)
+
 
 # ============================================================
 # Sort-key lookups
@@ -85,6 +89,25 @@ def get_disposal_sort_key(item_id: str):
         return None
 
     return items[0].get("disposalCreated")
+
+
+def get_verification_sort_key(asset_id: str, verification_id: str):
+    """Resolve a verification ID within an asset history partition."""
+    query_kwargs = {
+        "KeyConditionExpression": Key("assetID").eq(asset_id),
+        "ProjectionExpression": "id, verificationCreated",
+        "ConsistentRead": True,
+    }
+    while True:
+        response = VERIFICATION_TABLE.query(**query_kwargs)
+        for item in response.get("Items", []):
+            if item.get("id") == verification_id:
+                return item.get("verificationCreated")
+
+        last_key = response.get("LastEvaluatedKey")
+        if not last_key:
+            return None
+        query_kwargs["ExclusiveStartKey"] = last_key
 
 
 # ============================================================
@@ -616,6 +639,49 @@ def lambda_handler(event, context):
                     },
                     attribute_name="images",
                     file_data=file_data
+                )
+
+            # ====================================================
+            # Manual verification images
+            #
+            # verification/{assetUuid}/{verificationId}/images/{filename}
+            # ====================================================
+
+            elif (
+                prefix == "verification"
+                and len(parts) >= 5
+                and parts[3] == "images"
+            ):
+                asset_uuid = parts[1]
+                verification_id = parts[2]
+                asset = ASSETS_TABLE.get_item(
+                    Key={"id": asset_uuid},
+                    ProjectionExpression="assetID",
+                ).get("Item")
+                if not asset:
+                    print(f"No asset found for id={asset_uuid}")
+                    continue
+
+                verification_asset_id = str(asset.get("assetID") or asset_uuid)
+                verification_created = get_verification_sort_key(
+                    verification_asset_id,
+                    verification_id,
+                )
+                if not verification_created:
+                    print(
+                        f"No verification found for asset={verification_asset_id}, "
+                        f"verification={verification_id}"
+                    )
+                    continue
+
+                append_file_to_table(
+                    table=VERIFICATION_TABLE,
+                    key={
+                        "assetID": verification_asset_id,
+                        "verificationCreated": verification_created,
+                    },
+                    attribute_name="images",
+                    file_data=file_data,
                 )
 
             else:

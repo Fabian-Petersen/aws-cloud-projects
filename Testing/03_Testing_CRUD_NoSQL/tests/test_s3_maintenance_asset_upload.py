@@ -52,6 +52,51 @@ class MaintenanceAssetUploadTests(unittest.TestCase):
             "maintenance/job-1/assets/1/images/scale.jpg",
         )
 
+    def test_routes_manual_verification_image_to_verification_record(self):
+        assets = MagicMock()
+        assets.get_item.return_value = {"Item": {"assetID": "BARCODE-1"}}
+        verifications = MagicMock()
+        verifications.query.return_value = {
+            "Items": [
+                {
+                    "id": "verification-1",
+                    "verificationCreated": "2026-10-23T10:00:00+02:00",
+                }
+            ]
+        }
+        event = {
+            "Records": [
+                {
+                    "s3": {
+                        "bucket": {"name": "crud-nosql-app-images"},
+                        "object": {
+                            "key": (
+                                "verification/asset-uuid/verification-1/"
+                                "images/evidence.webp"
+                            )
+                        },
+                    }
+                }
+            ]
+        }
+
+        with (
+            patch.object(handler, "ASSETS_TABLE", assets),
+            patch.object(handler, "VERIFICATION_TABLE", verifications),
+        ):
+            handler.lambda_handler(event, None)
+
+        update = verifications.update_item.call_args.kwargs
+        self.assertEqual(
+            update["Key"],
+            {
+                "assetID": "BARCODE-1",
+                "verificationCreated": "2026-10-23T10:00:00+02:00",
+            },
+        )
+        uploaded_file = update["ExpressionAttributeValues"][":file"][0]
+        self.assertEqual(uploaded_file["filename"], "evidence.webp")
+
 
 if __name__ == "__main__":
     unittest.main()
